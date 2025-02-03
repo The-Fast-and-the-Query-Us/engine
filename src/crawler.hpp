@@ -1,7 +1,5 @@
+#include "lib/bloom_filter.hpp"
 #include "lib/mutex.hpp"
-
-#include "lib/common.h"
-
 
 class crawler {
 public:
@@ -15,5 +13,7 @@ public:
 
   void worker();
 private:
+  fast::bloom_filter visited_urls;
+  // frontier crawl_frontier
 
 };
