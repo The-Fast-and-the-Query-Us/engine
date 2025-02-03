@@ -33,12 +33,12 @@ class list {
     node* node_;
     size_t offset_;
     public:
-    iterator(node* node_, size_t offset) : node_(node_), offset_(offset_) {}
+    iterator(node* node_, size_t offset_) : node_(node_), offset_(offset_) {}
 
     T& operator*() { return node_->arr[offset_]; }
 
     iterator& operator++() {
-      if (++offset_ == size) {
+      if (++offset_ == node_->len) {
           offset_ = 0;
           node_ = node_->next;
       }
