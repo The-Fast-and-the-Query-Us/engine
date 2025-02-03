@@ -1,6 +1,6 @@
-class Crawler {
+class crawler {
 public:
-  Crawler() : ___ {
+  crawler() : ___ {
 
   }
 
