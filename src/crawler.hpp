@@ -1,0 +1,4 @@
+class Crawler {
+public:
+private:
+};
