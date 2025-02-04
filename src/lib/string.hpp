@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdlib>
+#include <cstring>
 
 namespace fast {
 
@@ -9,29 +11,39 @@ class string {
   size_t cap;
   char* buffer;
 
-  void grow(size_t new_len) {
-    // buffer = rea
+  void grow(size_t need) {
+    buffer = (char*) realloc(buffer, need + 1);
+    cap = need;
   }
 
  public:
-  string() : len(0), cap(8), buffer(new char[8]) {}
+  string() : len(0), cap(7), buffer((char*) malloc(8)) {}
 
   size_t size() const { return len; }
 
   char& operator[](size_t idx) const { return buffer[idx]; }
 
-  void operator+=(const string& str) {
-    size_t new_len = len + str.len + 1;
-    if (new_len > cap) {
-      grow(new_len);
-    }
+  const char *c_str() const { return data(); }
 
-    for (size_t i = 0; i < str.len; ++i) {
-      buffer[len + i] = str.buffer[i];
-    }
+  void reserve(size_t need) {
+    if (need > cap) grow(need);
+  }
 
-    len = new_len;
+  char *data() const { 
+    buffer[len] = 0;
+    return buffer; 
+  }
+
+  void push_back(char c) {
+    if (len == cap) grow(len << 1);
+    buffer[len++] = c;
+  }
+
+  void push_back(const string& other) {
+    if (len + other.len > cap) grow(len + other.len);
+    memcpy(buffer + len, other.buffer, other.len);
+    len += other.len;
   }
 };
 
-}  // namespace fast
+}
