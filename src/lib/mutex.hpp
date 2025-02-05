@@ -42,7 +42,6 @@ class mutex {
       pthread_mutex_unlock(&m);
       pthread_mutex_destroy(&m);
     }
-
   private:
     pthread_mutex_t m;
 };
