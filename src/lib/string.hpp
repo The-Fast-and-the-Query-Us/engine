@@ -19,30 +19,46 @@ class string {
  public:
   string() : len(0), cap(7), buffer((char*) malloc(8)) {}
 
+  string(const string& other) {
+    len = other.len;
+    cap = other.len;
+    buffer = (char*) malloc(cap + 1);
+
+    memcpy(buffer, other.buffer, len);
+  }
+
+  ~string() { free(buffer); }
+
   size_t size() const { return len; }
 
   char& operator[](size_t idx) const { return buffer[idx]; }
 
   const char *c_str() const { return data(); }
 
-  void reserve(size_t need) {
-    if (need > cap) grow(need);
-  }
-
   char *data() const { 
     buffer[len] = 0;
     return buffer; 
   }
 
-  void push_back(char c) {
+  void reserve(size_t need) {
+    if (need > cap) grow(need);
+  }
+
+  void operator+=(char c) {
     if (len == cap) grow(len << 1);
     buffer[len++] = c;
   }
 
-  void push_back(const string& other) {
+  void operator+=(const string& other) {
     if (len + other.len > cap) grow(len + other.len);
     memcpy(buffer + len, other.buffer, other.len);
     len += other.len;
+  }
+
+  string operator+(const string &rhs) {
+    string ans(*this);
+    ans += rhs;
+    return ans;
   }
 };
 
