@@ -19,6 +19,14 @@ class list {
   public:
   list() : first(new node), last(first), len(0) {};
 
+  ~list() {
+    while (first) {
+      const auto next = first->next;
+      delete first;
+      first = next;
+    }
+  }
+
   size_t length() { return len; }
 
   void push_back(T element) {
