@@ -9,7 +9,7 @@ template <class T, size_t size=64>
 class list {
   struct node {
     T arr[size];
-    size_t len = 0;
+    size_t len = 0; // we could optimize by using pointer to track len if not supporting iterator operations
     node* next = nullptr;
   };
 
@@ -89,9 +89,9 @@ class list {
     }
 
     bool operator!=(const iterator& other) {
-      return !(
-        node_ == other.node_ &&
-        offset_ == other.offset_
+      return (
+        node_ != other.node_ ||
+        offset_ != other.offset_
       );
     }
   };
