@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <stdexcept>
 #include <string>
 
@@ -46,18 +47,37 @@ public:
 
   // ======== Constructor and Methods ========
 
-  bitset(size_t _size) : size_(_size) {
-    elts_size_ = (size_ + (sizeof(uint64_t) * BYTE_LEN - 1)) /
-                 (sizeof(uint64_t) * BYTE_LEN);
+  explicit bitset(size_t _bit_sz) : bit_sz(_bit_sz) {
+    byte8_sz = uint64_from_bits(bit_sz);
 
-    bits = new uint64_t[elts_size_];
+    bits = new uint64_t[byte8_sz];
   }
 
   ~bitset() { delete[] bits; }
 
-  size_t size() { return size_; }
+  size_t size() { return bit_sz; }
+
+  void resize(const size_t new_bit_sz) {
+    size_t temp_byte8_sz = uint64_from_bits(new_bit_sz);
+    uint64_t *temp = new uint64_t[temp_byte8_sz];
+
+    std::memcpy(temp, bits, byte8_sz * 8);
+    bit_sz = new_bit_sz;
+    byte8_sz = temp_byte8_sz;
+
+    delete[] bits;
+    bits = temp;
+  }
 
   // =============== Operators ===============
+
+  bitset operator=(const bitset &rhs) {
+    delete[] bits;
+    bit_sz = rhs.bit_sz;
+    byte8_sz = rhs.byte8_sz;
+    std::memcpy(bits, rhs.bits, byte8_sz * 8);
+    return *this;
+  }
 
   bit_ref operator[](const size_t idx) {
     size_t ele_idx;
@@ -78,21 +98,26 @@ public:
 private:
   static constexpr uint32_t BYTE_LEN = 8;
 
-  size_t size_; // size in bits
+  size_t bit_sz; // size in bits
 
-  size_t elts_size_; // size in uint64_t
+  size_t byte8_sz; // size in uint64_t
 
   uint64_t *bits;
 
   void calc_idx_info(size_t idx, size_t &ele_idx, uint64_t &mask) const {
-    if (idx >= size_)
+    if (idx >= bit_sz)
       throw std::out_of_range("Index: " + std::to_string(idx) +
                               " out of range. Bit set has capacity " +
-                              std::to_string(size_));
+                              std::to_string(bit_sz));
 
     ele_idx = idx / (sizeof(uint64_t) * BYTE_LEN);
     size_t bit_idx = idx % (sizeof(uint64_t) * BYTE_LEN);
     mask = 1UL << bit_idx;
+  }
+
+  size_t uint64_from_bits(size_t num_bits) {
+    return (num_bits + (sizeof(uint64_t) * BYTE_LEN - 1)) /
+           (sizeof(uint64_t) * BYTE_LEN);
   }
 };
 
