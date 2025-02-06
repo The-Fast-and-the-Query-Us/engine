@@ -47,7 +47,9 @@ public:
 
   // ======== Constructor and Methods ========
 
-  explicit bitset(size_t _bit_sz) : bit_sz(_bit_sz) {
+  bitset() : bit_sz(0), byte8_sz(0) { bits = nullptr; }
+
+  bitset(size_t _bit_sz) : bit_sz(_bit_sz) {
     byte8_sz = uint64_from_bits(bit_sz);
 
     bits = new uint64_t[byte8_sz];
@@ -58,24 +60,24 @@ public:
   size_t size() { return bit_sz; }
 
   void resize(const size_t new_bit_sz) {
-    size_t temp_byte8_sz = uint64_from_bits(new_bit_sz);
-    uint64_t *temp = new uint64_t[temp_byte8_sz];
+    size_t tmp_byte8_sz = uint64_from_bits(new_bit_sz);
+    uint64_t *tmp = new uint64_t[tmp_byte8_sz];
 
-    std::memcpy(temp, bits, byte8_sz * 8);
+    std::memcpy(tmp, bits, byte8_sz * 8);
     bit_sz = new_bit_sz;
-    byte8_sz = temp_byte8_sz;
+    byte8_sz = tmp_byte8_sz;
 
     delete[] bits;
-    bits = temp;
+    bits = tmp;
   }
 
   // =============== Operators ===============
 
   bitset operator=(const bitset &rhs) {
     delete[] bits;
+    std::memcpy(bits, rhs.bits, byte8_sz * 8);
     bit_sz = rhs.bit_sz;
     byte8_sz = rhs.byte8_sz;
-    std::memcpy(bits, rhs.bits, byte8_sz * 8);
     return *this;
   }
 
