@@ -53,7 +53,7 @@ class list {
   ~list() {
     while (first) {
       const auto next = first->next;
-      delete first;
+      //delete first;
       first = next;
     }
   }
