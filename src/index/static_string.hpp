@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <cstring>
+#include <common.hpp>
 
 namespace fast {
 class static_string {
@@ -33,16 +34,19 @@ class static_string {
 
   static_string& operator=(const static_string& other) {
     if (this != &other) {
-      delete [] buffer_;
-      len_ = other.len_;
-      buffer_ = new char[len_];
-      memcpy(buffer_, other.buffer_, len_);
+      static_string tmp(other);
+      swap(buffer_, tmp.buffer_);
+      swap(len_, tmp.len_);
     }
     return *this;
   }
 
   ~static_string() {
     delete[] buffer_;
+  }
+
+  char& operator[](size_t i) const {
+    return buffer_[i];
   }
 
   bool operator==(const static_string &other) const {

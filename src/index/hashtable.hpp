@@ -28,6 +28,10 @@ class hashtable {
     buckets_ = new list<bucket>[num_buckets];
   };
 
+  hashtable(const hashtable &other) = delete;
+
+  hashtable& operator=(const hashtable &other) = delete;
+
   ~hashtable() {
     delete[] buckets_;
   }
