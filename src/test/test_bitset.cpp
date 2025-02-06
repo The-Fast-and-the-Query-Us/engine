@@ -2,8 +2,6 @@
 #include <cassert>
 #include <iostream>
 
-using namespace fast;
-
 int main() {
   size_t n = 100;
   fast::bitset bs(n);
@@ -28,11 +26,19 @@ int main() {
     assert(static_cast<bool>(bs[i]) == (i % 2));
   }
 
+  // check assignment operator
+  fast::bitset temp;
+  temp = bs;
+  // check bits of the temp;
+  for (size_t i = 0; i < bs.size(); ++i) {
+    assert(static_cast<bool>(bs[i]) == (i % 2));
+  }
+
   // check equality operators
   assert(bs[0] != bs[1]);
   assert(bs[0] == bs[2]);
 
-  assert(bs[0] == false);
+  assert(bs[0] != true);
   assert(bs[1] == true);
 
   std::cout << "PASS" << std::endl;
