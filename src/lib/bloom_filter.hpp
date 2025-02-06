@@ -8,6 +8,7 @@
 #include <openssl/md5.h>
 #include <stdexcept>
 #include <type_traits>
+#include <mutex.hpp>
 
 namespace fast {
 
@@ -37,17 +38,21 @@ public:
 
   void insert(const T &val) {
     auto [h1, h2] = hash(val);
+    m.lock();
     for (int i = 0; i < num_hash; ++i) {
       bit_set[double_hash(h1, h2, i)] = 1;
     }
+    m.unlock();
   }
 
   bool contains(const T &val) {
     auto [h1, h2] = hash(val);
+    m.lock();
     for (int i = 0; i < num_hash; ++i) {
       if (!bit_set[double_hash(h1, h2, i)])
         return false;
     }
+    m.unlock();
     return true;
   }
 
@@ -61,6 +66,8 @@ private:
   uint64_t num_hash;
 
   bitset bit_set;
+
+  fast::mutex m;
 
   pair<unsigned char *, size_t> serialize(const T &datum) {
     if constexpr (complex<T>)
