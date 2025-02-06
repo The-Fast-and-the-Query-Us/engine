@@ -1,5 +1,6 @@
-#include "pair.hpp"
+#pragma once
 
+#include "pair.hpp"
 #include <cmath>
 #include <concepts>
 #include <cstring>

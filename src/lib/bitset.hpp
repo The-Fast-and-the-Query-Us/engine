@@ -1,6 +1,7 @@
+#pragma once
+
 #include <cstddef>
 #include <cstdint>
-#include <iostream>
 #include <stdexcept>
 #include <string>
 
@@ -29,6 +30,16 @@ public:
       return *this = static_cast<bool>(other);
     }
 
+    bool operator==(const bit_ref &rhs) {
+      return (ele & mask) == (rhs.ele & rhs.mask);
+    }
+
+    bool operator==(const bool rhs) { return static_cast<bool>(*this) == rhs; }
+
+    bool operator!=(const bit_ref &rhs) { return !(*this == rhs); }
+
+    bool operator!=(const bool rhs) { return !(*this == rhs); }
+
   private:
     uint64_t &ele, mask;
   };
@@ -36,36 +47,31 @@ public:
   // ======== Constructor and Methods ========
 
   bitset(size_t _size) : size_(_size) {
-    elts_size_ = (size_ + 1) / (sizeof(uint64_t) * BYTE_LEN);
+    elts_size_ = (size_ + (sizeof(uint64_t) * BYTE_LEN - 1)) /
+                 (sizeof(uint64_t) * BYTE_LEN);
 
     bits = new uint64_t[elts_size_];
   }
+
+  ~bitset() { delete[] bits; }
 
   size_t size() { return size_; }
 
   // =============== Operators ===============
 
   bit_ref operator[](const size_t idx) {
-    if (idx >= size_)
-      throw std::out_of_range("Index: " + std::to_string(idx) +
-                              " out of range. Bit set has capacity " +
-                              std::to_string(size_));
+    size_t ele_idx;
+    uint64_t mask;
+    calc_idx_info(idx, ele_idx, mask);
 
-    size_t ele_idx = idx / sizeof(uint64_t);
-    size_t bit_idx = idx / BYTE_LEN;
-    uint64_t mask = 1UL << bit_idx;
     return bit_ref(bits[ele_idx], mask);
   }
 
   bool operator[](const size_t idx) const {
-    if (idx >= size_)
-      throw std::out_of_range("Index: " + std::to_string(idx) +
-                              " out of range. Bit set has capacity " +
-                              std::to_string(size_));
+    size_t ele_idx;
+    uint64_t mask;
+    calc_idx_info(idx, ele_idx, mask);
 
-    size_t ele_idx = idx / sizeof(uint64_t);
-    size_t bit_idx = idx / BYTE_LEN;
-    uint64_t mask = 1UL << bit_idx;
     return (bits[ele_idx] & mask) != 0;
   }
 
@@ -77,19 +83,17 @@ private:
   size_t elts_size_; // size in uint64_t
 
   uint64_t *bits;
+
+  void calc_idx_info(size_t idx, size_t &ele_idx, uint64_t &mask) const {
+    if (idx >= size_)
+      throw std::out_of_range("Index: " + std::to_string(idx) +
+                              " out of range. Bit set has capacity " +
+                              std::to_string(size_));
+
+    ele_idx = idx / (sizeof(uint64_t) * BYTE_LEN);
+    size_t bit_idx = idx % (sizeof(uint64_t) * BYTE_LEN);
+    mask = 1UL << bit_idx;
+  }
 };
 
 } // namespace fast
-
-int main(int argc, char *argv[]) {
-  size_t n = 100;
-  fast::bitset bs(n);
-
-  for (int i = 0; i < bs.size(); ++i) {
-    bs[i] = i % 2;
-  }
-
-  for (int i = 0; i < bs.size(); ++i) {
-    std::cout << bs[i] << std::endl;
-  }
-}
