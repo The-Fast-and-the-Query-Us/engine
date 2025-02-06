@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <common.hpp>
 
 namespace fast {
 
@@ -41,7 +42,10 @@ class list {
 
   list& operator=(const list& other) {
     if (this != &other) {
-      list temp(other); // TODO
+      list temp(other);
+      swap(first, temp.first);
+      swap(last, temp.last);
+      swap(len, temp.len);
     }
     return *this;
   }
