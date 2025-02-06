@@ -66,6 +66,7 @@ class list {
       last = last->next;
     }
     last->arr[last->len++] = element;
+    ++len;
   }
 
   T* back() const {
