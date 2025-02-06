@@ -29,6 +29,10 @@ class list {
     last->arr[last->len++] = element;
   }
 
+  T* back() const {
+    return &(last->arr[last->len - 1]);
+  }
+
   class iterator {
     node* node_;
     size_t offset_;
