@@ -10,7 +10,8 @@
 
 namespace fast {
 
-template <typename T> class vector {
+template <typename T>
+class vector {
 public:
   // Default Constructor
   // REQUIRES: Nothing
