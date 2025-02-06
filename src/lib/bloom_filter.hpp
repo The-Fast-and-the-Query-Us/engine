@@ -1,5 +1,6 @@
 #pragma once
 
+#include "bitset.hpp"
 #include "pair.hpp"
 #include <cmath>
 #include <concepts>
@@ -29,7 +30,7 @@ public:
     const double log2 = std::log(2);
 
     num_bits = (-1 * n * std::log(fpr)) / (std::pow(log2, 2));
-    bit_set.resize(num_bits);
+    bit_set = bitset(num_bits);
 
     num_hash = (num_bits / n) * log2;
   }
@@ -59,7 +60,7 @@ private:
 
   uint64_t num_hash;
 
-  std::vector<bool> bit_set;
+  bitset bit_set;
 
   pair<unsigned char *, size_t> serialize(const T &datum) {
     if constexpr (complex<T>)
