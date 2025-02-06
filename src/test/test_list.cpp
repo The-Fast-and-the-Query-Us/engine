@@ -17,6 +17,7 @@ int main() {
   fast::list<int> l;
   for (int i = 0; i < SIZE; ++i) {
     l.push_back(i);
+    assert(*l.back() == i);
   }
 
   test_seq(l);
@@ -26,4 +27,10 @@ int main() {
 
   l = cpy;
   test_seq(l);
+
+  fast::list<int> empty;
+  for (const auto _ : empty) {
+    (void)_;
+    assert(false);
+  }
 }

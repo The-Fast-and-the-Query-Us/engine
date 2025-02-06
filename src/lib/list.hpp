@@ -58,7 +58,7 @@ class list {
     }
   }
 
-  size_t length() { return len; }
+  size_t length() const { return len; }
 
   void push_back(T element) {
     if (last->len == size) {
@@ -98,6 +98,7 @@ class list {
   };
 
   iterator begin() const {
+    if (len == 0) return end();
     return iterator(first, 0);
   }
 

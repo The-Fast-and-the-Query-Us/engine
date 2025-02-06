@@ -24,7 +24,7 @@ class hashtable {
   list<bucket> *buckets_;
 
   public:
-  hashtable(size_t num_buckets) : num_buckets_(num_buckets) {
+  hashtable(size_t num_buckets = 2048) : num_buckets_(num_buckets) {
     buckets_ = new list<bucket>[num_buckets];
   };
 
@@ -52,7 +52,7 @@ class hashtable {
 
   void add(static_string &word, post p) {
     const auto hash_val = hash(word);
-    list<bucket> &l = buckets_[hash_val & num_buckets_];
+    list<bucket> &l = buckets_[hash_val % num_buckets_];
 
     for (auto &bucket : l) {
       if (bucket.hash_val == hash_val && bucket.word == word) {
@@ -63,6 +63,19 @@ class hashtable {
 
     l.push_back({hash_val, word, list<post>()});
     l.back()->posts.push_back(p);
+  }
+
+  const bucket* get(static_string &word) {
+    const auto hash_val = hash(word);
+    list<bucket> &l = buckets_[hash_val % num_buckets_];
+
+    for (auto &bucket : l) {
+      if (bucket.hash_val == hash_val && bucket.word == word) {
+        return &bucket;
+      }
+    }
+
+    return nullptr;
   }
 };
 }
