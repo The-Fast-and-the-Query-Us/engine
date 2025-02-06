@@ -19,6 +19,33 @@ class list {
   public:
   list() : first(new node), last(first), len(0) {};
 
+  list(const list& other) {
+    auto ptr = other.first; 
+    node** dst = &first;
+    len = other.len;
+
+    while (ptr) {
+      *dst = new node;
+      for (auto i = 0u; i < ptr->len; ++i) {
+        (*dst)->arr[i] = ptr->arr[i];
+      }
+      (*dst)->len = ptr->len;
+      last = *dst;
+
+      dst = &((*dst)->next);
+      ptr = ptr->next;
+    }
+
+    *dst = nullptr;
+  }
+
+  list& operator=(const list& other) {
+    if (this != &other) {
+      list temp(other); // TODO
+    }
+    return *this;
+  }
+
   ~list() {
     while (first) {
       const auto next = first->next;
