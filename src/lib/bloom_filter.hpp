@@ -3,6 +3,7 @@
 #include "bitset.hpp"
 #include "murmur_hash3.hpp"
 #include "pair.hpp"
+#include "scoped_lock.hpp"
 #include <cmath>
 #include <concepts>
 #include <cstddef>
@@ -47,21 +48,18 @@ public:
 
   void insert(const T &val) {
     auto [h1, h2] = hash(val);
-    m.lock();
+    fast::scoped_lock lock_guard(&m);
     for (size_t i = 0; i < num_hash; ++i) {
       bit_set[double_hash(h1, h2, i)] = 1;
     }
-    m.unlock();
   }
 
   bool contains(const T &val) {
     auto [h1, h2] = hash(val);
-    m.lock();
+    fast::scoped_lock lock_guard(&m);
     for (size_t i = 0; i < num_hash; ++i) {
-      if (!bit_set[double_hash(h1, h2, i)])
-        return false;
+      if (!bit_set[double_hash(h1, h2, i)]) { return false; }
     }
-    m.unlock();
     return true;
   }
 
