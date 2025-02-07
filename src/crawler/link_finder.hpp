@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdexcept>
 #include "../lib/string.hpp"
 #include "../lib/vector.hpp"

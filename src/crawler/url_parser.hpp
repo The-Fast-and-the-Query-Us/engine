@@ -1,3 +1,5 @@
+#pragma once
+
 #include <netdb.h>
 #include <cstring>
 #include <sys/types.h>

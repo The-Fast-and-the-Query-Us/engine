@@ -1,6 +1,7 @@
+#pragma once
+
 #include <pthread.h>
 #include "../lib/bloom_filter.hpp"
-#include "../lib/mutex.hpp"
 #include "link_finder.hpp"
 #include "frontier.hpp"
 
