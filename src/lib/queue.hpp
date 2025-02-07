@@ -1,6 +1,7 @@
 // Templated queue
 #pragma once
 #include "exception.hpp"
+#include <algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
@@ -20,6 +21,30 @@ public:
   queue(queue &&other)
       : sz(other.sz), cap(other.cap), l(other.l), r(other.r), buf(other.buf) {
     other.buf = nullptr;
+    other.sz = other.cap = other.l = other.r = 0;
+  }
+
+  queue &operator=(const queue &other) {
+    sz = other.sz;
+    cap = other.cap;
+    l = other.l;
+    r = other.r;
+    delete[] buf;
+    buf = new T[cap];
+    std::memcpy(buf, other.buf, sz);
+    return *this;
+  }
+
+  queue &operator=(queue &&other) {
+    sz = other.sz;
+    cap = other.cap;
+    l = other.l;
+    r = other.r;
+    delete[] buf;
+    buf = other.buf;
+    other.buf = nullptr;
+    other.sz = other.cap = other.l = other.r = 0;
+    return *this;
   }
 
   ~queue() { delete[] buf; }
