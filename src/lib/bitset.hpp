@@ -27,11 +27,19 @@ public:
       return *this;
     }
 
-    bool operator!() { return (ele & mask) == 0; }
+    bool operator!() const { return (ele & mask) == 0; }
 
-    bool operator==(const bool rhs) { return static_cast<bool>(*this) == rhs; }
+    bool operator==(const bool rhs) const {
+      return static_cast<bool>(*this) == rhs;
+    }
 
-    bool operator!=(const bool rhs) { return !(*this == rhs); }
+    bool operator!=(const bool rhs) const { return !(*this == rhs); }
+
+    bool operator==(const int rhs) const {
+      return *this == static_cast<bool>(rhs);
+    }
+
+    bool operator!=(const int rhs) const { return !(*this == rhs); }
 
   private:
     uint64_t &ele, mask;
@@ -39,12 +47,12 @@ public:
 
   // ========== Constructor and Methods ==========
 
-  bitset() : num_bits(0), num_int64(0) { bits = nullptr; }
+  bitset() : num_bits(0), byte8_sz(0) { bits = nullptr; }
 
   bitset(size_t _num_bits) : num_bits(_num_bits) {
-    num_int64 = uint64_from_bits(num_bits);
+    byte8_sz = uint64_from_bits(num_bits);
 
-    bits = new uint64_t[num_int64];
+    bits = new uint64_t[byte8_sz];
   }
 
   ~bitset() { delete[] bits; }
@@ -52,12 +60,12 @@ public:
   size_t size() { return num_bits; }
 
   void resize(const size_t new_num_bits) {
-    size_t tmp_num_int64 = uint64_from_bits(new_num_bits);
-    uint64_t *tmp = new uint64_t[tmp_num_int64];
+    size_t tmp_byte8_sz = uint64_from_bits(new_num_bits);
+    uint64_t *tmp = new uint64_t[tmp_byte8_sz];
 
-    std::memcpy(tmp, bits, num_int64 * 8);
+    std::memcpy(tmp, bits, byte8_sz * 8);
     num_bits = new_num_bits;
-    num_int64 = tmp_num_int64;
+    byte8_sz = tmp_byte8_sz;
 
     delete[] bits;
     bits = tmp;
@@ -67,9 +75,9 @@ public:
 
   bitset operator=(const bitset &rhs) {
     delete[] bits;
-    std::memcpy(bits, rhs.bits, num_int64 * 8);
+    std::memcpy(bits, rhs.bits, byte8_sz * 8);
     num_bits = rhs.num_bits;
-    num_int64 = rhs.num_int64;
+    byte8_sz = rhs.byte8_sz;
     return *this;
   }
 
@@ -94,7 +102,7 @@ private:
 
   size_t num_bits; // size in bits
 
-  size_t num_int64; // size in uint64_t
+  size_t byte8_sz; // size in uint64_t
 
   uint64_t *bits;
 
