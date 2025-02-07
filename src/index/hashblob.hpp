@@ -15,7 +15,7 @@ class hashblob {
     char word;
 
     static size_t serial_size(hashtable::bucket *b) {
-      return sizeof(dict_entry) + b->word.length();
+      return round_up(sizeof(dict_entry) + b->word.length(), sizeof(size_t));
     }
   };
 };
