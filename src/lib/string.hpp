@@ -27,6 +27,14 @@ class string {
     memcpy(buffer, other.buffer, len);
   }
 
+  string(const char *str) {
+    len = strlen(str);
+    cap = strlen(str);
+    buffer = (char*) malloc(cap + 1);
+
+    memcpy(buffer, str, len);
+  }
+
   ~string() { free(buffer); }
 
   size_t size() const { return len; }

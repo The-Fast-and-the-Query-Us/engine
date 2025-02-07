@@ -23,7 +23,7 @@ foreach(TEST_SOURCE ${TEST_SOURCES})
     target_compile_options(${TEST_NAME} PRIVATE -fsanitize=address -fsanitize=leak -fno-omit-frame-pointer -Wall -Wextra -Werror -pedantic)
     target_link_options(${TEST_NAME} PRIVATE -fsanitize=address -fsanitize=leak)
   else()
-    target_compile_options(${TEST_NAME} PRIVATE -fno-omit-frame-pointer -Wall -Wextra -Werror -pedantic -g)
+    target_compile_options(${TEST_NAME} PRIVATE -fno-omit-frame-pointer -Wall -Wextra -Werror -pedantic -g -O0)
   endif()
 
   add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})  # Register as a test
