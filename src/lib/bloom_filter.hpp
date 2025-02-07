@@ -82,9 +82,9 @@ private:
     MD5(serialized, len, curr_hash);
 
     uint64_t h1, h2;
-    std::memcpy(&h1, curr_hash, sizeof(uint64_t)); // First 8 bytes
+    std::memcpy(&h1, curr_hash, sizeof(uint64_t)); // first 8 bytes
     std::memcpy(&h2, curr_hash + sizeof(uint64_t),
-                sizeof(uint64_t)); // Next 8 bytes
+                sizeof(uint64_t)); // next 8 bytes
 
     return pair(h1, h2);
   }

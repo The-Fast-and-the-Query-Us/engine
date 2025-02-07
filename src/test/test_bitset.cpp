@@ -10,7 +10,6 @@ int main() {
   for (size_t i = 0; i < bs.size(); ++i) {
     bs[i] = bool(i % 2);
   }
-
   // check bits
   for (size_t i = 0; i < bs.size(); ++i) {
     assert(static_cast<bool>(bs[i]) == (i % 2));
@@ -20,19 +19,24 @@ int main() {
   for (size_t i = 0; i < bs.size(); ++i) {
     bs[i] = bool(i % 2);
   }
-
   // check bits
   for (size_t i = 0; i < bs.size(); ++i) {
     assert(static_cast<bool>(bs[i]) == (i % 2));
   }
 
-  // check assignment operator
-  fast::bitset temp;
-  temp = bs;
-  // check bits of the temp;
-  for (size_t i = 0; i < bs.size(); ++i) {
-    assert(static_cast<bool>(bs[i]) == (i % 2));
+  // check assignment operator and destructor
+  {
+    fast::bitset temp;
+    temp = bs;
+    // check bits of the temp;
+    for (size_t i = 0; i < bs.size(); ++i) {
+      assert(static_cast<bool>(bs[i]) == (i % 2));
+    }
   }
+
+  // check int assignment operator
+  bs[3] = 0;
+  assert(bs[3] == 0);
 
   // check equality operators
   assert(bs[0] != bs[1]);
