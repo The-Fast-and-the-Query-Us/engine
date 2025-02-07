@@ -58,6 +58,8 @@ class static_string {
     return true;
   }
 
+  size_t length() const { return len_; }
+
   char* begin() const { return buffer_; }
   char* end() const { return buffer_ + len_; }
 };
