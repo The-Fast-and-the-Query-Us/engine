@@ -33,3 +33,6 @@
 
 .cache/
 build/
+
+# I FUCKING HATE MAC USERS
+.DS_Store
