@@ -51,13 +51,13 @@ public:
 
   T &front() {
     if (!sz)
-      throw(exception("Front on empty queue\n"));
+      throw(fast::exception("Front on empty queue\n"));
     return buf[l];
   }
 
   T &back() {
     if (!sz)
-      throw(exception("Front on empty queue\n"));
+      throw(fast::exception("Front on empty queue\n"));
     return buf[r];
   }
 

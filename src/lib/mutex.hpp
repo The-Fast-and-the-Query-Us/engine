@@ -9,7 +9,6 @@ class mutex {
       if (pthread_mutex_init(&m, nullptr) != 0) {
         throw std::runtime_error("pthread mutex unable to init\n");
       }
-      pthread_mutex_lock(&m);
     }
 
     mutex(const mutex&) = delete;
@@ -39,7 +38,6 @@ class mutex {
     }
 
     ~mutex() {
-      pthread_mutex_unlock(&m);
       pthread_mutex_destroy(&m);
     }
   private:
