@@ -7,6 +7,7 @@ namespace fast {
 
 template <class T, size_t size=64>
 class list {
+  // maybe use allign as for better cache performance
   struct node {
     T arr[size];
     size_t len = 0; // we could optimize by using pointer to track len if not supporting iterator operations
