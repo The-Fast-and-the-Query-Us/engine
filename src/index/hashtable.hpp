@@ -3,7 +3,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <list.hpp>
-#include "hashblob.hpp"
 #include "static_string.hpp"
 
 namespace fast {
