@@ -23,6 +23,8 @@ class hashtable {
   size_t num_buckets_;
   list<bucket> *buckets_;
 
+  friend class hashblob;
+
   public:
   hashtable(size_t num_buckets = 2048) : num_buckets_(num_buckets) {
     buckets_ = new list<bucket>[num_buckets];

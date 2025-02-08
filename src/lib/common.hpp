@@ -33,4 +33,11 @@ constexpr auto& get(tuple<Head, Tail...> &t) {
   else return get<i - 1>(t.tail);
 }
 
+/*
+ * Return smallest x such that x >= base && x % mult == 0
+ */
+inline size_t round_up(size_t base, size_t mult) {
+  return (base + (mult - 1)) & ~(mult - 1);
+}
+
 }
