@@ -5,20 +5,20 @@
 
 namespace fast {
 
+/*
+* Hashblob structure
+* HEADERS
+* buckets [ ] -> dict entrys
+* dictentrys[ ] = compressed size_t (posting start) + word + \0
+*/
 class hashblob {
-  size_t magic, num_buckets, data;
+  size_t magic, num_buckets, dict_end;
+  char data;
+
   public:
 
-  struct dict_entry {
-    size_t len;
-    size_t posts;
-    uint32_t hash_val;
-    char word;
-
-    static size_t serial_size(hashtable::bucket *b) {
-      return round_up(sizeof(dict_entry) + b->word.length(), sizeof(size_t));
-    }
-  };
+  static void write(hashtable *ht, hashblob *buffer, size_t num_buckets) {
+  }
 };
 
 }
