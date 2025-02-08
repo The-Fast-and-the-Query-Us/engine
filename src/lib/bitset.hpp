@@ -47,39 +47,49 @@ public:
 
   // ========== Constructor and Methods ==========
 
-  bitset() : num_bits(0), byte8_sz(0) { bits = nullptr; }
+  bitset() : num_bits(0), num_int64(0) { bits = nullptr; }
 
   bitset(size_t _num_bits) : num_bits(_num_bits) {
-    byte8_sz = uint64_from_bits(num_bits);
+    num_int64 = uint64_from_bits(num_bits);
 
-    bits = new uint64_t[byte8_sz];
+    bits = new uint64_t[num_int64]();
+  }
+
+  bitset(const bitset &rhs) : num_bits(rhs.num_bits), num_int64(rhs.num_int64) {
+    bits = new uint64_t[num_int64];
+    std::memcpy(bits, rhs.bits, num_int64 * sizeof(uint64_t));
+  }
+
+  bitset &operator=(const bitset &rhs) {
+    if (this != &rhs) {
+      delete[] bits;
+      num_bits = rhs.num_bits;
+      num_int64 = rhs.num_int64;
+      bits = new uint64_t[num_int64];
+      std::memcpy(bits, rhs.bits, num_int64 * sizeof(uint64_t));
+    }
+    return *this;
   }
 
   ~bitset() { delete[] bits; }
 
-  size_t size() { return num_bits; }
+  inline size_t size() { return num_bits; }
 
   void resize(const size_t new_num_bits) {
-    size_t tmp_byte8_sz = uint64_from_bits(new_num_bits);
-    uint64_t *tmp = new uint64_t[tmp_byte8_sz];
+    size_t new_num_int64 = uint64_from_bits(new_num_bits);
+    uint64_t *tmp = new uint64_t[new_num_int64];
 
-    std::memcpy(tmp, bits, byte8_sz * 8);
+    uint64_t copy_sz = num_int64 < new_num_int64 ? num_int64 : new_num_int64;
+    std::memcpy(tmp, bits, copy_sz * sizeof(uint64_t));
+
     num_bits = new_num_bits;
-    byte8_sz = tmp_byte8_sz;
+    num_int64 = new_num_int64;
 
     delete[] bits;
     bits = tmp;
   }
 
   // ================= Operators =================
-
-  bitset operator=(const bitset &rhs) {
-    delete[] bits;
-    std::memcpy(bits, rhs.bits, byte8_sz * 8);
-    num_bits = rhs.num_bits;
-    byte8_sz = rhs.byte8_sz;
-    return *this;
-  }
 
   bit_ref operator[](const size_t idx) {
     size_t ele_idx;
@@ -102,7 +112,7 @@ private:
 
   size_t num_bits; // size in bits
 
-  size_t byte8_sz; // size in uint64_t
+  size_t num_int64; // size in uint64_t
 
   uint64_t *bits;
 

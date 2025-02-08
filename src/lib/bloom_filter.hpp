@@ -8,8 +8,6 @@
 #include <concepts>
 #include <cstddef>
 #include <cstring>
-#include <mutex.hpp>
-#include <openssl/md5.h>
 #include <stdexcept>
 #include <type_traits>
 
@@ -40,10 +38,10 @@ public:
 
     const double ln2 = std::log(2);
     const double ln_fpr = std::log(fpr);
-    num_bits = (-1 * static_cast<int>(n) * ln_fpr) / (ln2 * ln2);
+    num_bits = (-1 * static_cast<double>(n) * ln_fpr) / (ln2 * ln2);
     bit_set = bitset(num_bits);
 
-    num_hash = (num_bits / n) * ln2;
+    num_hash = static_cast<uint64_t>((static_cast<double>(num_bits) / n) * ln2);
   }
 
   void insert(const T &val) {

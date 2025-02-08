@@ -11,15 +11,14 @@ public:
   pair(T1 f, T2 s) : first(f), second(s) {}
 
   // copy constructor
-  pair(const pair<T1, T2> &other)
-      : first(other->first), second(other->second) {}
+  pair(const pair<T1, T2> &other) : first(other.first), second(other.second) {}
 
   // move constructor
-  pair(const pair<T1, T2> &&other)
+  pair(pair<T1, T2> &&other)
       : first(std::move(other.first)), second(std::move(other.second)) {}
 
   // assignment operator
-  pair operator=(const pair<T1, T2> &other) {
+  pair &operator=(const pair<T1, T2> &other) {
     if (this != &other) {
       first = other.first;
       second = other.second;
@@ -29,7 +28,7 @@ public:
   }
 
   // move assignment operator
-  pair operator=(pair<T1, T2> &&other) {
+  pair &operator=(pair<T1, T2> &&other) {
     if (this != &other) {
       first = std::move(other.first);
       second = std::move(other.second);
