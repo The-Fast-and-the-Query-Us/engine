@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 namespace fast {
 
 /*
@@ -29,13 +30,14 @@ char* compress(T number, char* buffer) {
 }
 
 /*
-* Read bytes writen by 
+* Read bytes writen by compress
 */
 template <class T>
 char* expand(T& number, char* buffer) {
   number = 0;
   do {
-    number |= (*buffer & ~(0x80));
+    number <<= 7;
+    number |= uint8_t(*buffer & ~(0x80));
   } while (*(buffer++) & 0x80);
   return buffer;
 }

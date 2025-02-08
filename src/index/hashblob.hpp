@@ -6,6 +6,7 @@
 namespace fast {
 
 class hashblob {
+  size_t magic, num_buckets, data;
   public:
 
   struct dict_entry {
