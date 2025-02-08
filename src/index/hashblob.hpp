@@ -11,6 +11,10 @@ namespace fast {
 * HEADERS
 * buckets [ ] -> dict entrys
 * dictentrys[ ] = size_t (posting start) + word + \0
+* postings [ ] :
+*   num words
+*   sync table
+*   postings (compressed)
 */
 class hashblob {
   size_t magic, num_buckets, dict_end, // headers
@@ -31,6 +35,26 @@ class hashblob {
   }
 
   public:
+
+  struct options {
+    size_t num_buckets;
+    size_t file_size;
+  };
+
+  static options size_needed(const hashtable *ht) {
+    size_t num_words{0}; 
+    size_t dict_space{0};
+    for (auto i = 0ul; i < ht->num_buckets_; ++i) {
+      for (const auto &bucket : ht->buckets_[i]) {
+        ++num_words;
+        dict_space += dict_entry_size(bucket);
+      }
+    }
+    options opts;
+    opts.num_buckets = num_words;
+    opts.file_size = sizeof(hashblob) + sizeof(size_t) * num_words + dict_space;
+    return opts;
+  }
 
   static void write(const hashtable *ht, hashblob *buffer, size_t num_buckets) {
     buffer->num_buckets = num_buckets; 
@@ -68,10 +92,14 @@ class hashblob {
         pos = 1; // mark slot as taken
         write_unaligned(pos, bucket_list);
         bucket_list += sizeof(size_t);
-        memcpy(bucket_list, bucket.word.buffer_, bucket.word.length());
+        memcpy(bucket_list, bucket.word.begin(), bucket.word.length());
         bucket_list[bucket.word.length()] = 0;
       }
     }
+
+    // TODO : Posting list (make and link to dictionary)
+
+    buffer->magic = 42; // write magic at the end to make whole write "atomic"
   }
 };
 

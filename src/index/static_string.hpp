@@ -8,8 +8,6 @@ class static_string {
   char *buffer_;
   size_t len_;
 
-  friend class hashblob;
-
   public:
   static_string() : buffer_(nullptr), len_(0) {}
 
