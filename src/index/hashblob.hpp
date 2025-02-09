@@ -1,5 +1,6 @@
 #pragma once
 
+#include "static_string.hpp"
 #include <cstddef>
 #include <cstring>
 #include <hashtable.hpp>
@@ -10,18 +11,24 @@ namespace fast {
 * Hashblob structure
 * HEADERS
 * buckets [ ] -> dict entrys
-* dictentrys[ ] = size_t (posting start) + word + \0
-* postings [ ] :
-*   num words
-*   sync table
-*   postings (compressed)
+* dictentrys [ ] = size_t (posting start) + word + \0
+* posts [ ] = word_count, sync_table_len, postings len
+*             sync table [ ] (compressed docid, offset, pointer to postings)
+*             postings [ ]
 */
 class hashblob {
-  size_t magic, num_buckets, dict_end, // headers
-  data; // dynamic array
+  size_t // headers
+  magic, num_buckets, dict_end, num_tokens, // TODO : blob size
+  // dynamic array
+  data;
 
   static inline size_t dict_entry_size(const hashtable::bucket &b) {
     return sizeof(size_t) + b.word.length() + 1;
+  }
+
+  static inline size_t posting_size(const hashtable::bucket &b) {
+    (void)b;
+    return 0; // TODO
   }
 
   template <class T>
@@ -36,23 +43,29 @@ class hashblob {
 
   public:
 
+  /*
+  * Configuration for hashmap
+  */
   struct options {
     size_t num_buckets;
     size_t file_size;
   };
 
-  static options size_needed(const hashtable *ht) {
+  static options get_opts(const hashtable *ht) {
+    constexpr double MULT = 1; // factor for number of buckets
+
     size_t num_words{0}; 
-    size_t dict_space{0};
+    size_t dynamic{0};
+
     for (auto i = 0ul; i < ht->num_buckets_; ++i) {
       for (const auto &bucket : ht->buckets_[i]) {
         ++num_words;
-        dict_space += dict_entry_size(bucket);
+        dynamic += dict_entry_size(bucket) + posting_size(bucket);
       }
     }
     options opts;
-    opts.num_buckets = num_words;
-    opts.file_size = sizeof(hashblob) + sizeof(size_t) * num_words + dict_space;
+    opts.num_buckets = num_words * MULT;
+    opts.file_size = sizeof(hashblob) + sizeof(size_t) * (num_words - 1) + dynamic;
     return opts;
   }
 
@@ -64,6 +77,7 @@ class hashblob {
     for (auto i = 0ul; i < ht->num_buckets_; ++i) {
       for (const auto &bucket : ht->buckets_[i]) {
         data[bucket.hash_val % num_buckets] += dict_entry_size(bucket);
+        ++buffer->num_tokens;
       }
     }
     
@@ -97,10 +111,29 @@ class hashblob {
       }
     }
 
-    // TODO : Posting list (make and link to dictionary)
+    // write posting list for each word
 
     buffer->magic = 42; // write magic at the end to make whole write "atomic"
   }
+
+  size_t *buckets() { return &data; }
+
+  char *dict() { return reinterpret_cast<char*>(&data + num_buckets); }
+
+  char *posts() { return reinterpret_cast<char*>(&data + num_buckets) + dict_end; }
+
+  char *find_entry(const static_string &s) {
+    const auto hash_val = hashtable::hash(s);
+    const auto offset = buckets()[hash_val % num_buckets];
+    const auto end = (hash_val % num_buckets == num_buckets - 1) ? dict_end : buckets()[(hash_val + 1) % num_buckets];
+
+    for (auto ptr = dict() + offset; ptr != dict() + end; ptr += sizeof(size_t) + strlen(ptr + sizeof(size_t))) {
+      if (s == ptr + sizeof(size_t)) return ptr;
+    }
+
+    return nullptr;
+  }
+
 };
 
 }

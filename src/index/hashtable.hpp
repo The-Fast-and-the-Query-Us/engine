@@ -38,7 +38,7 @@ class hashtable {
     delete[] buckets_;
   }
 
-  static uint32_t hash(static_string &s) {
+  static uint32_t hash(const static_string &s) {
     const uint32_t P = 101;
 
     uint32_t hash_val = 0;
