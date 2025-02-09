@@ -17,6 +17,8 @@ namespace fast {
 *             postings [ ]
 */
 class hashblob {
+  static constexpr double TOKEN_MULT = 1; // factor for number of buckets
+
   size_t // headers
   magic, num_buckets, dict_end, num_tokens, // TODO : blob size
   // dynamic array
@@ -52,8 +54,6 @@ class hashblob {
   };
 
   static options get_opts(const hashtable *ht) {
-    constexpr double MULT = 1; // factor for number of buckets
-
     size_t num_words{0}; 
     size_t dynamic{0};
 
@@ -63,8 +63,9 @@ class hashblob {
         dynamic += dict_entry_size(bucket) + posting_size(bucket);
       }
     }
+
     options opts;
-    opts.num_buckets = num_words * MULT;
+    opts.num_buckets = num_words * TOKEN_MULT;
     opts.file_size = sizeof(hashblob) + sizeof(size_t) * (num_words - 1) + dynamic;
     return opts;
   }
