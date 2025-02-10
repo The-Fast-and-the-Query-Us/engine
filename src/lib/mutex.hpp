@@ -40,6 +40,7 @@ class mutex {
     ~mutex() {
       pthread_mutex_destroy(&m);
     }
+
   private:
     pthread_mutex_t m;
 };
