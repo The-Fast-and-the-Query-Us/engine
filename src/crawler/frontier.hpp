@@ -21,25 +21,62 @@ public:
   }
 
   void insert(fast::string url) {
+    scoped_lock lock(&mtx);
+
     fast::string hostname;
+    uint8_t slash_cnt = 0;
     for (size_t i = 0; i < url.size(); ++i) {
-      if (url[i] == '/') {
+      if (url[i] == '/' && ++slash_cnt == 3) {
         break;
       }
       hostname[i] += url[i];
     }
 
     priorities[calc_priority(url)].push(url);
+
+    ++num_links;
+    cv.signal();
   };
 
-  fast::string next() { fast::string *head; };
+  fast::string next() {
+    scoped_lock lock(&mtx);
+
+    while (num_links == 0)
+      cv.wait(&mtx);
+
+    for (size_t i = 0; i < priorities.size(); i++) {
+      fast::queue<fast::string> &curr_pri = priorities[i];
+
+      if (!curr_pri.empty()) {
+
+        for (size_t i = 0; i < curr_pri.size(); ++i) {
+
+          fast::string curr = curr_pri.front();
+          curr_pri.pop();
+
+          if (crawl_cnt[curr] <= CRAWL_LIM) {
+            --num_links;
+            return curr;
+          }
+
+          curr_pri.push(curr);
+        }
+      }
+    }
+
+    return "";
+  };
 
 private:
   static constexpr uint8_t GOOD_LEN = 25;
 
+  static constexpr uint8_t CRAWL_LIM = 3;
+
   fast::mutex mtx;
 
   fast::condition_variable cv;
+
+  uint64_t num_links;
 
   fast::vector<fast::queue<fast::string>> priorities;
 

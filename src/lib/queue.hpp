@@ -8,7 +8,8 @@
 
 namespace fast {
 
-template <typename T> class queue {
+template <typename T>
+class queue {
 public:
   queue() : sz(0), cap(0), l(0), r(0), buf(nullptr) {}
 
@@ -78,7 +79,9 @@ public:
     --sz;
   }
 
-  size_t size() { return sz; }
+  inline size_t size() { return sz; }
+
+  inline bool empty() { return sz == 0; }
 
 private:
   size_t sz, cap, l, r;
