@@ -10,6 +10,9 @@
 #include <cstring>
 #include <stdexcept>
 #include <type_traits>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/fcntl.h>
 
 namespace fast {
 
@@ -28,7 +31,7 @@ concept hashable = primitive<T> || complex<T>;
 template <typename T>
 class bloom_filter {
 public:
-  bloom_filter(size_t _n, double _fpr) : n(_n), fpr(_fpr) {
+  bloom_filter(size_t _n, double _fpr, const char *file_path) : n(_n), fpr(_fpr) {
     if (n == 0) {
       throw std::invalid_argument("n must be greater than 0");
     }
@@ -39,7 +42,7 @@ public:
     const double ln2 = std::log(2);
     const double ln_fpr = std::log(fpr);
     num_bits = (-1 * static_cast<double>(n) * ln_fpr) / (ln2 * ln2);
-    bit_set = bitset(num_bits);
+    bit_set = bitset(num_bits, file_path);
 
     num_hash = static_cast<uint64_t>((static_cast<double>(num_bits) / n) * ln2);
   }
@@ -62,6 +65,8 @@ public:
     return true;
   }
 
+  int save() { bit_set.save(); }
+
 private:
   size_t n;
 
@@ -71,7 +76,7 @@ private:
 
   uint64_t num_hash;
 
-  bitset bit_set;
+  fast::bitset bit_set;
 
   fast::mutex m;
 

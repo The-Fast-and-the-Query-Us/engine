@@ -1,10 +1,10 @@
 #include "bloom_filter.hpp"
+#include "string.hpp"
 #include <cassert>
 #include <iostream>
-#include <string>
 
 int main() {
-  fast::bloom_filter<std::string> bf(100, 0.01);
+  fast::bloom_filter<fast::string> bf(100, 0.01);
 
   bf.insert("hello");
 
