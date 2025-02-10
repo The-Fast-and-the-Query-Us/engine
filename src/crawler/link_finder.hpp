@@ -49,6 +49,7 @@ class link_finder {
       const char* header_end = "\r\n\r\n";
       int header_match_pos = 0;
 
+      // TODO: Need to write to a file.
       while ((bytes = SSL_read(ssl, buffer, sizeof(buffer))) > 0) {
         if (!found_header_end) {
           for (int i = 0; i < bytes; i++) {
@@ -74,6 +75,10 @@ class link_finder {
       if (SSL_shutdown(ssl) < 0) {
         throw std::runtime_error("SSL shutdown failed with error.\n");
       }
+      
+      // TODO: Currently this function just dumps the html to std::cout.
+      // We need to parse packet by packet and extract the links if there is no robots.txt
+      // If there is, then use that (and cache that info) to crawl those links
 
       return links;
     }
