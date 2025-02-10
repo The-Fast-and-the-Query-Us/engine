@@ -25,13 +25,15 @@ public:
   }
 
   queue &operator=(const queue &other) {
-    sz = other.sz;
-    cap = other.cap;
-    l = other.l;
-    r = other.r;
-    delete[] buf;
-    buf = new T[cap];
-    std::memcpy(buf, other.buf, sz);
+    if (!other.buf == buf) {
+      sz = other.sz;
+      cap = other.cap;
+      l = other.l;
+      r = other.r;
+      delete[] buf;
+      buf = new T[cap];
+      std::memcpy(buf, other.buf, sz);
+    }
     return *this;
   }
 
