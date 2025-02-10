@@ -69,8 +69,23 @@ class string {
   const char *c_str() const { return start_; }
 
   void reserve(size_t need) {
-    if (need > cap) grow(need);
+    if (need > cap)
+      grow(need);
   }
+
+  bool operator==(string &s) {
+    if (s.size() != this->size())
+      return false;
+
+    for (size_t i = 0; i < s.size(); i++) {
+      if (s[i] != (*this)[i])
+        return false;
+    }
+
+    return true;
+  }
+
+  bool operator!=(string &s) { return !(*this == s); }
 
   void operator+=(char c) {
     if (len_ == cap) grow(len_ << 1);
