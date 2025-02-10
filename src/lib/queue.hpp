@@ -78,6 +78,8 @@ public:
     --sz;
   }
 
+  size_t size() { return sz; }
+
 private:
   size_t sz, cap, l, r;
   T *buf;
