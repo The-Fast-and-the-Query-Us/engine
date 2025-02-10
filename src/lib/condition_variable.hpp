@@ -9,16 +9,16 @@ class condition_variable {
 public:
   condition_variable() = default;
 
-  ~condition_variable() { pthread_cond_destroy(&cv_); }
+  ~condition_variable() { pthread_cond_destroy(&cv); }
 
-  void wait(fast::mutex *m) { pthread_cond_wait(&cv_, &m->m); }
+  void wait(fast::mutex *m) { pthread_cond_wait(&cv, &m->m); }
 
-  void signal() { pthread_cond_signal(&cv_); }
+  void signal() { pthread_cond_signal(&cv); }
 
-  void broadcast() { pthread_cond_broadcast(&cv_); }
+  void broadcast() { pthread_cond_broadcast(&cv); }
 
 private:
-  pthread_cond_t cv_ = PTHREAD_COND_INITIALIZER;
+  pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
 };
 
 } // namespace fast
