@@ -111,7 +111,7 @@ private:
     while (idx > 0 && hostname[idx] != '.')
       tld += hostname[idx];
 
-    tld.reverse();
+    tld.reverse(0, tld.size() - 1);
 
     for (auto d : good_tld) {
       if (tld == d) {
