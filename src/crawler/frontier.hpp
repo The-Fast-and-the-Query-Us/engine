@@ -17,7 +17,8 @@ namespace crawler {
 class frontier {
 public:
   frontier() {
-    // need to add functionality to read in previous stuff from memory
+    num_links = 0;
+    priorities.reserve(4);
   }
 
   void insert(fast::string url) {
@@ -29,10 +30,11 @@ public:
       if (url[i] == '/' && ++slash_cnt == 3) {
         break;
       }
-      hostname[i] += url[i];
+      hostname += url[i];
     }
 
-    priorities[calc_priority(url)].push(url);
+    priorities[calc_priority(hostname)].push(url);
+    ++crawl_cnt[url];
 
     ++num_links;
     cv.signal();
@@ -44,12 +46,13 @@ public:
     while (num_links == 0)
       cv.wait(&mtx);
 
-    for (size_t i = 0; i < priorities.size(); i++) {
+    for (size_t i = 0; i < priorities.size(); ++i) {
       fast::queue<fast::string> &curr_pri = priorities[i];
 
       if (!curr_pri.empty()) {
 
-        for (size_t i = 0; i < curr_pri.size(); ++i) {
+        const size_t n = curr_pri.size();
+        for (size_t j = 0; j < n; ++j) {
 
           fast::string curr = curr_pri.front();
           curr_pri.pop();
@@ -71,6 +74,8 @@ private:
   static constexpr uint8_t GOOD_LEN = 25;
 
   static constexpr uint8_t CRAWL_LIM = 3;
+
+  static constexpr uint8_t TLD_LEN = 3;
 
   fast::mutex mtx;
 
@@ -94,16 +99,20 @@ private:
 
     // +1 point for secure protocol
     fast::string protocol;
-    while (hostname[idx] != ':' && idx < hostname.size())
+    while (idx < hostname.size() && hostname[idx] != ':')
       protocol += hostname[idx];
+
+    score += protocol == "https";
 
     // scan from back
     idx = hostname.size() - 1;
 
     // +1 point for tld
     fast::string tld;
-    while (hostname[idx] != '.' && idx > 0)
+    while (idx > 0 && hostname[idx] != '.')
       tld += hostname[idx];
+
+    tld.reverse();
 
     for (auto d : good_tld) {
       if (tld == d) {
