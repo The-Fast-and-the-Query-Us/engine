@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdexcept>
 #include <pthread.h>
 #include "../lib/bloom_filter.hpp"
 #include "link_finder.hpp"
@@ -7,16 +8,35 @@
 
 static constexpr int THREAD_COUNT = 20;
 static constexpr int LINK_COUNT = 1000000; // ONE MILLION
+static constexpr const char *BLOOM_FILE_PATH = "bloom_filter_dump.dat";
+static constexpr size_t BLOOM_FILTER_NUM_OBJ = 1e6;
+static constexpr double BLOOM_FILTER_FPR = 1e-4;
 
 class crawler {
 public:
-  crawler() : crawl_frontier(), visited_urls(),  {
-
-  }
+  crawler() :
+    visited_urls(BLOOM_FILTER_NUM_OBJ, BLOOM_FILTER_FPR, BLOOM_FILE_PATH),
+    crawl_frontier(/*file_path*/)
+  {}
 
   void run() {
+    if (pthread_create(&blob_thread, nullptr,
+        [](void* arg) -> void* {
+          auto self = static_cast<crawler*>(arg);
+          self->worker();
+          return nullptr;
+        }, this)) {
+      throw std::runtime_error("blob_thread creation failed\n");
+    }
+
     for (auto &t : thread_pool) {
-      if (pthread_create(&t, nullptr, worker, nullptr)) {
+      // Lambda used as worker is not static
+      if (pthread_create(&t, nullptr,
+        [](void* arg) -> void* {
+          auto self = static_cast<crawler*>(arg);
+          self->worker();
+          return nullptr;
+        }, this)) {
         throw std::runtime_error("pthread creation failed\n");
       }
     }
@@ -24,67 +44,50 @@ public:
     for (auto &t: thread_pool) {
       pthread_join(t, nullptr);
     }
+    pthread_join(blob_thread, nullptr);
+  }
 
-    // frontier.dump();
-    // bloom_filter.dump();
+  void shutdown() {
+    shutdown_flag = 1;
   }
 
 private:
-  fast::bloom_filter visited_urls;
-  frontier crawl_frontier;
-  pthread_t thread_pool[THREAD_COUNT];
-  fast::mutex bloom_mutex;
-  fast::mutex frontier_mutex;
-  // We also need an unordered map for robots.txt stuff
+  volatile sig_atomic_t shutdown_flag = 0;
+  // Bloom filter and frontier are thread safe
+  fast::bloom_filter<fast::string> visited_urls;
+  fast::crawler::frontier crawl_frontier;
+  pthread_t blob_thread{};
+  pthread_t thread_pool[THREAD_COUNT]{};
+  // We also need a map for robots.txt stuff
 
-  static void* worker(void *arg) {
-    while (true) {
-      const char *url = frontier.next_link();
-      link_finder html_scraper(url);
+  void* blobber(void *arg) {
+    auto self = static_cast<crawler*>(arg);
+    struct timespec sleep_time{};
+    sleep_time.tv_sec = 10;
+    sleep_time.tv_nsec = 0;
+
+    while (!self->shutdown_flag) {
+      nanosleep(&sleep_time, nullptr);
+
+      if (!self->shutdown_flag) {
+        visited_urls.save();
+        crawl_frontier.save();
+      }
     }
 
-
-
-    /* 
-     * wrap whole thing in while (true)
-     * or run it a set number of times so we can safely exit and blob the data
-     *
-     * frontier_mutex.lock();
-     * auto link = frontier.next();
-     * frontier_mutex.unlock();
-     *
-     * bloom_mutex.lock();
-     * if (visited_urls.contains(link)) { 
-     *   bloom_mutex.unlock();
-     *   continue;
-     * }
-     * visited_urls.insert(link);
-     * bloom_mutex.unlock();
-     *
-     * send request and get the html
-     * we do actually need to parse the html to get the next links
-     * We parse here and add all the links found to the frontier if it is not contained
-     * We could also just do a brute force scan to find URLs specfically
-     *
-     * for (auto &new_link : new_links) {
-     *   bloom_mutex.lock();
-     *   if (bloom_mutex.contains(new_link)) { continue; }
-     *   frontier_mutex.lock();
-     *   frontier.insert(new_link);
-     *   frontier_mutex.unlock();
-     * }
-     *
-     * frontier_mutex.lock();
-     * bloom_mutex.lock();
-     * bloom_filter.dump();
-     * frontier.dump();
-     *
-     * need to dump the robots.txt info
-     * 
-     */
+    return nullptr;
   }
 
-  /*static void find_links()
-   * Have to use Linux file stuff from lecture
-   */
+  void* worker() {
+    while (!shutdown_flag) {
+      fast::string url = crawl_frontier.next();
+      visited_urls.insert(url);
+      link_finder html_scraper(url.data());
+      fast::vector<fast::string> extracted_links = html_scraper.extract_links();
+      for (const auto &link : extracted_links) {
+        if (!visited_urls.contains(link)) { crawl_frontier.insert(link); }
+      }
+    }
+    return nullptr;
+  }
 };
