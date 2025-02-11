@@ -64,7 +64,10 @@ public:
     return true;
   }
 
-  int save() { bit_set.save(); }
+  int save() { 
+    fast::scoped_lock lock_guard(&m);
+    bit_set.save();
+  }
 
 private:
   size_t n;

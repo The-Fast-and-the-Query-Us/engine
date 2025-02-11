@@ -7,16 +7,25 @@
 
 static constexpr int THREAD_COUNT = 20;
 static constexpr int LINK_COUNT = 1000000; // ONE MILLION
+static constexpr const char *BLOOM_FILE_PATH = "bloom_filter_dump.dat";
+static constexpr size_t BLOOM_FILTER_NUM_OBJ = 1e6;
+static constexpr double BLOOM_FILTER_FPR = 1e-4;
 
 class crawler {
 public:
-  crawler() : crawl_frontier(), visited_urls(),  {
+  crawler() : visited_urls(BLOOM_FILTER_NUM_OBJ, BLOOM_FILTER_FPR, BLOOM_FILE_PATH), crawl_frontier(/*file_path*/) {
 
   }
 
   void run() {
     for (auto &t : thread_pool) {
-      if (pthread_create(&t, nullptr, worker, nullptr)) {
+      // Lambda used as worker is not static
+      if (pthread_create(&t, nullptr,
+        [](void* arg) -> void* {
+          auto self = static_cast<crawler*>(arg);
+          self->worker();
+          return nullptr;
+        }, this)) {
         throw std::runtime_error("pthread creation failed\n");
       }
     }
@@ -24,23 +33,20 @@ public:
     for (auto &t: thread_pool) {
       pthread_join(t, nullptr);
     }
-
-    // frontier.dump();
-    // bloom_filter.dump();
   }
 
 private:
-  fast::bloom_filter visited_urls;
-  frontier crawl_frontier;
-  pthread_t thread_pool[THREAD_COUNT];
-  fast::mutex bloom_mutex;
-  fast::mutex frontier_mutex;
-  // We also need an unordered map for robots.txt stuff
+  // Bloom filter and frontier are thread safe
+  fast::bloom_filter<fast::string> visited_urls;
+  fast::crawler::frontier crawl_frontier;
+  pthread_t thread_pool[THREAD_COUNT]{};
+  // We also need a map for robots.txt stuff
 
-  static void* worker(void *arg) {
+  void* worker() {
     while (true) {
-      const char *url = frontier.next_link();
-      link_finder html_scraper(url);
+      fast::string url = crawl_frontier.next();
+      link_finder html_scraper(url.data());
+      fast::vector<fast::string> extracted_links = html_scraper.extract_links();
     }
 
 
@@ -83,8 +89,4 @@ private:
      * 
      */
   }
-
-  /*static void find_links()
-   * Have to use Linux file stuff from lecture
-   */
 };
