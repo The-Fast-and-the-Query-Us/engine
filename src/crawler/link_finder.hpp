@@ -23,7 +23,7 @@ static constexpr uint8_t HTML_TAIL_LEN = 61;
 
 class link_finder {
   public:
-    link_finder(const char *file) : url_parts(), sock_fd(), url(file), ctx(), ssl()  {
+    link_finder(const char *file) : url_parts(), url(file) {
       file_fd = open(url.data(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
       if (file_fd == -1) {
         throw std::runtime_error("Could not open file in link_finder\n");
@@ -80,6 +80,7 @@ class link_finder {
       // TODO: Currently this function just dumps the html to std::cout.
       // We need to parse packet by packet and extract the links if there is no robots.txt
       // If there is, then use that (and cache that info) to crawl those links
+      // TODO: Blobbify the robots.txt cache
 
       return links;
     }
@@ -91,10 +92,10 @@ class link_finder {
     struct addrinfo *address{};
     struct addrinfo hints {};
     url_parser url_parts;
-    int file_fd, sock_fd;
+    int file_fd, sock_fd{};
     fast::string url;
-    SSL_CTX *ctx;
-    SSL *ssl;
+    SSL_CTX *ctx{};
+    SSL *ssl{};
 
     void setup_connection() {
       memset(&hints, 0, sizeof(hints));
