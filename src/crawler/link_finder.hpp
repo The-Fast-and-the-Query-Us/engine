@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <stdexcept>
 #include "../lib/string.hpp"
 #include "../lib/vector.hpp"
@@ -13,7 +14,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-static constexpr int MAX_PACKET_SIZE = 10240;
+static constexpr uint16_t MAX_PACKET_SIZE = 10240;
 static constexpr uint16_t MAX_MESSAGE_SIZE = 8192;
 static constexpr uint8_t REQUEST_TYPE_LEN = 16;
 static constexpr uint8_t HOST_LEN = 6;
@@ -23,7 +24,7 @@ static constexpr uint8_t HTML_TAIL_LEN = 61;
 class link_finder {
   public:
     link_finder(const char *file) : url_parts(), sock_fd(), url(file), ctx(), ssl()  {
-      file_fd = open(url, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+      file_fd = open(url.data(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
       if (file_fd == -1) {
         throw std::runtime_error("Could not open file in link_finder\n");
       }
@@ -91,7 +92,7 @@ class link_finder {
     struct addrinfo hints {};
     url_parser url_parts;
     int file_fd, sock_fd;
-    const char *url;
+    fast::string url;
     SSL_CTX *ctx;
     SSL *ssl;
 

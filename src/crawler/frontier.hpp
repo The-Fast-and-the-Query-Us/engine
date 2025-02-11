@@ -1,11 +1,10 @@
 #pragma once
 
-#include "condition_variable.hpp"
-#include "mutex.hpp"
-#include "queue.hpp"
-#include "scoped_lock.hpp"
-#include "string.hpp"
-#include "vector.hpp"
+#include "../lib/condition_variable.hpp"
+#include "../lib/queue.hpp"
+#include "../lib/scoped_lock.hpp"
+#include "../lib/string.hpp"
+#include "../lib/vector.hpp"
 
 #include <cstdint>
 #include <unordered_map>

@@ -8,7 +8,7 @@ namespace fast {
 class mutex {
 public:
   mutex() {
-    if (pthread_mutex_init(&m, nullptr) != 0) {
+    if (pthread_mutex_init(&m, nullptr)) {
       throw std::runtime_error("pthread mutex unable to init\n");
     }
   }
