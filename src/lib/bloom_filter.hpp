@@ -8,11 +8,11 @@
 #include <concepts>
 #include <cstddef>
 #include <cstring>
-#include <stdexcept>
-#include <type_traits>
 #include <fcntl.h>
-#include <unistd.h>
+#include <stdexcept>
 #include <sys/fcntl.h>
+#include <type_traits>
+#include <unistd.h>
 
 namespace fast {
 
@@ -31,21 +31,14 @@ concept hashable = primitive<T> || complex<T>;
 template <typename T>
 class bloom_filter {
 public:
-  bloom_filter(size_t _n, double _fpr, const char *file_path) : n(_n), fpr(_fpr) {
-    if (n == 0) {
-      throw std::invalid_argument("n must be greater than 0");
-    }
-    if (fpr <= 0 || fpr >= 1) {
-      throw std::invalid_argument("fpr must be in the interval (0, 1)");
-    }
+  bloom_filter(size_t _n, double _fpr, const char *_save_path)
+      : n(_n), fpr(_fpr), save_path(_save_path) {
+    init();
 
-    const double ln2 = std::log(2);
-    const double ln_fpr = std::log(fpr);
-    num_bits = (-1 * static_cast<double>(n) * ln_fpr) / (ln2 * ln2);
-    bit_set = bitset(num_bits, file_path);
-
-    num_hash = static_cast<uint64_t>((static_cast<double>(num_bits) / n) * ln2);
+    bit_set = bitset(num_bits, save_path);
   }
+
+  bloom_filter(const char *load_path) { load(load_path); }
 
   void insert(const T &val) {
     auto [h1, h2] = hash(val);
@@ -65,9 +58,83 @@ public:
     return true;
   }
 
-  int save() { 
+  int save() {
     fast::scoped_lock lock_guard(&m);
-    bit_set.save();
+    int bs_sz = bit_set.save();
+
+    int fd = open(save_path, O_WRONLY);
+    if (fd == -1) {
+      std::cerr << "Failed to open bitset dump file on write\n";
+      return -1;
+    }
+
+    int offset = lseek(fd, bs_sz, SEEK_SET);
+    if (offset == off_t(-1)) {
+      std::cerr << "error seeking: " << strerror(errno) << std::endl;
+      close(fd);
+      return -1;
+    }
+
+    ssize_t n_written = write(fd, &n, sizeof(size_t));
+    if (n_written == (-1)) {
+      std::cerr << "error writing member n: " << strerror(errno) << std::endl;
+      close(fd);
+      return -1;
+    }
+
+    ssize_t fpr_written = write(fd, &fpr, sizeof(double));
+    if (fpr_written == (-1)) {
+      std::cerr << "error writing member fpr: " << strerror(errno) << std::endl;
+      close(fd);
+      return -1;
+    }
+
+    if (close(fd) == -1) {
+      std::cerr << "error closing file in bloom_filter save()";
+      return -1;
+    }
+
+    return bs_sz + n_written + fpr_written;
+  }
+
+  int load(const char *load_path) {
+    fast::scoped_lock lock(&m);
+
+    int fd = open(load_path, O_RDONLY);
+    if (fd == -1)
+      throw std::runtime_error("Failed to open bloom_filter dump file on read");
+
+    save_path = load_path;
+
+    int bs_sz = bit_set.load(fd);
+
+    fd = open(save_path, O_RDONLY);
+    int offset = lseek(fd, bs_sz, SEEK_SET);
+    if (offset == off_t(-1)) {
+      close(fd);
+      throw std::runtime_error("error seeking in bloom_filter load()");
+    }
+
+    ssize_t n_read = read(fd, &n, sizeof(size_t));
+
+    if (n_read == (-1)) {
+      close(fd);
+      throw std::runtime_error("error reading member n in bloom_filter load()");
+    }
+
+    ssize_t fpr_read = read(fd, &fpr, sizeof(double));
+    if (fpr_read == (-1)) {
+      close(fd);
+      throw std::runtime_error(
+          "error reading member fpr in bloom_filter load()");
+    }
+
+    if (close(fd) == -1)
+      throw std::runtime_error("Error closing file in bloom_filter load()");
+
+    init();
+
+    return bs_sz + n_read + fpr_read;
   }
 
 private:
@@ -82,6 +149,23 @@ private:
   fast::bitset bit_set;
 
   fast::mutex m;
+
+  const char *save_path;
+
+  void init() {
+    if (n == 0) {
+      throw std::invalid_argument("n must be greater than 0");
+    }
+    if (fpr <= 0 || fpr >= 1) {
+      throw std::invalid_argument("fpr must be in the interval (0, 1)");
+    }
+
+    const double ln2 = std::log(2);
+    const double ln_fpr = std::log(fpr);
+    num_bits = (-1 * static_cast<double>(n) * ln_fpr) / (ln2 * ln2);
+
+    num_hash = static_cast<uint64_t>((static_cast<double>(num_bits) / n) * ln2);
+  }
 
   pair<const unsigned char *, size_t> serialize(const T &datum) {
     if constexpr (complex<T>)

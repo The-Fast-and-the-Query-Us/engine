@@ -111,7 +111,7 @@ public:
   // MODIFIES: capacity( )
   // EFFECTS: Ensures that the vector can contain size( ) = new_capacity
   //    elements before having to reallocate
-  void reserve(size_t newCapacity) { grow(newCapacity); }
+  void reserve(size_t new_capacity) { grow(new_capacity); }
 
   // REQUIRES: Nothing
   // MODIFIES: Nothing

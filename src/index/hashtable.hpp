@@ -1,16 +1,16 @@
 #pragma once
 
+#include "static_string.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <list.hpp>
-#include "static_string.hpp"
 
 namespace fast {
+
 struct post {
   uint32_t doc_id;
   uint32_t offset;
 };
-
 
 class hashtable {
 
@@ -23,18 +23,16 @@ class hashtable {
   size_t num_buckets_;
   list<bucket> *buckets_;
 
-  public:
+public:
   hashtable(size_t num_buckets = 2048) : num_buckets_(num_buckets) {
     buckets_ = new list<bucket>[num_buckets];
   };
 
   hashtable(const hashtable &other) = delete;
 
-  hashtable& operator=(const hashtable &other) = delete;
+  hashtable &operator=(const hashtable &other) = delete;
 
-  ~hashtable() {
-    delete[] buckets_;
-  }
+  ~hashtable() { delete[] buckets_; }
 
   static uint32_t hash(static_string &s) {
     const uint32_t P = 101;
@@ -65,7 +63,7 @@ class hashtable {
     l.back()->posts.push_back(p);
   }
 
-  const bucket* get(static_string &word) {
+  const bucket *get(static_string &word) {
     const auto hash_val = hash(word);
     list<bucket> &l = buckets_[hash_val % num_buckets_];
 
@@ -78,4 +76,4 @@ class hashtable {
     return nullptr;
   }
 };
-}
+} // namespace fast

@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 
 namespace fast {
 
@@ -53,7 +54,15 @@ public:
       grow(need);
   }
 
-  bool operator==(string &s) {
+  void reverse(size_t l, size_t r) {
+    for (; l < (l + r) / 2; ++l) {
+      char temp = buffer[l];
+      buffer[l] = buffer[r];
+      buffer[r] = temp;
+    }
+  }
+
+  bool operator==(const string &s) const {
     if (s.size() != this->size())
       return false;
 
