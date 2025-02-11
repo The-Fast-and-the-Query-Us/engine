@@ -20,6 +20,11 @@ public:
     priorities.reserve(4);
   }
 
+  frontier(const char *_save_path = nullptr) : save_path(_save_path) {
+    num_links = 0;
+    priorities.reserve(4);
+  }
+
   void insert(fast::string url) {
     scoped_lock lock(&mtx);
 
@@ -81,6 +86,8 @@ private:
   fast::condition_variable cv;
 
   uint64_t num_links;
+
+  const char *save_path;
 
   fast::vector<fast::queue<fast::string>> priorities;
 

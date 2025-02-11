@@ -60,9 +60,8 @@ public:
   }
 
   bitset(const char *load_path) {
-    int fd = open(load_path, O_RDONLY);
     save_path = load_path;
-    load(fd);
+    load();
   }
 
   bitset(const bitset &rhs) : num_bits(rhs.num_bits), num_int64(rhs.num_int64) {
@@ -116,7 +115,8 @@ public:
     return int64_written + num_bits_written + elts_written;
   }
 
-  int load(int fd) {
+  int load() {
+    int fd = open(save_path, O_RDONLY);
     if (fd == -1)
       throw std::runtime_error("Failed to open bitset dump file on read");
 
