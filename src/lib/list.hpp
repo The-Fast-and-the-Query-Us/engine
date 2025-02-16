@@ -80,7 +80,7 @@ class list {
     public:
     iterator(node* node_, size_t offset_) : node_(node_), offset_(offset_) {}
 
-    T& operator*() { return node_->arr[offset_]; }
+    T& operator*() const { return node_->arr[offset_]; }
 
     iterator& operator++() {
       if (++offset_ == node_->len) {
@@ -90,7 +90,7 @@ class list {
       return *this;
     }
 
-    bool operator!=(const iterator& other) {
+    bool operator!=(const iterator& other) const {
       return (
         node_ != other.node_ ||
         offset_ != other.offset_
