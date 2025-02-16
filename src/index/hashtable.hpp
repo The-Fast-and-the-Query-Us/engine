@@ -25,6 +25,7 @@ class hashtable {
 
   size_t num_buckets_;
   list<bucket> *buckets_;
+  friend class hashblob;
 
   public:
   hashtable(size_t num_buckets = 2048) : num_buckets_(num_buckets) {
@@ -81,5 +82,12 @@ class hashtable {
     return nullptr;
   }
 
+  const list<bucket> *begin() const {
+    return buckets_;
+  }
+
+  const list<bucket> *end() const {
+    return  buckets_ + num_buckets_;
+  }
 };
 }
