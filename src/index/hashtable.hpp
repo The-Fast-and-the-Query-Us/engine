@@ -6,13 +6,14 @@
 #include "static_string.hpp"
 
 namespace fast {
-struct post {
-  uint32_t doc_id;
-  uint32_t offset;
-};
-
 
 class hashtable {
+
+  public:
+  struct post {
+    uint32_t doc_id;
+    uint32_t offset;
+  };
 
   struct bucket {
     uint32_t hash_val;
@@ -20,10 +21,10 @@ class hashtable {
     list<post> posts;
   };
 
+  private:
+
   size_t num_buckets_;
   list<bucket> *buckets_;
-
-  friend class hashblob;
 
   public:
   hashtable(size_t num_buckets = 2048) : num_buckets_(num_buckets) {
@@ -79,5 +80,39 @@ class hashtable {
 
     return nullptr;
   }
+
+  class iterator {
+    list<bucket>::iterator it;
+    list<bucket>::iterator end;
+    hashtable *ht;
+    size_t cur_list;
+    public:
+
+    const bucket& operator*() {
+      return *it;
+    }
+
+    iterator& operator++() {
+      if (++it != end) {
+        return *this;
+      }
+
+      for (++cur_list; cur_list < ht->num_buckets_; ++cur_list) {
+        if (ht->buckets_[cur_list].length() > 0) {
+          it = ht->buckets_[cur_list].begin();
+          end = ht->buckets_[cur_list].end();
+          break;
+        }
+      }
+
+      return *this;
+    }
+
+    bool operator!=(const iterator &other) {
+      (void) other;
+      return false; // todo
+    }
+  };
+
 };
 }
