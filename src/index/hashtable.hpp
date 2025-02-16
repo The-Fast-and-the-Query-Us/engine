@@ -81,38 +81,5 @@ class hashtable {
     return nullptr;
   }
 
-  class iterator {
-    list<bucket>::iterator it;
-    list<bucket>::iterator end;
-    hashtable *ht;
-    size_t cur_list;
-    public:
-
-    const bucket& operator*() {
-      return *it;
-    }
-
-    iterator& operator++() {
-      if (++it != end) {
-        return *this;
-      }
-
-      for (++cur_list; cur_list < ht->num_buckets_; ++cur_list) {
-        if (ht->buckets_[cur_list].length() > 0) {
-          it = ht->buckets_[cur_list].begin();
-          end = ht->buckets_[cur_list].end();
-          break;
-        }
-      }
-
-      return *this;
-    }
-
-    bool operator!=(const iterator &other) {
-      (void) other;
-      return false; // todo
-    }
-  };
-
 };
 }
