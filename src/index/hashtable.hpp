@@ -54,7 +54,7 @@ class hashtable {
     return hash_val;
   }
 
-  void add(static_string &word, post p) {
+  void add(const static_string &word, post p) {
     const auto hash_val = hash(word);
     list<bucket> &l = buckets_[hash_val % num_buckets_];
 

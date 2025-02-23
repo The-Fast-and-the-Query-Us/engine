@@ -81,14 +81,14 @@ class hashblob {
     return opts;
   }
 
-  static void write(const hashtable *ht, hashblob *buffer, options *opts) {
+  static void write(const hashtable *ht, hashblob *buffer, const options *opts) {
     write_dict(ht, buffer, opts);
     write_posts(ht, buffer);
     buffer->magic = 42;
   }
 
   // buffer must be zero init
-  static void write_dict(const hashtable *ht, hashblob *buffer, options *opts) {
+  static void write_dict(const hashtable *ht, hashblob *buffer, const options *opts) {
     buffer->num_buckets = opts->num_buckets;
 
     for (const auto &bucketList : *ht) {
@@ -128,7 +128,7 @@ class hashblob {
     (void) buffer;
   }
   
-  char *get_posts(static_string &ss) {
+  char *get_posts(const static_string &ss) {
     const auto hashVal = hashtable::hash(ss);
     auto start = dict_start() + buckets()[hashVal % num_buckets];
     const auto end = ((hashVal + 1) % num_buckets == 0) ? dict_end() : dict_start() + buckets()[(hashVal + 1) % num_buckets];
