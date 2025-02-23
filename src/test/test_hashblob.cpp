@@ -16,7 +16,7 @@ int main() {
   const auto opts = hashblob::get_opts(&ht);
 
 
-  auto buffer = (hashblob*) new size_t[opts.file_size / sizeof(size_t) + 1];
+  auto buffer = (hashblob*) new size_t[opts.file_size / sizeof(size_t) + 1]{};
 
   hashblob::write(&ht, buffer, &opts);
 
