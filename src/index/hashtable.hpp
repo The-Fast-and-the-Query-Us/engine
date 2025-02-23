@@ -6,13 +6,14 @@
 #include "static_string.hpp"
 
 namespace fast {
-struct post {
-  uint32_t doc_id;
-  uint32_t offset;
-};
-
 
 class hashtable {
+
+  public:
+  struct post {
+    uint32_t doc_id;
+    uint32_t offset;
+  };
 
   struct bucket {
     uint32_t hash_val;
@@ -20,9 +21,10 @@ class hashtable {
     list<post> posts;
   };
 
+  private:
+
   size_t num_buckets_;
   list<bucket> *buckets_;
-
   friend class hashblob;
 
   public:
@@ -38,7 +40,7 @@ class hashtable {
     delete[] buckets_;
   }
 
-  static uint32_t hash(static_string &s) {
+  static uint32_t hash(const static_string &s) {
     const uint32_t P = 101;
 
     uint32_t hash_val = 0;
@@ -52,7 +54,7 @@ class hashtable {
     return hash_val;
   }
 
-  void add(static_string &word, post p) {
+  void add(const static_string &word, post p) {
     const auto hash_val = hash(word);
     list<bucket> &l = buckets_[hash_val % num_buckets_];
 
@@ -78,6 +80,14 @@ class hashtable {
     }
 
     return nullptr;
+  }
+
+  const list<bucket> *begin() const {
+    return buckets_;
+  }
+
+  const list<bucket> *end() const {
+    return  buckets_ + num_buckets_;
   }
 };
 }
