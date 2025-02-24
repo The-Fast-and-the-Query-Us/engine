@@ -1,5 +1,6 @@
+#pragma once
+
 #include "list.hpp"
-#include <cmath>
 #include <cstddef>
 #include <hashtable.hpp>
 
