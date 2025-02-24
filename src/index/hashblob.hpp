@@ -5,6 +5,7 @@
 #include <static_string.hpp>
 #include <hashtable.hpp>
 #include <postlist.hpp>
+#include <common.hpp>
 
 namespace fast {
 
@@ -25,16 +26,6 @@ class hashblob {
 
   static inline size_t dict_entry_size(const hashtable::bucket &b) {
     return sizeof(size_t) + b.word.length() + 1;
-  }
-
-  template <class T> // move to lib
-  static inline void read_unaligned(T &val, char *buffer) {
-    memcpy(&val, buffer, sizeof(T));
-  }
-
-  template <class T> // move to lib
-  static inline void write_unaligned(const T &val, char *buffer) {
-    memcpy(buffer, &val, sizeof(T));
   }
 
   // data access
@@ -116,18 +107,16 @@ class hashblob {
 
     buffer->dict_len = accumulator;
 
-    size_t reader;
     for (const auto &bucketList : *ht) {
       for (const auto &bucket : bucketList) {
         auto start = buffer->dict_start() + buffer->buckets()[bucket.hash_val % buffer->num_buckets];
 
-        for (read_unaligned(reader, start); reader ;read_unaligned(reader, start)) {
+        for (auto t = read_unaligned<size_t>(start); t ; t = read_unaligned<size_t>(start)) {
           start += sizeof(size_t);
           while (*(start++));
         }
 
-        reader = 1;
-        write_unaligned(reader, start);
+        write_unaligned(1, start);
         memcpy(start + sizeof(size_t), bucket.word.begin(), bucket.word.length());
         start[sizeof(size_t) + bucket.word.length()] = 0;
       }
@@ -152,11 +141,9 @@ class hashblob {
     auto start = dict_start() + buckets()[hashVal % num_buckets];
     const auto end = ((hashVal + 1) % num_buckets == 0) ? dict_end() : dict_start() + buckets()[(hashVal + 1) % num_buckets];
 
-    size_t reader;
     while (start < end) {
       if (ss == start + sizeof(size_t)) {
-        read_unaligned(reader, start);
-        return dict_end() + reader;
+        return dict_end() + read_unaligned<size_t>(start);
       }
 
       start += sizeof(size_t);
