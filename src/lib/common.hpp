@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 
 namespace fast {
 
@@ -62,6 +63,18 @@ inline unsigned long long fast_sqrt(const unsigned long long n) {
   } while (shift != 0);
 
   return ans;
+}
+
+template <class T>
+inline void write_unaligned(const T &t, char *buffer) {
+  memcpy(buffer, &t, sizeof(t));
+}
+
+template <class T>
+inline T read_unaligned(const char *buffer) {
+  T t;
+  memcpy(&t, buffer, sizeof(t));
+  return t;
 }
 
 }
