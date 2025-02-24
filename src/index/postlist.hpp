@@ -1,0 +1,5 @@
+namespace fast {
+class postlist {
+
+};
+}
