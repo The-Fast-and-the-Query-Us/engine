@@ -42,4 +42,10 @@ char* expand(T& number, char* buffer) {
   return buffer;
 }
 
+// skip to one after current compressed number
+inline char* skip_compressed(char *buffer) {
+  while (*(buffer++) & 0x80);
+  return buffer;
+}
+
 }
