@@ -8,11 +8,11 @@
 
 namespace fast {
 /*
-* Compressed postlist without a sync table. MUST BE SIZE_T ALIGNED
+* Compressed postlist no sync table.
 *
 * Format
-* listSize (bytes), numWords, diff from last doc to num_docs
-* <doc delta, <off delta> \0>
+* listSize (bytes of compressed data), numWords, diff from last doc to num_docs
+* <doc delta, <off delta,> \0>\0
 */
 class postlist {
   size_t listSize;
@@ -24,13 +24,13 @@ class postlist {
   public:
 
   static size_t size_needed(const list<hashtable::post> &posts) {
-    size_t dynamic{0};
+    size_t dynamic{1}; // start at 1 for last null
     size_t last_doc{0};
 
     auto it = posts.begin();
 
     for (auto base = posts.begin(); base != posts.end(); base = it) {
-      const auto doc_delta = (*base).doc_id - last_doc; // add -> operator maybe
+      const auto doc_delta = (*base).doc_id - last_doc;
       dynamic += compressed_size(doc_delta) + 1; // +1 for null
 
       size_t last_offset{0};
@@ -44,7 +44,7 @@ class postlist {
     return dynamic + sizeof(postlist);
   }
 
-  // write posting list and return its end
+  // buffer must be alignof(postlist), num_docs is the number of docs in the hashtable
   static char *write(const list<hashtable::post> &posts, postlist *buffer, size_t num_docs) {
     buffer->numWords = posts.length();
 
@@ -65,6 +65,8 @@ class postlist {
       if ((*base).doc_id > biggest_doc) biggest_doc = (*base).doc_id;
     }
 
+    *(writePos++) = 0;
+
     buffer->listSize = writePos - buffer->data();
     buffer->delta = num_docs - biggest_doc;
 
@@ -76,7 +78,8 @@ class postlist {
     size_t rstart;
     expand(rstart, r->data());
 
-    return sizeof(postlist) + l->listSize + r->listSize + compressed_size(l->delta + rstart) - compressed_size(rstart);
+                   // remove one null char  V
+    return sizeof(postlist) + l->listSize - 1 + r->listSize + compressed_size(l->delta + rstart) - compressed_size(rstart);
   }
 
   // merge two post lists together
@@ -86,8 +89,8 @@ class postlist {
 
     auto writePos = buffer->data();
 
-    memcpy(writePos, l->data(), l->listSize);
-    writePos += l->listSize;
+    memcpy(writePos, l->data(), l->listSize - 1); // remove null char at end
+    writePos += l->listSize - 1;
 
     size_t rstart; 
     auto rPos = expand(rstart, r->data());
@@ -102,35 +105,33 @@ class postlist {
     return writePos;
   }
 
-  struct post {
-    size_t doc;
-    size_t offset;
-  };
-
+  /*
+  * index stream reader
+  */
   class isr {
-    size_t cur_doc, cur_offset;
-    char *pos, *end;
+    char *pos;
     public:
-    isr& operator++() {
-      pos = skip_compressed(pos);
+    size_t doc, offset;
+    
+    void next() {
+      size_t off_delta;
+      pos = expand(off_delta, pos);
 
-      if (*pos == 0) {
-        if (++pos == end) return *this;
-
+      if (off_delta == 0) {
         size_t doc_delta;
         pos = expand(doc_delta, pos);
-        cur_doc += doc_delta;
+
+        if (doc_delta == 0) return;
+
+        doc += doc_delta;
+        pos = expand(off_delta, pos);
       }
 
-      size_t offset_delta;
-      expand(offset_delta, pos);
-      cur_offset += offset_delta;
-
-      return *this;
+      offset += off_delta;
     }
 
-    post operator*() const {
-      return {cur_doc, cur_offset};
+    bool operator==(const isr &other) const {
+      return pos == other.pos;
     }
   };
 };
