@@ -66,7 +66,7 @@ class hashtable {
     }
 
     l.push_back({hash_val, word, list<post>()});
-    l.back()->posts.push_back(p);
+    l.back().posts.push_back(p);
   }
 
   const bucket* get(static_string &word) {
