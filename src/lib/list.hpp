@@ -6,6 +6,7 @@
 #include <cstdlib>
 
 #include <utility>
+#include <new>
 
 namespace fast {
 
@@ -72,12 +73,13 @@ class list {
       swap(tmp.first, first);
       swap(tmp.last, last);
     }
+    return *this;
   }
 
   ~list() {
     while (first != last) {
       for (auto i = 0u; i < chunk_size; ++i) {
-        ~first->arr[i]();
+        first->arr[i].~T();
       }
       auto next = reinterpret_cast<node*>(first->ptr);
       free(first);
@@ -85,7 +87,7 @@ class list {
     }
 
     for (auto i = 0u; i < first->ptr; ++i) {
-      ~first->arr[i]();
+      first->arr[i].~T();
     }
     free(first);
   }
@@ -110,7 +112,10 @@ class list {
   class iterator {
     node* node_;
     size_t offset_;
+
+
     public:
+    iterator(node* node_, size_t offset_) : node_(node_), offset_(offset_) {}
 
     T& operator*() const { return node_->arr[offset_]; }
 
@@ -138,14 +143,14 @@ class list {
   };
 
   iterator begin() const {
-    return {first, 0};
+    return iterator(first, 0);
   }
 
   iterator end() const {
     if (last->ptr == chunk_size) {
-      return {reinterpret_cast<node*>(last->ptr), 0};
+      return iterator(reinterpret_cast<node*>(last->ptr), 0);
     } else {
-      return {last, last->ptr};
+      return iterator(last, last->ptr);
     }
   }
 };
