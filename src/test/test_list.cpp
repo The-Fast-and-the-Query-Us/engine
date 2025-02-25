@@ -27,6 +27,12 @@ void run_test(const list<int> &l, const int N) {
   test_seq(another, N);
 }
 
+struct Num {
+  int *ptr;
+  Num(int i) :ptr(new int(i)) {}
+  ~Num() {delete ptr;}
+};
+
 int main() {
 
   list<int> l;
@@ -36,4 +42,10 @@ int main() {
     l.push_back(i);
   }
 
+  // test allocation
+  list<Num> dynamic;
+  for (auto i = 0; i < 64 * 2; ++i) {
+    dynamic.emplace_back(i);
+  }
+  assert(*dynamic.back().ptr == 64 * 2 - 1);
 }
