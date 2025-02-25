@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
+#include <cstring>
 
 namespace fast {
 
@@ -38,6 +40,41 @@ constexpr auto& get(tuple<Head, Tail...> &t) {
  */
 inline size_t round_up(size_t base, size_t mult) {
   return (base + (mult - 1)) & ~(mult - 1);
+}
+
+// return number of bits needed to hold number n 
+// ie 1 past the index of the highest bit
+inline uint8_t bit_width(unsigned long long n) {
+  return (n == 0) ? 1 : 64 - __builtin_clzll(n);
+}
+
+// return floor(sqrt(n))
+// Made fast by lack of division operations
+inline unsigned long long fast_sqrt(const unsigned long long n) {
+  auto shift = bit_width(n);
+  shift += shift & 1; // round up to power of 2
+
+  auto ans = 0ull;
+  do {
+    shift -= 2;
+    ans <<= 1;
+    ans |= 1; // guess bit
+    ans ^= ans * ans > (n >> shift); // check if too big
+  } while (shift != 0);
+
+  return ans;
+}
+
+template <class T>
+inline void write_unaligned(const T &t, char *buffer) {
+  memcpy(buffer, &t, sizeof(t));
+}
+
+template <class T>
+inline T read_unaligned(const char *buffer) {
+  T t;
+  memcpy(&t, buffer, sizeof(t));
+  return t;
 }
 
 }
