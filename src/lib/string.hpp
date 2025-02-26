@@ -64,6 +64,12 @@ class string : public string_view {
     ans += rhs;
     return ans;
   }
+
+  // requires that count <= len_
+  void pop_back(size_t count = 1) {
+    len_ -= count;
+    start_[len_] = 0;
+  }
 };
 
 }

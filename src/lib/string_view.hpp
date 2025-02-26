@@ -21,6 +21,8 @@ public:
   string_view() : start_(nullptr), len_(0) {}
 
   string_view(char *start, char *end) : start_(start), len_(end - start) {}
+
+  string_view(char *start, size_t len) : start_(start), len_(len) {}
   
   string_view(char *cstr) {
     start_ = cstr;
