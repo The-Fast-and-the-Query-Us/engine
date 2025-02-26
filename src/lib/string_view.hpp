@@ -20,24 +20,24 @@ public:
 
   string_view() : start_(nullptr), len_(0) {}
 
-  string_view(char *start, char *end) : start_(start), len_(end - start) {}
+  string_view(const char *start, const char *end) : start_(const_cast<char*>(start)), len_(end - start) {}
 
-  string_view(char *start, size_t len) : start_(start), len_(len) {}
+  string_view(const char *start, size_t len) : start_(const_cast<char*>(start)), len_(len) {}
   
-  string_view(char *cstr) { // TODO Optimize
-    start_ = cstr;
+  string_view(const char *cstr) { // TODO Optimize
+    start_ = const_cast<char*>(cstr);
     len_ = 0;
     while (*cstr) ++cstr, ++len_;
   }
 
-  char *begin() const { return start_; }
+  const char *begin() const { return start_; }
 
-  char *end() const { return start_ + len_; }
+  const char *end() const { return start_ + len_; }
 
   size_t length() const { return len_; }
 
   // requires i < length()
-  char &operator[](size_t i) const { return start_[i]; }
+  const char &operator[](size_t i) const { return start_[i]; }
 
   std::strong_ordering operator<=>(const string_view &other) const {
     const auto cmp = memcmp(start_, other.start_, min(length(), other.length()));

@@ -7,7 +7,7 @@
 
 namespace fast {
 
-class string : public string_view {
+class string : public string_view{
   size_t cap;
 
   void grow(size_t need) {
@@ -37,10 +37,19 @@ class string : public string_view {
     memcpy(start_, cstr, len_ + 1);
   }
 
+  string &operator=(const string &other) {
+    if (this != &other) {
+      grow(other.len_);
+      len_ = other.len_;
+      memcpy(start_, other.start_, other.len_ + 1);
+    }
+    return *this;
+  }
+
   ~string() { free(start_); }
 
 
-  const char *c_str() const { return begin(); }
+  const char *c_str() const { return start_; }
 
   void reserve(size_t need) {
     if (need > cap) grow(need);
@@ -70,6 +79,12 @@ class string : public string_view {
     len_ -= count;
     start_[len_] = 0;
   }
+
+  char &operator[](size_t idx) { return start_[idx]; }
+
+  char *begin() const { return start_; }
+
+  char *end() const { return start_ + len_; }
 };
 
 }

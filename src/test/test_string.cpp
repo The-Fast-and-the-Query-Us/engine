@@ -17,5 +17,5 @@ int main() {
   s += other;
   s += s;
   
-  assert(s == string("cccc"));
+  assert(s == "cccc");
 }
