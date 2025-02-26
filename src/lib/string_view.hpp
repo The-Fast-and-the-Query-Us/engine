@@ -44,6 +44,13 @@ public:
     else if (cmp > 0) return std::strong_ordering::greater;
     else              return len_ <=> other.len_;
   }
+
+  bool operator==(const string_view &other) const {
+    return (
+      len_ == other.len_ &&
+      memcmp(start_, other.start_, len_) == 0
+    );
+  }
 };
 
 }
