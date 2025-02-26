@@ -7,6 +7,8 @@
 #include "../lib/vector.hpp"
 
 #include <cstdint>
+#include <sys/fcntl.h>
+#include <unistd.h>
 #include <unordered_map>
 #include <vector>
 
@@ -15,12 +17,7 @@ namespace crawler {
 
 class frontier {
 public:
-  frontier() {
-    num_links = 0;
-    priorities.reserve(4);
-  }
-
-  frontier(const char *_save_path = nullptr) : save_path(_save_path) {
+  frontier(const char *_save_path) : save_path(_save_path) {
     num_links = 0;
     priorities.reserve(4);
   }
@@ -73,6 +70,53 @@ public:
 
     return "";
   };
+
+  // int save() {
+  // scoped_lock lock(&mtx);
+  //
+  // int fd = open(save_path, O_WRONLY | O_CREAT | O_TRUNC);
+  // if (fd == -1) {
+  //   std::cerr << "Failed to open file in frontier save()\n";
+  //   return -1;
+  // }
+  //
+  // int num_links_written = write(fd, &num_links, sizeof(uint64_t));
+  //
+  // if (num_links_written == -1) {
+  //   std::cerr << "Failed writing member num_links in frontier save()\n";
+  //   return -1;
+  // }
+  //
+  // int total_priority_bytes = 0;
+  // for (size_t i = 0; i < priorities.size(); ++i) {
+  //
+  //   size_t pri_sz = priorities[i].size();
+  //   int pri_sz_written = write(fd, &pri_sz, sizeof(size_t));
+  //
+  //   if (pri_sz_written == -1) {
+  //     std::cerr
+  //         << "Failed writing size of priorities queue in frontier save()";
+  //     return -1;
+  //   }
+  //
+  //   total_priority_bytes += pri_sz_written;
+  //
+  //   for (size_t j = 0; j < pri_sz; ++j) {
+  //     fast::string f = priorities[i].front();
+  //     int link_written = write(fd, &priorities[i], sizeof(priorities[i]));
+  //
+  //     if (pri_sz_written == -1) {
+  //       std::cerr << "Failed writing an element of priority queue in "
+  //                    "frontier save()";
+  //       return -1;
+  //     }
+  //
+  //     total_priority_bytes += link_written;
+  //   }
+  // }
+  //
+  // return num_links_written += total_priority_bytes;
+  // }
 
 private:
   static constexpr uint8_t GOOD_LEN = 25;
