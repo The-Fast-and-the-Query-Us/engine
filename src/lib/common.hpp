@@ -44,13 +44,13 @@ inline size_t round_up(size_t base, size_t mult) {
 
 // return number of bits needed to hold number n 
 // ie 1 past the index of the highest bit
-inline uint8_t bit_width(unsigned long long n) {
+inline uint8_t bit_width(uint64_t n) {
   return (n == 0) ? 1 : 64 - __builtin_clzll(n);
 }
 
 // return floor(sqrt(n))
 // Made fast by lack of division operations
-inline unsigned long long fast_sqrt(const unsigned long long n) {
+inline uint64_t fast_sqrt(const uint64_t n) {
   auto shift = bit_width(n);
   shift += shift & 1; // round up to power of 2
 
