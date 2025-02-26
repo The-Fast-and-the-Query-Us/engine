@@ -24,7 +24,7 @@ public:
 
   string_view(char *start, size_t len) : start_(start), len_(len) {}
   
-  string_view(char *cstr) {
+  string_view(char *cstr) { // TODO Optimize
     start_ = cstr;
     len_ = 0;
     while (*cstr) ++cstr, ++len_;
