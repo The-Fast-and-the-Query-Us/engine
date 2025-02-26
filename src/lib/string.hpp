@@ -1,13 +1,17 @@
 #pragma once
 
+#include <common.hpp>
+
+#include <compare>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
-#include <string_view.hpp>
 
 namespace fast {
 
-class string : public string_view{
+class string {
+  char *start_ = nullptr;
+  size_t len_;
   size_t cap;
 
   void grow(size_t need) {
@@ -48,7 +52,6 @@ class string : public string_view{
 
   ~string() { free(start_); }
 
-
   const char *c_str() const { return start_; }
 
   void reserve(size_t need) {
@@ -85,6 +88,23 @@ class string : public string_view{
   char *begin() const { return start_; }
 
   char *end() const { return start_ + len_; }
+
+  size_t size() const { return len_; }
+
+  bool operator==(const string &other) const {
+    return (
+      len_ == other.len_ &&
+      memcmp(start_, other.start_, len_) == 0
+    );
+  }
+
+  std::strong_ordering operator<=>(const string &other) const {
+    const auto cmp = memcmp(start_, other.start_, min(len_, other.len_));
+
+    if (cmp < 0)      return std::strong_ordering::less;
+    else if (cmp > 0) return std::strong_ordering::greater;
+    else              return len_ <=> other.len_;
+  }
 };
 
 }

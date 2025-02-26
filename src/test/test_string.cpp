@@ -6,10 +6,10 @@ using namespace fast;
 int main() {
   string s;
 
-  assert(s.length() == 0);
+  assert(s.size() == 0);
 
   s += 'c';
-  assert (s.length() == 1);
+  assert (s.size() == 1);
 
   const auto other = s;
   assert(other == s);
