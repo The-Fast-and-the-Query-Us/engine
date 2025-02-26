@@ -77,4 +77,14 @@ inline T read_unaligned(const char *buffer) {
   return t;
 }
 
+template <class T>
+T max(T lhs, T rhs) {
+  return (lhs < rhs) ? rhs : lhs;
+}
+
+template <class T>
+T min(T lhs, T rhs) {
+  return (lhs < rhs) ? lhs : rhs;
+}
+
 }

@@ -13,13 +13,13 @@ static_assert(std::endian::native == std::endian::little, "Compression not valid
 
 /*
  * Encode Simple-3
+ *  num must be bitwidth(num) <= 61
  */
 inline unsigned char *encode(uint64_t num, unsigned char *buffer) {
   const auto width = bit_width(num) + 3; // 3 header bits
   const auto extraBytes = (width - 1) / 8; // round down
 
   *buffer = (extraBytes << 5) | (num >> (extraBytes * 8));
-
 
   memcpy(buffer + 1, reinterpret_cast<char*>(&num), extraBytes);
   return buffer + extraBytes + 1;
