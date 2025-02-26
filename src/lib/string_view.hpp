@@ -5,32 +5,34 @@
 #include <common.hpp>
 
 namespace fast {
+
 /*
 * A non-owning, lightweight string class
-* !All other string class should inherit from this!
 */
 class string_view {
 
 protected:
 
   char *start_;
-  char *end_;
+  size_t len_;
 
 public:
 
-  string_view(char *start, char *end) : start_(start), end_(end) {}
+  string_view() : start_(nullptr), len_(0) {}
+
+  string_view(char *start, char *end) : start_(start), len_(end - start) {}
   
   string_view(char *cstr) {
     start_ = cstr;
-    while (*cstr) ++cstr;
-    end_ = cstr;
+    len_ = 0;
+    while (*cstr) ++cstr, ++len_;
   }
 
   char *begin() const { return start_; }
 
-  char *end() const { return end_; }
+  char *end() const { return start_ + len_; }
 
-  size_t length() const { return end_ - start_; }
+  size_t length() const { return len_; }
 
   // requires i < length()
   char &operator[](size_t i) const { return start_[i]; }
@@ -40,7 +42,7 @@ public:
     
     if (cmp < 0)      return std::strong_ordering::less;
     else if (cmp > 0) return std::strong_ordering::greater;
-    else              return length() <=> other.length();
+    else              return len_ <=> other.len_;
   }
 };
 
