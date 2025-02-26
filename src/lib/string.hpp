@@ -3,56 +3,52 @@
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
+#include <string_view.hpp>
 
 namespace fast {
 
-class string {
-  size_t len;
+class string : public string_view {
   size_t cap;
-  char* buffer;
 
   void grow(size_t need) {
-    buffer = (char*) realloc(buffer, need + 1);
+    start_ = (char*) realloc(start_, need + 1);
     cap = need;
   }
 
  public:
-  string() : len(0), cap(7), buffer((char*) malloc(8)) {}
+  string() {
+    start_ = static_cast<char*>(malloc(9));
+    cap = 8;
+    len_ = 0;
+
+    start_[len_] = 0;
+  }
 
   string(const string& other) {
-    len = other.len;
-    cap = other.len;
-    buffer = (char*) malloc(cap + 1);
-
-    memcpy(buffer, other.buffer, len);
+    cap = other.cap;
+    len_ = other.len_;
+    start_ = static_cast<char*>(malloc(cap + 1));
+    memcpy(start_, other.start_, len_ + 1); // +1 for null
   }
 
-  ~string() { free(buffer); }
+  ~string() { free(start_); }
 
-  size_t size() const { return len; }
 
-  char& operator[](size_t idx) const { return buffer[idx]; }
-
-  const char *c_str() const { return data(); }
-
-  char *data() const { 
-    buffer[len] = 0;
-    return buffer; 
-  }
+  const char *c_str() const { return begin(); }
 
   void reserve(size_t need) {
     if (need > cap) grow(need);
   }
 
   void operator+=(char c) {
-    if (len == cap) grow(len << 1);
-    buffer[len++] = c;
+    if (len_ == cap) grow(len_ << 1);
+    start_[len_++] = c;
   }
 
   void operator+=(const string& other) {
-    if (len + other.len > cap) grow(len + other.len);
-    memcpy(buffer + len, other.buffer, other.len);
-    len += other.len;
+    if (len_ + other.len_ > cap) grow(len_ + other.len_);
+    memcpy(start_ + len_, other.start_, other.len_);
+    len_ += other.len_;
   }
 
   string operator+(const string &rhs) {
