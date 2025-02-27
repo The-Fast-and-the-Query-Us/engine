@@ -44,7 +44,10 @@ class dictionary {
     return opts;
   }
 
-  // Buffer should be zero init
+  /*
+   * buffer must be zero init and align of size_t.
+   * constructs dictionary in buffer with each key set to dict[key] = 1
+   */
   static char *write(const hashtable &ht, dictionary *buffer, options opts) {
     buffer->num_unique = opts.num_unique;
     buffer->num_buckets = opts.num_unique * LOAD;
@@ -90,16 +93,16 @@ class dictionary {
   public:
     val_proxy(char *b) : buf(b) {}
 
-    val_proxy& operator=(size_t st) {
+    val_proxy& operator=(size_t st)  {
       write_unaligned(st, buf);
       return *this;
     }
 
-    operator bool() {
+    bool operator*() const {
       return buf;
     }
 
-    operator size_t() {
+    operator size_t() const {
       return read_unaligned<size_t>(buf);
     }
   };
