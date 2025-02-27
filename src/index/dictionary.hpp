@@ -105,15 +105,15 @@ class dictionary {
   };
 
   // returns pointer to entry val if it exists or nullptr otherwise
-  char* get(const string &word) {
-    const auto hash_val = hash(word.c_str());
+  char* get(const char *word) {
+    const auto hash_val = hash(word);
 
     auto pos = buckets()[hash_val % num_buckets] + dict();
     const auto end = dict() + (((hash_val + 1) % num_buckets) ? buckets()[(hash_val + 1) % num_buckets] : dict_size);
 
     while (pos != end) {// is strcmp faster here? since we iterate twice
       auto key = pos + sizeof(size_t);
-      auto cmp = word.begin();
+      auto cmp = word;
 
       for (; *key && *key == *cmp; ++key, ++cmp);
       
@@ -126,10 +126,13 @@ class dictionary {
     return nullptr;
   }
 
-  val_proxy operator[](const string &word) {
+  val_proxy operator[](const char *word) {
     return get(word);
   }
 
+  static options get_opts(const dictionary *lhs, const dictionary *rhs);
+
+  static char *merge(const dictionary *lhs, const dictionary *rhs, dictionary *buffer);
 };
 
 }
