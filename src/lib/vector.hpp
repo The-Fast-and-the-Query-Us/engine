@@ -13,6 +13,9 @@
 
 namespace fast {
 
+/*
+* Note: due to realloc, relative pointers are not persistent
+*/
 template <typename T> class vector {
 public:
   vector() : elts{nullptr}, size_{0}, cap_{0} {}

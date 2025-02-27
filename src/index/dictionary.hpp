@@ -12,7 +12,7 @@ namespace fast {
 * used to map string to offset to postings list
 */
 class dictionary {
-  static constexpr double LOAD = 1;
+  static constexpr double LOAD = 1; // multiple of tokens for num_buckets
 
   size_t num_buckets, num_unique, num_words, dict_size;
 
