@@ -33,4 +33,6 @@ int main() {
 
   auto val = (*buffer)["notin"];
   assert(*val == false);
+
+  free(buffer);
 }
