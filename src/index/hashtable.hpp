@@ -14,6 +14,8 @@ class hashtable {
     uint64_t hashval;
     string word;
     list<uint64_t> posts;
+
+    bucket(uint64_t hashval, const string &word) : hashval(hashval), word(word) {}
   };
 
   size_t num_buckets, next_offset;
