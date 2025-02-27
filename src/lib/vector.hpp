@@ -87,6 +87,12 @@ public:
     new (elts + size_++) T(x);
   }
 
+  template<typename ... Args>
+  void emplace_back(Args&& ... args) {
+    if (size_ == cap_) grow(max(size_t(8), cap_ << 1));
+    new (elts + size_++) T(args...);
+  }
+
   void pop_back(size_t count = 1) {
     for (auto i = 1u; i <= count; ++i) elts[size_ - i].~T();
     size_ -= count;
