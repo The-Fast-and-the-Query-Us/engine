@@ -1,6 +1,7 @@
 #include "common.hpp"
 #include <cassert>
 #include <cstdlib>
+#include <cstring>
 #include <hashtable.hpp>
 #include <string.hpp>
 #include <dictionary.hpp>
@@ -19,6 +20,7 @@ int main() {
   const auto opts = dictionary::get_opts(ht);
 
   auto buffer = (dictionary*) malloc(round_up(opts.size_needed, alignof(dictionary)));
+  memset(buffer, 0, opts.size_needed);
 
   dictionary::write(ht, buffer, opts);
 
