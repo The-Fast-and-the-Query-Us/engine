@@ -114,6 +114,17 @@ class string {
     else if (cmp > 0) return std::strong_ordering::greater;
     else              return len_ <=> other.len_;
   }
+
+  std::strong_ordering operator<=>(const char *cstr) const {
+    const char *ptr = begin();
+    for (; *ptr; ++ptr, ++cstr) {
+      if (*ptr != *cstr) {
+        if (*ptr < *cstr) return std::strong_ordering::less;
+        else return std::strong_ordering::greater;
+      }
+    }
+    return std::strong_ordering::equal;
+  }
 };
 
 }
