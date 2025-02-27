@@ -24,6 +24,7 @@ class list {
 
   node* first;
   node* last;
+  size_t len;
 
   // ensure that there is room in *last for one element
   inline void ensure_space() {
@@ -64,6 +65,8 @@ class list {
 
     dst->ptr = src->ptr;
     last = dst;
+
+    len = other.len;
   }
 
   list& operator=(const list& other) {
@@ -72,6 +75,7 @@ class list {
       list tmp(other);
       swap(tmp.first, first);
       swap(tmp.last, last);
+      swap(tmp.len, len);
     }
     return *this;
   }
@@ -96,6 +100,7 @@ class list {
     ensure_space();
     new (last->arr + last->ptr) T(element);
     ++last->ptr;
+    ++len;
   }
 
   template <typename ... Args>
@@ -103,11 +108,14 @@ class list {
     ensure_space();
     new (last->arr + last->ptr) T(std::forward<Args>(args)...);
     ++last->ptr;
+    ++len;
   }
 
   T& back() const {
     return last->arr[last->ptr - 1];
   }
+
+  size_t size() const { return len; }
 
   class iterator {
     node* node_;

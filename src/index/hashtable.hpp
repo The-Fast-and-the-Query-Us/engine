@@ -1,93 +1,57 @@
 #pragma once
 
+#include "string.hpp"
 #include <cstddef>
 #include <cstdint>
+
 #include <list.hpp>
-#include "static_string.hpp"
+#include <hash.hpp>
 
 namespace fast {
 
 class hashtable {
-
-  public:
-  struct post {
-    uint32_t doc_id;
-    uint32_t offset;
-  };
-
   struct bucket {
-    uint32_t hash_val;
-    static_string word;
-    list<post> posts;
+    uint64_t hashval;
+    string word;
+    list<uint64_t> posts;
+
+    bucket(uint64_t hashval, const string &word) : hashval(hashval), word(word) {}
   };
 
-  private:
+  size_t num_buckets, next_offset;
+  list<bucket> *buckets;
 
-  size_t num_buckets_;
-  list<bucket> *buckets_;
-  friend class hashblob;
+  friend class dictionary;
 
-  public:
-  hashtable(size_t num_buckets = 2048) : num_buckets_(num_buckets) {
-    buckets_ = new list<bucket>[num_buckets];
-  };
+public:
+  hashtable(size_t num_buckets = 2048) : num_buckets(num_buckets), next_offset(0) {
+    buckets = new list<bucket>[num_buckets];
+  }
 
-  hashtable(const hashtable &other) = delete;
+  hashtable(const hashtable &ht) = delete;
 
-  hashtable& operator=(const hashtable &other) = delete;
+  hashtable &operator=(const hashtable &ht) = delete;
 
   ~hashtable() {
-    delete[] buckets_;
+    delete [] buckets;
   }
 
-  static uint32_t hash(const static_string &s) {
-    const uint32_t P = 101;
+  size_t tokens() const { return next_offset; }
 
-    uint32_t hash_val = 0;
-    uint32_t ppow = 1;
+  void add(const string &word) {
+    const auto hashval = hash(word.c_str());
 
-    for (auto c : s) {
-      hash_val += ppow * c;
-      ppow *= P;
-    }
+    list<bucket> &l = buckets[hashval % num_buckets];
 
-    return hash_val;
-  }
-
-  void add(const static_string &word, post p) {
-    const auto hash_val = hash(word);
-    list<bucket> &l = buckets_[hash_val % num_buckets_];
-
-    for (auto &bucket : l) {
-      if (bucket.hash_val == hash_val && bucket.word == word) {
-        bucket.posts.push_back(p);
+    for (auto &b : l) {
+      if (b.hashval == hashval && b.word == word) {
+        b.posts.push_back(next_offset++);
         return;
       }
     }
-
-    l.push_back({hash_val, word, list<post>()});
-    l.back().posts.push_back(p);
-  }
-
-  const bucket* get(static_string &word) {
-    const auto hash_val = hash(word);
-    list<bucket> &l = buckets_[hash_val % num_buckets_];
-
-    for (auto &bucket : l) {
-      if (bucket.hash_val == hash_val && bucket.word == word) {
-        return &bucket;
-      }
-    }
-
-    return nullptr;
-  }
-
-  const list<bucket> *begin() const {
-    return buckets_;
-  }
-
-  const list<bucket> *end() const {
-    return  buckets_ + num_buckets_;
+    l.emplace_back(hashval, word);
+    l.back().posts.push_back(next_offset++);
   }
 };
+
 }
