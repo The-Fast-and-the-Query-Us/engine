@@ -113,7 +113,7 @@ private:
   size_t cap_ = 0;
 
   void grow(size_t new_cap) {
-    elts = static_cast<T*>(realloc(elts, new_cap * sizeof(T)));
+    elts = static_cast<T*>(realloc(static_cast<void*>(elts), new_cap * sizeof(T)));
     cap_ = new_cap;
   }
 };
