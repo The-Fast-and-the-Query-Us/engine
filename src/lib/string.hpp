@@ -9,6 +9,9 @@
 
 namespace fast {
 
+/*
+*  Add SVO by using pointer to store string?
+*/
 class string {
   char *start_ = nullptr;
   size_t len_;
@@ -96,6 +99,12 @@ class string {
       len_ == other.len_ &&
       memcmp(start_, other.start_, len_) == 0
     );
+  }
+
+  bool operator==(const char *cstr) const { // strcmp would be faster
+    const char *p1 = begin();
+    for (; *p1 && *p1 == *cstr; ++p1, ++cstr);
+    return *p1 == *cstr;
   }
 
   std::strong_ordering operator<=>(const string &other) const {
