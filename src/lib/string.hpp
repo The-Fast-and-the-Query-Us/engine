@@ -1,7 +1,6 @@
 #pragma once
 
 #include <common.hpp>
-
 #include <compare>
 #include <cstddef>
 #include <cstdlib>
@@ -10,15 +9,15 @@
 namespace fast {
 
 /*
-*  Add SVO by using pointer to store string?
-*/
+ *  Add SVO by using pointer to store string?
+ */
 class string {
   char *start_ = nullptr;
   size_t len_;
   size_t cap;
 
   void grow(size_t need) {
-    start_ = static_cast<char*>(realloc(start_, need + 1));
+    start_ = static_cast<char *>(realloc(start_, need + 1));
     cap = need;
   }
 
@@ -29,10 +28,10 @@ class string {
     start_[len_] = 0;
   }
 
-  string(const string& other) {
+  string(const string &other) {
     grow(other.cap);
     len_ = other.len_;
-    memcpy(start_, other.start_, len_ + 1); // +1 for null
+    memcpy(start_, other.start_, len_ + 1);  // +1 for null
   }
 
   string(const char *cstr) {
@@ -42,6 +41,14 @@ class string {
     grow(str_len);
     len_ = str_len;
     memcpy(start_, cstr, len_ + 1);
+  }
+
+  string(const char *begin, const char *end) {
+    size_t str_len = end - begin;
+    grow(str_len);
+    len_ = str_len;
+    memcpy(start_, begin, len_ + 1);
+    start_[len_] = 0;
   }
 
   string &operator=(const string &other) {
@@ -67,7 +74,7 @@ class string {
     start_[len_] = 0;
   }
 
-  void operator+=(const string& other) {
+  void operator+=(const string &other) {
     if (len_ + other.len_ > cap) grow(len_ + other.len_);
     memcpy(start_ + len_, other.start_, other.len_);
     len_ += other.len_;
@@ -95,13 +102,10 @@ class string {
   size_t size() const { return len_; }
 
   bool operator==(const string &other) const {
-    return (
-      len_ == other.len_ &&
-      memcmp(start_, other.start_, len_) == 0
-    );
+    return (len_ == other.len_ && memcmp(start_, other.start_, len_) == 0);
   }
 
-  bool operator==(const char *cstr) const { // strcmp would be faster
+  bool operator==(const char *cstr) const {  // strcmp would be faster
     const char *p1 = begin();
     for (; *p1 && *p1 == *cstr; ++p1, ++cstr);
     return *p1 == *cstr;
@@ -110,21 +114,26 @@ class string {
   std::strong_ordering operator<=>(const string &other) const {
     const auto cmp = memcmp(start_, other.start_, min(len_, other.len_));
 
-    if (cmp < 0)      return std::strong_ordering::less;
-    else if (cmp > 0) return std::strong_ordering::greater;
-    else              return len_ <=> other.len_;
+    if (cmp < 0)
+      return std::strong_ordering::less;
+    else if (cmp > 0)
+      return std::strong_ordering::greater;
+    else
+      return len_ <=> other.len_;
   }
 
   std::strong_ordering operator<=>(const char *cstr) const {
     const char *ptr = begin();
     for (; *ptr; ++ptr, ++cstr) {
       if (*ptr != *cstr) {
-        if (*ptr < *cstr) return std::strong_ordering::less;
-        else return std::strong_ordering::greater;
+        if (*ptr < *cstr)
+          return std::strong_ordering::less;
+        else
+          return std::strong_ordering::greater;
       }
     }
     return std::strong_ordering::equal;
   }
 };
 
-}
+}  // namespace fast
