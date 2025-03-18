@@ -53,7 +53,7 @@ class string {
 
   string(const char *begin, const char *end) : string(begin, end - begin) {}
 
-  explicit string(const string_view &sv) : string(sv.begin(), sv.size()) {}
+  string(const string_view &sv) : string(sv.begin(), sv.size()) {}
 
   string &operator=(const string &other) {
     if (this != &other) {
@@ -113,20 +113,18 @@ class string {
     return string_view(start_, len_);
   }
 
-  bool operator==(const string &other) const {
-    return this->operator string_view() == other.operator string_view();
+  string_view view() const {
+    return this->operator string_view();
   }
 
-  std::strong_ordering operator<=>(const string &other) const {
-    return this->operator string_view() <=> other.operator string_view();
+  template<class T>
+  bool operator==(const T &other) {
+    return this->view() == static_cast<string_view>(other);
   }
 
-  bool operator==(const char *cstr) const {
-    return this->operator string_view() == cstr;
-  }
-
-  std::strong_ordering operator<=>(const char *cstr) const {
-    return this->operator string_view() <=> cstr;
+  template<class T>
+  std::strong_ordering operator<=>(const T &other) {
+    return this->view() <=> static_cast<string_view>(other);
   }
 };
 
