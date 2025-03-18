@@ -32,4 +32,9 @@ int main() {
     ++it;
   }
 
+  for (auto it = pl->begin(); it != pl->end();) {
+    const auto s = *it;
+    assert(++it == pl->upper_bound(s));
+  }
+
 }
