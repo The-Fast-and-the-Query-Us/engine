@@ -15,9 +15,6 @@ void test(const list<uint64_t> &l) {
 
   auto it = l.begin();
   for (const auto num : *pl) {
-    if (*it != num) {
-      std::cerr << *it << " != " << num << std::endl;
-    }
     assert(*it == num);
     ++it;
   }
@@ -45,7 +42,7 @@ int main() {
   }
 
   test(l);
-
+  std::cout << "Pass test 1" << std::endl;
 
   while (l.size() < 20'000) {
     l.push_back(base);
@@ -53,4 +50,5 @@ int main() {
   }
 
   test(l);
+  std::cout << "Pass big test" << std::endl;
 }
