@@ -20,9 +20,10 @@ void test(const list<uint64_t> &l) {
 
   assert(it == l.end());
 
-  for (auto it = pl->begin(); it != pl->end();) {
-    const auto num = *it;
-    assert(pl->upper_bound(num) == ++it);
+  auto cmp = pl->begin();
+  for (auto it = pl->begin(); it != pl->end(); ++it) {
+    assert(cmp == it);
+    cmp = pl->upper_bound(*it);
   }
 
   free(pl);
