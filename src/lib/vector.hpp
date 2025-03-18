@@ -5,16 +5,19 @@
 #pragma once
 
 #include <cassert>
-#include <cstddef> // for size_t
+#include <common.hpp>
+#include <cstddef>  // for size_t
 #include <cstdlib>
 #include <new>
 
-#include <common.hpp>
-
 namespace fast {
 
-template <typename T> class vector {
-public:
+/*
+ * Note: due to realloc, relative pointers are not persistent
+ */
+template <typename T>
+class vector {
+ public:
   vector() : elts{nullptr}, size_{0}, cap_{0} {}
 
   ~vector() {
@@ -24,12 +27,12 @@ public:
 
   vector(size_t num_elements) : size_{num_elements} {
     grow(num_elements);
-    for (auto i = 0u; i < num_elements; ++i) new(elts + i) T();
+    for (auto i = 0u; i < num_elements; ++i) new (elts + i) T();
   }
 
   vector(size_t num_elements, const T &val) : size_{num_elements} {
     grow(num_elements);
-    for (auto i = 0u; i < num_elements; ++i) new(elts + i) T(val);
+    for (auto i = 0u; i < num_elements; ++i) new (elts + i) T(val);
   }
 
   vector(const vector<T> &other) : size_{other.size_} {
@@ -39,7 +42,7 @@ public:
 
   vector operator=(const vector<T> &other) {
     if (this != &other) {
-      clear(); 
+      clear();
       if (other.size_ > cap_) grow(other.size_);
       for (auto i = 0u; i < other.size_; ++i) {
         new (elts + i) T(other.elts[i]);
@@ -68,8 +71,8 @@ public:
     return *this;
   }
 
-  void reserve(size_t newCapacity) { 
-    if (newCapacity > cap_) grow(newCapacity); 
+  void reserve(size_t newCapacity) {
+    if (newCapacity > cap_) grow(newCapacity);
   }
 
   size_t size() const { return size_; }
@@ -80,6 +83,8 @@ public:
 
   const T &operator[](size_t i) const { return elts[i]; }
 
+  T &back() { return elts[size_ - 1]; }
+
   void push_back(const T &x) {
     if (size_ == cap_) {
       grow(max(size_t(8), cap_ << 1));
@@ -87,8 +92,8 @@ public:
     new (elts + size_++) T(x);
   }
 
-  template<typename ... Args>
-  void emplace_back(Args&& ... args) {
+  template <typename... Args>
+  void emplace_back(Args &&...args) {
     if (size_ == cap_) grow(max(size_t(8), cap_ << 1));
     new (elts + size_++) T(args...);
   }
@@ -102,19 +107,20 @@ public:
 
   T *end() { return elts + size_; }
 
-  void clear() { 
-    for (auto i = 0u; i < size_; ++i) elts[i].~T(); 
+  void clear() {
+    for (auto i = 0u; i < size_; ++i) elts[i].~T();
     size_ = 0;
   }
 
-private:
+ private:
   T *elts = nullptr;
   size_t size_ = 0;
   size_t cap_ = 0;
 
   void grow(size_t new_cap) {
-    elts = static_cast<T*>(realloc(static_cast<void*>(elts), new_cap * sizeof(T)));
+    elts = static_cast<T *>(
+        realloc(static_cast<void *>(elts), new_cap * sizeof(T)));
     cap_ = new_cap;
   }
 };
-} // namespace fast
+}  // namespace fast
