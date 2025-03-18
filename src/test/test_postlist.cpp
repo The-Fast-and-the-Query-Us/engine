@@ -46,6 +46,8 @@ int main() {
 
   const auto space2 = postlist::size_needed(l);
   pl = (postlist*)malloc(space2);
+
+  memset(pl, 0, space2);
   postlist::write(l, pl);
 
   for (auto it = pl->begin(); it != pl->end();) {
