@@ -44,13 +44,16 @@ class string {
     memcpy(start_, cstr, len_ + 1);
   }
 
-  string(const char *begin, const char *end) {
-    size_t str_len = end - begin;
-    grow(str_len);
-    len_ = str_len;
-    memcpy(start_, begin, len_);
+  string(const char *begin, size_t len) {
+    grow(len);
+    len_ = len;
+    memcpy(start_, begin, len);
     start_[len_] = 0;
   }
+
+  string(const char *begin, const char *end) : string(begin, end - begin) {}
+
+  string(const string_view &sv) : string(sv.begin(), sv.size()) {}
 
   string &operator=(const string &other) {
     if (this != &other) {
