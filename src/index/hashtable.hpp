@@ -15,7 +15,7 @@ class hashtable {
     string word;
     list<uint64_t> posts;
 
-    bucket(uint64_t hashval, const string &word) : hashval(hashval), word(word) {}
+    bucket(uint64_t hashval, const string_view &word) : hashval(hashval), word(word) {}
   };
 
   size_t num_buckets, next_offset;
@@ -38,8 +38,8 @@ public:
 
   size_t tokens() const { return next_offset; }
 
-  void add(const string &word) {
-    const auto hashval = hash(word.c_str());
+  void add(const string_view &word) {
+    const auto hashval = hash(word);
 
     list<bucket> &l = buckets[hashval % num_buckets];
 
