@@ -1,5 +1,6 @@
 #pragma once
 
+#include "string_view.hpp"
 #include <common.hpp>
 #include <compare>
 #include <cstddef>
@@ -47,7 +48,7 @@ class string {
     size_t str_len = end - begin;
     grow(str_len);
     len_ = str_len;
-    memcpy(start_, begin, len_ + 1);
+    memcpy(start_, begin, len_);
     start_[len_] = 0;
   }
 
@@ -133,6 +134,10 @@ class string {
       }
     }
     return std::strong_ordering::equal;
+  }
+
+  operator string_view() {
+    return string_view(start_, len_);
   }
 };
 
