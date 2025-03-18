@@ -53,7 +53,7 @@ class string {
 
   string(const char *begin, const char *end) : string(begin, end - begin) {}
 
-  string(const string_view &sv) : string(sv.begin(), sv.size()) {}
+  explicit string(const string_view &sv) : string(sv.begin(), sv.size()) {}
 
   string &operator=(const string &other) {
     if (this != &other) {
