@@ -12,7 +12,7 @@ namespace fast {
 
 /*
 * A minimal singly linked list optimized for memory at the expense of features
-* Overhead = 2 * sizeof(void*) + 1 bit per element
+* Overhead = 3 * sizeof(void*) + 1 bit per element
 */
 template <class T, unsigned chunk_size=64>
 class list {
