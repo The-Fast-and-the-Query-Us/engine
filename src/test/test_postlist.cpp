@@ -27,6 +27,8 @@ void test(const list<uint64_t> &l) {
     cmp = pl->upper_bound(*it);
   }
 
+  assert(pl->words() == l.size());
+
   free(pl);
 }
 
