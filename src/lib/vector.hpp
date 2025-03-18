@@ -83,7 +83,7 @@ class vector {
 
   const T &operator[](size_t i) const { return elts[i]; }
 
-  T &back() { return elts[size - 1]; }
+  T &back() { return elts[size_ - 1]; }
 
   void push_back(const T &x) {
     if (size_ == cap_) {
