@@ -37,7 +37,7 @@ class list {
 
   public:
 
-  list() {
+  list() : len(0) {
     first = reinterpret_cast<node*>(malloc(sizeof(node)));
     last = first;
     first->ptr = 0;

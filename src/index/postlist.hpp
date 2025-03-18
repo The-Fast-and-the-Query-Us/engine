@@ -10,11 +10,9 @@ namespace fast {
 * in memory postlist serialization
 *
 *  Format:
-*  header, sync <post value, post offset>, posts <delta>\0
+*  header, sync (uncompressed) <post value, post offset>, posts <delta>\0
 */
 class postlist {
-  static constexpr size_t MIN_SYNC = 50;
-
   uint64_t word_count, post_len, sync_count;
 
   pair<uint64_t>  *sync()   { return reinterpret_cast<pair<uint64_t>*>(&sync_count + 1); }
@@ -23,6 +21,8 @@ class postlist {
   unsigned char *posts()  { return reinterpret_cast<unsigned char*>(sync() + sync_count); }
 
   public:
+
+  uint64_t words() const { return word_count; }
 
   static size_t size_needed(const list<uint64_t> &posts) {
     size_t dynamic{0};
@@ -68,14 +68,17 @@ class postlist {
     return write_pos;
   }
 
+  // index stream reader
+  // Todo: figure out URL retrieval
   class isr {
     friend class postlist;
 
-    const unsigned char *buf;
-    uint64_t acc;
+    const unsigned char *buf; // points to start of next delta to be read
+    uint64_t acc; // acc(umulator) to total all the deltas
 
-    isr(const unsigned char *buf, uint64_t acc) : buf(buf), acc(acc) {}
     isr() {}
+    isr(const unsigned char *buf, uint64_t acc) : buf(buf), acc(acc) {}
+
     public:
     
     isr& operator++() {
