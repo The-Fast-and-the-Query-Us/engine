@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
+#include <iostream>
 
 using namespace fast;
 
@@ -14,6 +15,9 @@ void test(const list<uint64_t> &l) {
 
   auto it = l.begin();
   for (const auto num : *pl) {
+    if (*it != num) {
+      std::cerr << *it << " != " << num << std::endl;
+    }
     assert(*it == num);
     ++it;
   }
