@@ -13,22 +13,22 @@ namespace fast {
 *  header, sync <post value, post offset>, posts <delta>\0
 */
 class postlist {
-  static constexpr size_t MIN_SYNC = 100;
+  static constexpr size_t MIN_SYNC = 50;
 
   uint64_t word_count, post_len, sync_count;
 
   pair<uint64_t>  *sync()   { return reinterpret_cast<pair<uint64_t>*>(&sync_count + 1); }
+
+  // sync_count must be init first
   unsigned char *posts()  { return reinterpret_cast<unsigned char*>(sync() + sync_count); }
 
   public:
 
   static size_t size_needed(const list<uint64_t> &posts) {
-    const auto syncs = fast_sqrt(posts.size());
     size_t dynamic{0};
 
-    if (syncs >= MIN_SYNC) {
-      dynamic += sizeof(pair<uint64_t>) * syncs;
-    }
+    const auto sync_count = fast_sqrt(posts.size());
+    dynamic += sizeof(pair<uint64_t>) * sync_count;
 
     size_t last = 0;
     for (const auto post : posts) {
@@ -43,23 +43,19 @@ class postlist {
 
   static unsigned char *write(const list<uint64_t> &posts, postlist *buffer) {
     buffer->word_count = posts.size();
-    const auto syncs = fast_sqrt(posts.size());
-
-    if (syncs >= MIN_SYNC) {
-      buffer->sync_count = syncs;
-    } else {
-      buffer->sync_count = 0;
-    }
+    buffer->sync_count = fast_sqrt(posts.size());
 
     auto write_pos = buffer->posts();
     uint64_t last = 0;
     size_t i      = 0;
 
+    const auto POST_PER_SYNC = posts.size() / buffer->sync_count;
+
     for (const auto post : posts) {
       write_pos = encode(post - last, write_pos);
 
-      if (syncs >= MIN_SYNC && (i + 1) % syncs == 0) {
-        buffer->sync()[i / syncs] = {uint64_t(write_pos - buffer->posts()), post};
+      if ((i + 1) % POST_PER_SYNC == 0) {
+        buffer->sync()[i / POST_PER_SYNC] = {uint64_t(write_pos - buffer->posts()), post};
       }
 
       last = post;
