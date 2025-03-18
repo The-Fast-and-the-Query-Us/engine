@@ -14,7 +14,7 @@ int main() {
 
   for (int i = 0; i < 1000; ++i) {
     l.push_back(base);
-    base += (rand() % 10000) + 1;
+    base += (rand() % 100) + 1;
   }
 
   const auto space = postlist::size_needed(l);
