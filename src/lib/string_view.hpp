@@ -48,7 +48,7 @@ class string_view {
       return len <=> other.len;
   }
 
-  bool operator==(const char *cstr) const {
+  bool operator==(const char *cstr) const { // do we allow null to be in view?
     for (size_t i = 0; i < len; ++i) {
       if (start[i] != cstr[i]) return false;
     }

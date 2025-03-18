@@ -35,7 +35,7 @@ class string {
     memcpy(start_, other.start_, len_ + 1);  // +1 for null
   }
 
-  string(const char *cstr) {
+  explicit string(const char *cstr) {
     size_t str_len{0};
     for (auto ptr = cstr; *ptr; ++ptr, ++str_len);
 
@@ -102,42 +102,24 @@ class string {
 
   size_t size() const { return len_; }
 
-  bool operator==(const string &other) const {
-    return (len_ == other.len_ && memcmp(start_, other.start_, len_) == 0);
+  operator string_view() const {
+    return string_view(start_, len_);
   }
 
-  bool operator==(const char *cstr) const {  // strcmp would be faster
-    const char *p1 = begin();
-    for (; *p1 && *p1 == *cstr; ++p1, ++cstr);
-    return *p1 == *cstr;
+  bool operator==(const string &other) const {
+    return this->operator string_view() == other.operator string_view();
   }
 
   std::strong_ordering operator<=>(const string &other) const {
-    const auto cmp = memcmp(start_, other.start_, min(len_, other.len_));
+    return this->operator string_view() <=> other.operator string_view();
+  }
 
-    if (cmp < 0)
-      return std::strong_ordering::less;
-    else if (cmp > 0)
-      return std::strong_ordering::greater;
-    else
-      return len_ <=> other.len_;
+  bool operator==(const char *cstr) const {
+    return this->operator string_view() == cstr;
   }
 
   std::strong_ordering operator<=>(const char *cstr) const {
-    const char *ptr = begin();
-    for (; *ptr; ++ptr, ++cstr) {
-      if (*ptr != *cstr) {
-        if (*ptr < *cstr)
-          return std::strong_ordering::less;
-        else
-          return std::strong_ordering::greater;
-      }
-    }
-    return std::strong_ordering::equal;
-  }
-
-  operator string_view() {
-    return string_view(start_, len_);
+    return this->operator string_view() <=> cstr;
   }
 };
 
