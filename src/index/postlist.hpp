@@ -58,7 +58,7 @@ class postlist {
     for (const auto post : posts) {
       write_pos = encode(post - last, write_pos);
 
-      if (syncs >= MIN_SYNC && i % syncs == 0) {
+      if (syncs >= MIN_SYNC && (i + 1) % syncs == 0) {
         buffer->sync()[i / syncs] = {uint64_t(write_pos - buffer->posts()), post};
       }
 
