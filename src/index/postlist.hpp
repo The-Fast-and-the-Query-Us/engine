@@ -15,9 +15,9 @@ namespace fast {
 class postlist {
   static constexpr size_t MIN_SYNC = 100;
 
-  size_t word_count, post_len, sync_count;
+  uint64_t word_count, post_len, sync_count;
 
-  pair<size_t>  *sync()   { return reinterpret_cast<pair<size_t>*>(&sync_count + 1); }
+  pair<uint64_t>  *sync()   { return reinterpret_cast<pair<uint64_t>*>(&sync_count + 1); }
   unsigned char *posts()  { return reinterpret_cast<unsigned char*>(sync() + sync_count); }
 
   public:
@@ -27,7 +27,7 @@ class postlist {
     size_t dynamic{0};
 
     if (syncs >= MIN_SYNC) {
-      dynamic += 2 * sizeof(size_t) * syncs;
+      dynamic += sizeof(pair<uint64_t>) * syncs;
     }
 
     size_t last = 0;
@@ -52,14 +52,16 @@ class postlist {
     }
 
     auto write_pos = buffer->posts();
-    size_t last = 0;
-    size_t i    = 0;
+    uint64_t last = 0;
+    size_t i      = 0;
 
     for (const auto post : posts) {
-      if (syncs >= MIN_SYNC && i % syncs == 0) {
-        buffer->sync()[i / syncs] = {size_t(write_pos - buffer->posts()), post};
-      }
       write_pos = encode(post - last, write_pos);
+
+      if (syncs >= MIN_SYNC && i % syncs == 0) {
+        buffer->sync()[i / syncs] = {uint64_t(write_pos - buffer->posts()), post};
+      }
+
       last = post;
       i++;
     }
@@ -76,6 +78,8 @@ class postlist {
     const unsigned char *buf;
     uint64_t acc;
 
+    isr(const unsigned char *buf, uint64_t acc) : buf(buf), acc(acc) {}
+    isr() {}
     public:
     
     isr& operator++() {
@@ -101,6 +105,24 @@ class postlist {
   isr end() {
     isr ans;
     ans.buf = posts() + post_len;
+    return ans;
+  }
+
+  isr upper_bound(uint64_t search) {
+    size_t post_offset = 0;
+    uint64_t acc = 0;
+
+    auto table = sync();
+    for (size_t i = 0; i < sync_count; ++i) {
+      if (table[i].second > search) break;
+      post_offset = table[i].first;
+      acc = table[i].second;
+    }
+
+    isr ans{posts() + post_offset, acc};
+
+    while (ans != end() && *ans <= search) ++ans;
+
     return ans;
   }
 
