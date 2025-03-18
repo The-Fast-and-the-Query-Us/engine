@@ -35,7 +35,7 @@ class string {
     memcpy(start_, other.start_, len_ + 1);  // +1 for null
   }
 
-  explicit string(const char *cstr) {
+  string(const char *cstr) { // maybe mark explicit to avoid accidentaly heap allocation?
     size_t str_len{0};
     for (auto ptr = cstr; *ptr; ++ptr, ++str_len);
 
