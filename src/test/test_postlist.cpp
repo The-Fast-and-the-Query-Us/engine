@@ -37,4 +37,21 @@ int main() {
     assert(++it == pl->upper_bound(s));
   }
 
+  free(pl);
+
+  while (l.size() < 20'000) {
+    l.push_back(base);
+    base += (rand() % 100) + 1;
+  }
+
+  const auto space2 = postlist::size_needed(l);
+  pl = (postlist*)malloc(space2);
+  postlist::write(l, pl);
+
+  for (auto it = pl->begin(); it != pl->end();) {
+    const auto s = *it;
+    assert(++it == pl->upper_bound(s));
+  }
+
+  free(pl);
 }
