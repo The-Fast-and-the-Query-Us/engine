@@ -97,6 +97,10 @@ class string {
     start_[len_] = 0;
   }
 
+  string substr(size_t i, size_t len) {
+    return string(start_ + i, len);
+  }
+
   char &operator[](size_t idx) { return start_[idx]; }
 
   char *begin() const { return start_; }
