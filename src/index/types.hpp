@@ -114,6 +114,8 @@ public:
     return string_view((const char *)word, (const char *)buff);
   }
 
+  isr(const unsigned char *buff) : isr<Text>(buff) {}
+
   isr(const unsigned char *buff, uint64_t acc) : isr<Text>(buff, acc) {
     uint64_t len;
     buff = decode(len, buff);
