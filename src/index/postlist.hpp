@@ -2,17 +2,11 @@
 
 
 #include "common.hpp"
-#include "compress.hpp"
 #include "list.hpp"
 #include "types.hpp"
 
 namespace fast::index {
-/*
-* in memory postlist serialization
-*
-*  Format:
-*  header, sync (uncompressed) <post value, post offset>, posts <delta>\0
-*/
+
 template <post_type PT>
 class postlist {
   uint64_t word_count, post_len, sync_count;
@@ -97,9 +91,9 @@ class postlist {
       acc = table[i].second;
     }
 
-    isr ans(posts() + post_offset, acc);
+    isr<PT> ans(posts() + post_offset, acc);
 
-    while (ans != end() && ans <= search) ++ans;
+    while (ans != end() && ans < search) ++ans;
 
     return ans;
   }

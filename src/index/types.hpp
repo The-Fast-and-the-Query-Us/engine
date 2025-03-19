@@ -88,9 +88,8 @@ public:
     this->acc += acc;
   }
 
-  operator uint64_t() const {
-    return acc;
-  }
+  uint64_t operator*() const { return acc; }
+  operator uint64_t() const { return acc; }
 
   bool operator==(const isr &other) const {
     return buff == other.buff;

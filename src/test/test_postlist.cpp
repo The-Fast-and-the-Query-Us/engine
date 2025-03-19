@@ -1,17 +1,19 @@
 #include "list.hpp"
 #include "postlist.hpp"
+#include "types.hpp"
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
 
 using namespace fast;
+using namespace index;
 
-void test(const list<uint64_t> &l) {
-  const auto space = postlist::size_needed(l);
-  auto pl = (postlist*) malloc(space);
+void test(const list<post<Text>> &l) {
+  const auto space = index::postlist<Text>::size_needed(l);
+  auto pl = (postlist<Text>*) malloc(space);
   memset(pl, 0, space);
-  postlist::write(l, pl);
+  postlist<Text>::write(l, pl);
 
   auto it = l.begin();
   for (const auto num : *pl) {
@@ -21,10 +23,8 @@ void test(const list<uint64_t> &l) {
 
   assert(it == l.end());
 
-  auto cmp = pl->begin();
   for (auto it = pl->begin(); it != pl->end(); ++it) {
-    assert(cmp == it);
-    cmp = pl->upper_bound(*it);
+    assert(it == pl->lower_bound(it));
   }
 
   assert(pl->words() == l.size());
@@ -34,7 +34,7 @@ void test(const list<uint64_t> &l) {
 
 int main() {
   srand(0);
-  list<uint64_t> l;
+  list<index::post<index::Text>> l;
   
   uint64_t base = 0;
 
