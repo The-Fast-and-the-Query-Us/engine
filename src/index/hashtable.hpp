@@ -28,6 +28,7 @@ class hashtable {
   list<doc> docs;
 
   friend class dictionary;
+  friend class doclist;
 
 public:
 
