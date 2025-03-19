@@ -28,7 +28,7 @@ public:
   }
 
   void insert(fast::string url) {
-    scoped_lock lock(&mtx);
+    fast::scoped_lock lock(&mtx);
 
     fast::string hostname;
     uint8_t slash_cnt = 0;
@@ -47,7 +47,7 @@ public:
   };
 
   fast::string next() {
-    scoped_lock lock(&mtx);
+    fast::scoped_lock lock(&mtx);
 
     while (num_links == 0)
       cv.wait(&mtx);
@@ -77,7 +77,7 @@ public:
   };
 
   // int save() {
-  // scoped_lock lock(&mtx);
+  // fast::scoped_lock lock(&mtx);
   //
   // int fd = open(save_path, O_WRONLY | O_CREAT | O_TRUNC);
   // if (fd == -1) {
