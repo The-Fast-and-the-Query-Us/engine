@@ -15,6 +15,11 @@
 namespace fast {
 namespace crawler {
 
+  //TODO:
+  // - Add blacklist?
+  // - How do we manage data and communication across all our latpops?
+  // - 
+
 class frontier {
 public:
   frontier(const char *_save_path) : save_path(_save_path) {

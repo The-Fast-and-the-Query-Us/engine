@@ -79,10 +79,11 @@ private:
   }
 
   void* worker() {
+    link_finder html_scraper;
     while (!shutdown_flag) {
       fast::string url = crawl_frontier.next();
       visited_urls.insert(url);
-      link_finder html_scraper(url.data());
+      html_scraper.parse_url(url.begin());
       fast::vector<fast::string> extracted_links = html_scraper.extract_links();
       for (const auto &link : extracted_links) {
         if (!visited_urls.contains(link)) { crawl_frontier.insert(link); }

@@ -20,28 +20,67 @@ static constexpr uint8_t REQUEST_TYPE_LEN = 16;
 static constexpr uint8_t HOST_LEN = 6;
 static constexpr uint8_t USER_AGENT_LEN = 38;
 static constexpr uint8_t HTML_TAIL_LEN = 61;
+static constexpr char COLON = ':';
+static constexpr char SLASH = '/';
 
 class link_finder {
   public:
-    link_finder(const char *file) : url_parts(), url(file) {
-      file_fd = open(url.data(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    void parse_url(const char *file) {
+      url = file;
+      file_fd = open(url.begin(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
       if (file_fd == -1) {
         throw std::runtime_error("Could not open file in link_finder\n");
       }
-    } 
+
+      path_buffer = new char[url.size() + 1];
+
+      const char *f{};
+      char *t{};
+      for (t = path_buffer, f = url; *t++ = *f++;) {}
+
+      service = path_buffer;
+
+      char *p{};
+      for (p = path_buffer; *p && *p != COLON; p++) {}
+
+      if (*p) {
+        // Mark the end of the Service.
+        *p++ = 0;
+
+        if (*p == SLASH) { ++p; }
+        if (*p == SLASH) { ++p; }
+
+        host = p;
+
+        for (; *p && *p != SLASH && *p != COLON; p++) {}
+
+        if (*p == COLON) {
+          // port specified.  Skip over the COLON and
+          // the port number.
+          *p++ = 0;
+          port = +p;
+          for (; *p && *p != SLASH; p++) {}
+        } else {
+          port = p;
+        }
+
+        if (*p) {
+          // Mark the end of the host and port.
+          *p++ = 0;
+        }
+
+        // Whatever remains is the path.
+        path = p;
+      } else {
+        host = path = p;
+      }
+    }
 
     ~link_finder() {
-      SSL_free(ssl);
-      close(sock_fd);
-      freeaddrinfo(address);
-      SSL_CTX_free(ctx);
-      close(file_fd);
+      destroy_objects();
     }
 
     fast::vector<fast::string> extract_links() {
-      setup_connection();
-      send_get_request();
-
       fast::vector<fast::string> links;
 
       char buffer[MAX_PACKET_SIZE];
@@ -49,6 +88,9 @@ class link_finder {
       bool found_header_end = false;
       const char* header_end = "\r\n\r\n";
       int header_match_pos = 0;
+
+      setup_connection();
+      send_get_request();
 
       // TODO: Need to write to a file.
       while ((bytes = SSL_read(ssl, buffer, sizeof(buffer))) > 0) {
@@ -82,6 +124,8 @@ class link_finder {
       // If there is, then use that (and cache that info) to crawl those links
       // TODO: Blobbify the robots.txt cache
 
+
+      destroy_objects();
       return links;
     }
     // We want to name the html file the URL
@@ -90,19 +134,19 @@ class link_finder {
 
   private:
     struct addrinfo *address{};
-    struct addrinfo hints {};
-    url_parser url_parts;
-    int file_fd, sock_fd{};
+    struct addrinfo hints{};
+    int file_fd = -1, sock_fd = -1;
     fast::string url;
     SSL_CTX *ctx{};
     SSL *ssl{};
+    char *path_buffer{}, *service, *host, *port, *path;
 
     void setup_connection() {
       memset(&hints, 0, sizeof(hints));
       hints.ai_family = AF_INET;
       hints.ai_socktype = SOCK_STREAM;
       hints.ai_protocol = IPPROTO_TCP;
-      if (getaddrinfo(url_parts.host, "443", &hints, &address) < 0) {
+      if (getaddrinfo(host, "443", &hints, &address) < 0) {
         throw std::runtime_error("getaddrinfo failed. Address not found.\n");
       }
 
@@ -150,22 +194,22 @@ class link_finder {
       char *limit = get_request + MAX_MESSAGE_SIZE;
       const char *agent_email = "shivgov@umich.edu";
 
-      if (p + REQUEST_TYPE_LEN + strlen(url_parts.path) > limit) {
+      if (p + REQUEST_TYPE_LEN + strlen(path) > limit) {
         throw std::runtime_error("Get request buffer overflow.\n");
       }
       strcat(p, "GET /");
-      if (strlen(url_parts.path)) {
-        strcat(p,url_parts.path);
+      if (strlen(path)) {
+        strcat(p,path);
       }
       strcat(p, " HTTP/1.1\r\n");
 
-      if (p + HOST_LEN + strlen(url_parts.host) + strlen(url_parts.port) > limit) {
+      if (p + HOST_LEN + strlen(host) + strlen(port) > limit) {
         throw std::runtime_error("Get request buffer overflow.\n");
       }
       strcat(p, "host: ");
-      strcat(p,url_parts.host);
-      if (strlen(url_parts.port)) {
-        strcat(p,url_parts.port);
+      strcat(p,host);
+      if (strlen(port)) {
+        strcat(p,port);
       }
       strcat(p, "\r\n");
 
@@ -190,6 +234,33 @@ class link_finder {
         SSL_CTX_free(ctx);
         close(sock_fd);
         throw std::runtime_error("SSL write failed.\n");
+      }
+    }
+
+    void destroy_objects() {
+      if (path_buffer) {
+        delete[] path_buffer;
+        path_buffer = nullptr;
+      }
+      if (ssl) {
+        SSL_free(ssl);
+        ssl = nullptr;
+      }
+      if (sock_fd >= 0) {
+        close(sock_fd);
+        sock_fd = nullptr;
+      }
+      if (address) {
+        freeaddrinfo(address);
+        address = nullptr;
+      }
+      if (ctx) {
+        SSL_CTX_free(ctx);
+        ctx = nullptr;
+      }
+      if (file_fd >= 0) {
+        close(file_fd);
+        file_fd = -1;
       }
     }
 };
