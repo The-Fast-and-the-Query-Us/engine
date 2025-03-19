@@ -18,4 +18,6 @@ int main() {
   s += s;
   
   assert(s == "cccc");
+
+  assert(string("some") == string_view("some"));
 }

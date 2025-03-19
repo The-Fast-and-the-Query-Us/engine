@@ -35,6 +35,12 @@ constexpr auto& get(tuple<Head, Tail...> &t) {
   else return get<i - 1>(t.tail);
 }
 
+template<class F, class S = F>
+struct pair {
+  F first;
+  S second;
+};
+
 /*
  * Return smallest x such that x >= base && x % mult == 0
  */
