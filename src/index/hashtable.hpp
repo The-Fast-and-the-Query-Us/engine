@@ -18,12 +18,19 @@ class hashtable {
     bucket(uint64_t hashval, const string_view &word) : hashval(hashval), word(word) {}
   };
 
+  struct doc {
+    uint64_t offset;
+    string url;
+  };
+
   size_t num_buckets, next_offset;
   list<bucket> *buckets;
+  list<doc> docs;
 
   friend class dictionary;
 
 public:
+
   hashtable(size_t num_buckets = 2048) : num_buckets(num_buckets), next_offset(0) {
     buckets = new list<bucket>[num_buckets];
   }
@@ -51,6 +58,10 @@ public:
     }
     l.emplace_back(hashval, word);
     l.back().posts.push_back(next_offset++);
+  }
+
+  void doc_end(const string_view &url) {
+    docs.emplace_back(next_offset++, url);
   }
 };
 
