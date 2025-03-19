@@ -1,7 +1,6 @@
 #pragma once
 
 #include "compress.hpp"
-#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -118,9 +117,9 @@ public:
 
   isr(const unsigned char *buff, uint64_t acc) : isr<Text>(buff, acc) {
     uint64_t len;
-    buff = decode(len, buff);
-    word = buff;
-    buff += len;
+    this->buff = decode(len, this->buff);
+    word = this->buff;
+    this->buff += len;
   }
 
   isr &operator++() {
