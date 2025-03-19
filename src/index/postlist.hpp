@@ -15,10 +15,14 @@ namespace fast {
 class postlist {
   uint64_t word_count, post_len, sync_count;
 
-  pair<uint64_t>  *sync()   { return reinterpret_cast<pair<uint64_t>*>(&sync_count + 1); }
+  pair<uint64_t> *sync()   { 
+    return reinterpret_cast<pair<uint64_t>*>(&sync_count + 1); 
+  }
 
   // sync_count must be init first
-  unsigned char *posts()  { return reinterpret_cast<unsigned char*>(sync() + sync_count); }
+  unsigned char *posts()  { 
+    return reinterpret_cast<unsigned char*>(sync() + sync_count);
+  }
 
   public:
 
@@ -55,7 +59,10 @@ class postlist {
       write_pos = encode(post - last, write_pos);
 
       if ((i + 1) % POST_PER_SYNC == 0) {
-        buffer->sync()[i / POST_PER_SYNC] = {uint64_t(write_pos - buffer->posts()), post};
+        buffer->sync()[i / POST_PER_SYNC] = {
+          uint64_t(write_pos - buffer->posts()), 
+          post
+        };
       }
 
       last = post;
@@ -69,7 +76,6 @@ class postlist {
   }
 
   // index stream reader
-  // Todo: figure out URL retrieval
   class isr {
     friend class postlist;
 
