@@ -4,7 +4,6 @@
 #include <stdexcept>
 #include "../lib/string.hpp"
 #include "../lib/vector.hpp"
-#include "url_parser.hpp"
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -36,7 +35,7 @@ class link_finder {
 
       const char *f{};
       char *t{};
-      for (t = path_buffer, f = url; *t++ = *f++;) {}
+      for (t = path_buffer, f = url.begin(); *t++ = *f++;) {}
 
       service = path_buffer;
 
