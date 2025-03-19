@@ -1,6 +1,7 @@
 #pragma once
 
 #include "compress.hpp"
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -19,6 +20,8 @@ struct post;
 template<>
 struct post<Text> {
   uint64_t offset;
+
+  operator uint64_t() const { return offset; }
 
   post(uint64_t offset) : offset(offset) {}
 
@@ -77,6 +80,8 @@ protected:
   const unsigned char *buff;
 
 public:
+
+  isr(const unsigned char *buff) : buff(buff) {}
 
   isr(const unsigned char *buff, uint64_t acc) {
     this->buff = decode(this->acc, buff);
