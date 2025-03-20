@@ -19,7 +19,7 @@ class Link {
 class HtmlParser {
  public:
   // vector<string> words, titleWords;
-  // vector<Link> links;
+  vector<Link> links;
   // string base;
 
  private:
@@ -202,7 +202,7 @@ class HtmlParser {
                 if (i == 5) {
                   auto ep = buffer + 5;
                   while (*ep != '\"') ++ep;
-                  // links.emplace_back(string(buffer + 5, ep));
+                  links.emplace_back(string(buffer + 5, ep));
                   buffer = ep;
                   break;
                 }
@@ -222,7 +222,7 @@ class HtmlParser {
                 if (i == 6) {
                   auto ep = buffer + 6;
                   while (*ep != '\"') ++ep;
-                  // links.emplace_back(string(buffer + 6, ep));
+                  links.emplace_back(string(buffer + 6, ep));
                   buffer = ep;
                   break;
                 }
