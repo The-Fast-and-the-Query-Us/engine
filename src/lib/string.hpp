@@ -58,7 +58,7 @@ public:
     for (; l < (l + r) / 2; ++l) {
       char temp = buffer[l];
       buffer[l] = buffer[r];
-      buffer[r] = temp;
+      buffer[r--] = temp;
     }
   }
 
