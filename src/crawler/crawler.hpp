@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdexcept>
+#include <unordered_map>
 #include <pthread.h>
 #include "../lib/bloom_filter.hpp"
 #include "link_finder.hpp"
@@ -56,6 +57,7 @@ private:
   // Bloom filter and frontier are thread safe
   fast::bloom_filter<fast::string> visited_urls;
   fast::crawler::frontier crawl_frontier;
+  /*std::unordered_map<fast::string, std::unordered_set<fast::string>>*/
   pthread_t blob_thread{};
   pthread_t thread_pool[THREAD_COUNT]{};
   // We also need a map for robots.txt stuff
@@ -81,13 +83,17 @@ private:
   void* worker() {
     link_finder html_scraper;
     while (!shutdown_flag) {
-      fast::string url = crawl_frontier.next();
+      fast::string url = "";
+      while (url == "") {
+        url = crawl_frontier.next();
+      }
       visited_urls.insert(url);
       html_scraper.parse_url(url.begin());
       fast::vector<fast::string> extracted_links = html_scraper.extract_links();
-      for (const auto &link : extracted_links) {
+      for (auto &link : extracted_links) {
         if (!visited_urls.contains(link)) { crawl_frontier.insert(link); }
       }
+      crawl_frontier.notify_crawled(url);
     }
     return nullptr;
   }

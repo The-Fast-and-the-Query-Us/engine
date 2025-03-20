@@ -1,6 +1,7 @@
 - Need to add crash consistent blob dumping of:
   - Bloom filter
   - Frontier
+  - Robots.txt data
 
 - Link extraction functionality in link_finder
 - Thread safe frontier with heuristic ranking functionality

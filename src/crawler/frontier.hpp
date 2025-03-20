@@ -18,7 +18,7 @@ namespace crawler {
   //TODO:
   // - Add blacklist?
   // - How do we manage data and communication across all our latpops?
-  // - 
+  // - redirects
 
 class frontier {
 public:
@@ -27,24 +27,16 @@ public:
     priorities.reserve(4);
   }
 
-  void insert(fast::string url) {
+  void insert(fast::string &url) {
     fast::scoped_lock lock(&mtx);
 
-    fast::string hostname;
-    uint8_t slash_cnt = 0;
-    for (size_t i = 0; i < url.size(); ++i) {
-      if (url[i] == '/' && ++slash_cnt == 3) {
-        break;
-      }
-      hostname += url[i];
-    }
+    fast::string hostname = extract_hostname(url);
 
     priorities[calc_priority(hostname)].push(url);
-    ++crawl_cnt[url];
 
     ++num_links;
     cv.signal();
-  };
+  }
 
   fast::string next() {
     fast::scoped_lock lock(&mtx);
@@ -60,21 +52,29 @@ public:
         const size_t n = curr_pri.size();
         for (size_t j = 0; j < n; ++j) {
 
-          fast::string curr = curr_pri.front();
+          fast::string url = curr_pri.front();
+          fast::string curr_hostname = extract_hostname(url);
           curr_pri.pop();
 
-          if (crawl_cnt[curr] <= CRAWL_LIM) {
+          if (crawl_cnt[curr_hostname] <= CRAWL_LIM) {
+            ++crawl_cnt[curr_hostname];
             --num_links;
-            return curr;
+            return curr_hostname;
           }
 
-          curr_pri.push(curr);
+          curr_pri.push(url);
         }
       }
     }
 
     return "";
-  };
+  }
+
+  void notify_crawled(fast::string &url) {
+    fast::scoped_lock lock(&mtx);
+    fast::string hostname = extract_hostname(url);
+    --crawl_cnt[hostname];
+  }
 
   // int save() {
   // fast::scoped_lock lock(&mtx);
@@ -143,6 +143,18 @@ private:
   std::unordered_map<fast::string, uint8_t> crawl_cnt;
 
   std::vector<fast::string> good_tld = {"com", "org", "gov", "net", "edu"};
+
+  fast::string extract_hostname(fast::string &url) {
+    fast::string hostname;
+    uint8_t slash_cnt = 0;
+    for (size_t i = 0; i < url.size(); ++i) {
+      if (url[i] == '/' && ++slash_cnt == 3) {
+        break;
+      }
+      hostname += url[i];
+    }
+    return hostname;
+  }
 
   uint8_t calc_priority(fast::string hostname) {
     uint8_t score = 0;
