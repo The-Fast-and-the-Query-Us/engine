@@ -7,6 +7,7 @@
 
 namespace fast::index {
 
+// todo: add caching for last sync point accessed
 template <post_type PT>
 class postlist {
   uint64_t word_count, post_len, sync_count;
