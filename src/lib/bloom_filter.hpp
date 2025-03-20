@@ -20,13 +20,13 @@ template <typename T>
 concept primitive = std::is_arithmetic_v<T>;
 
 template <typename T>
-concept complex = requires(T v) {
+concept container = requires(T v) {
   { v.data() } -> std::convertible_to<const void *>;
   { v.size() } -> std::convertible_to<size_t>;
 };
 
 template <typename T>
-concept hashable = primitive<T> || complex<T>;
+concept hashable = primitive<T> || container<T>;
 
 template <typename T>
 class bloom_filter {
@@ -168,7 +168,7 @@ private:
   }
 
   pair<const unsigned char *, size_t> serialize(const T &datum) {
-    if constexpr (complex<T>)
+    if constexpr (container<T>)
       return pair{reinterpret_cast<const unsigned char *>(datum.data()),
                   datum.size()};
     else if constexpr (primitive<T>)

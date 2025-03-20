@@ -1,36 +1,51 @@
 #include <cassert>
 #include <list.hpp>
 
-constexpr int SIZE = 10'000;
+using namespace fast;
 
-void test_seq(fast::list<int> &l) {
-  assert(l.length() == SIZE);
-
+void test_seq(const fast::list<int> &l, const int N) {
   int i = 0;
   for (auto it = l.begin(); it != l.end(); ++i, ++it) assert(*it == i);
 
+  assert(i == N);
+
   i = 0;
   for (const auto num : l) assert(num == i++);
+
+  assert(i == N);
+
+  if (N > 0) assert(l.back() == N - 1);
 }
 
+void run_test(const list<int> &l, const int N) {
+  test_seq(l, N);
+  const auto other(l);
+  test_seq(other, N);
+  list<int> another;
+  another.emplace_back(1);
+  another = other;
+  test_seq(another, N);
+}
+
+struct Num {
+  int *ptr;
+  Num(int i) :ptr(new int(i)) {}
+  ~Num() {delete ptr;}
+};
+
 int main() {
-  fast::list<int> l;
-  for (int i = 0; i < SIZE; ++i) {
+
+  list<int> l;
+
+  for (auto i = 0; i < 64 * 2; ++i) {
+    if (i % 32 == 0) run_test(l, i);
     l.push_back(i);
-    assert(*l.back() == i);
   }
 
-  test_seq(l);
-
-  fast::list cpy(l);
-  test_seq(cpy);
-
-  l = cpy;
-  test_seq(l);
-
-  fast::list<int> empty;
-  for (const auto _ : empty) {
-    (void)_;
-    assert(false);
+  // test allocation
+  list<Num> dynamic;
+  for (auto i = 0; i < 64 * 2; ++i) {
+    dynamic.emplace_back(i);
   }
+  assert(*dynamic.back().ptr == 64 * 2 - 1);
 }
