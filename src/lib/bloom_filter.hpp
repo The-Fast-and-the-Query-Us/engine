@@ -76,14 +76,14 @@ public:
     }
 
     ssize_t n_written = write(fd, &n, sizeof(size_t));
-    if (n_written == (-1)) {
+    if (n_written == -1) {
       std::cerr << "error writing member n: " << strerror(errno) << std::endl;
       close(fd);
       return -1;
     }
 
     ssize_t fpr_written = write(fd, &fpr, sizeof(double));
-    if (fpr_written == (-1)) {
+    if (fpr_written == -1) {
       std::cerr << "error writing member fpr: " << strerror(errno) << std::endl;
       close(fd);
       return -1;

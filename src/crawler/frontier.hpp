@@ -7,6 +7,7 @@
 #include "../lib/vector.hpp"
 
 #include <cstdint>
+#include <iostream>
 #include <sys/fcntl.h>
 #include <unistd.h>
 #include <unordered_map>
@@ -75,52 +76,123 @@ public:
     --crawl_cnt[hostname];
   }
 
-  // int save() {
-  // fast::scoped_lock lock(&mtx);
-  //
-  // int fd = open(save_path, O_WRONLY | O_CREAT | O_TRUNC);
-  // if (fd == -1) {
-  //   std::cerr << "Failed to open file in frontier save()\n";
-  //   return -1;
-  // }
-  //
-  // int num_links_written = write(fd, &num_links, sizeof(uint64_t));
-  //
-  // if (num_links_written == -1) {
-  //   std::cerr << "Failed writing member num_links in frontier save()\n";
-  //   return -1;
-  // }
-  //
-  // int total_priority_bytes = 0;
-  // for (size_t i = 0; i < priorities.size(); ++i) {
-  //
-  //   size_t pri_sz = priorities[i].size();
-  //   int pri_sz_written = write(fd, &pri_sz, sizeof(size_t));
-  //
-  //   if (pri_sz_written == -1) {
-  //     std::cerr
-  //         << "Failed writing size of priorities queue in frontier save()";
-  //     return -1;
-  //   }
-  //
-  //   total_priority_bytes += pri_sz_written;
-  //
-  //   for (size_t j = 0; j < pri_sz; ++j) {
-  //     fast::string f = priorities[i].front();
-  //     int link_written = write(fd, &priorities[i], sizeof(priorities[i]));
-  //
-  //     if (pri_sz_written == -1) {
-  //       std::cerr << "Failed writing an element of priority queue in "
-  //                    "frontier save()";
-  //       return -1;
-  //     }
-  //
-  //     total_priority_bytes += link_written;
-  //   }
-  // }
-  //
-  // return num_links_written += total_priority_bytes;
-  // }
+  int save() {
+    fast::scoped_lock lock(&mtx);
+
+    int fd = open(save_path, O_WRONLY | O_CREAT | O_TRUNC);
+    if (fd == -1) {
+      std::cerr << "Failed to open file in frontier save()\n";
+      return -1;
+    }
+
+    ssize_t num_links_written = write(fd, &num_links, sizeof(uint64_t));
+
+    if (num_links_written == -1) {
+      std::cerr << "Failed writing member num_links in frontier save()\n";
+      close(fd);
+      return -1;
+    }
+
+    int total_priority_bytes = 0;
+    for (size_t i = 0; i < priorities.size(); ++i) {
+
+      size_t pri_sz = priorities[i].size();
+      ssize_t pri_sz_written = write(fd, &pri_sz, sizeof(size_t));
+
+      if (pri_sz_written == -1) {
+        std::cerr
+            << "Failed writing size of priorities queue in frontier save()";
+        close(fd);
+        return -1;
+      }
+
+      total_priority_bytes += pri_sz_written;
+      fast::queue<fast::string> t_q = priorities[i];
+
+      for (size_t j = 0; j < pri_sz; ++j) {
+        fast::string f = t_q.front();
+        t_q.pop();
+        size_t f_len = f.size();
+
+        ssize_t link_len_written = write(fd, &f_len, sizeof(f_len));
+        if (link_len_written == -1) {
+          std::cerr << "Failed writing string length in frontier save(): "
+                    << strerror(errno) << std::endl;
+          close(fd);
+          return -1;
+        }
+        total_priority_bytes += link_len_written;
+
+        ssize_t link_written = write(fd, f.c_str(), f.size());
+
+        if (link_written == -1) {
+          std::cerr << "Failed writing an element of priority queue in "
+                       "frontier save()";
+          close(fd);
+          return -1;
+        }
+
+        total_priority_bytes += link_written;
+      }
+    }
+    close(fd);
+    return num_links_written + total_priority_bytes;
+  }
+
+  int load() {
+    fast::scoped_lock lock(&mtx);
+    int tbr = 0;
+
+    int fd = open(save_path, O_RDONLY);
+    if (fd == -1) {
+      std::cerr << "Failed to open file in frontier load()\n";
+      return -1;
+    }
+
+    ssize_t num_links_read = read(fd, &num_links, sizeof(uint64_t));
+    if (num_links_read == -1) {
+      std::cerr << "failed reading num_links in frontier load()";
+      close(fd);
+      return -1;
+    }
+    tbr += num_links_read;
+
+    for (size_t i = 0; i < priorities.size(); ++i) {
+      size_t pri_sz;
+      ssize_t num_pri_sz_read = read(fd, &pri_sz, sizeof(size_t));
+      if (num_pri_sz_read == -1) {
+        std::cerr << "failed reading pri_sz in frontier load()";
+        close(fd);
+        return -1;
+      }
+      tbr += num_pri_sz_read;
+
+      for (size_t j = 0; j < pri_sz; ++j) {
+        size_t l_len;
+        ssize_t num_l_len_read = read(fd, &l_len, sizeof(size_t));
+        if (num_l_len_read == -1) {
+          std::cerr << "failed to read an elements size in frontier load()";
+          close(fd);
+          return -1;
+        }
+        tbr += num_l_len_read;
+
+        fast::string l;
+        l.reserve(l_len);
+        ssize_t num_l_read = read(fd, &l[0], l_len);
+        if (num_l_read == -1) {
+          std::cerr << "failed to read an element in frontier load()";
+          close(fd);
+          return -1;
+        }
+        tbr += num_l_read;
+        priorities[i].push(l);
+      }
+    }
+
+    close(fd);
+    return tbr;
+  }
 
 private:
   static constexpr uint8_t GOOD_LEN = 25;

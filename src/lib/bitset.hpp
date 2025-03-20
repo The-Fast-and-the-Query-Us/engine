@@ -80,8 +80,12 @@ public:
     return *this;
   }
 
-  int save() {
+  int save(int pos = 0) {
     int fd = open(save_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    int num_seek = lseek(fd, pos, SEEK_SET);
+    if (num_seek != pos)
+      throw std::runtime_error("Failed to seek to pos in save");
+
     if (fd == -1) {
       std::cerr << "Failed to open bitset dump file on write\n";
       return -1;
@@ -115,8 +119,15 @@ public:
     return int64_written + num_bits_written + elts_written;
   }
 
-  int load() {
+  int load(int pos = 0) {
     int fd = open(save_path, O_RDONLY);
+    int offset = lseek(fd, pos, SEEK_SET);
+    if (offset == off_t(-1)) {
+      std::cerr << "error seeking: " << strerror(errno) << std::endl;
+      close(fd);
+      return -1;
+    }
+
     if (fd == -1)
       throw std::runtime_error("Failed to open bitset dump file on read");
 
