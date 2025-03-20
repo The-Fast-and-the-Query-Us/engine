@@ -136,16 +136,16 @@ public:
 
   operator string_view() const { return string_view(start_, len_); }
 
-  std::strong_ordering operator<=>(const string &other) const {
-    return this->operator string_view() <=> other.operator string_view();
+  string_view view() const { return this->operator string_view(); }
+
+  template <class T>
+  bool operator==(const T &other) {
+    return this->view() == static_cast<string_view>(other);
   }
 
-  bool operator==(const char *cstr) const {
-    return this->operator string_view() == cstr;
-  }
-
-  std::strong_ordering operator<=>(const char *cstr) const {
-    return this->operator string_view() <=> cstr;
+  template <class T>
+  std::strong_ordering operator<=>(const T &other) {
+    return this->view() <=> static_cast<string_view>(other);
   }
 };
 

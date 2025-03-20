@@ -15,6 +15,8 @@ void test_seq(const fast::list<int> &l, const int N) {
   assert(i == N);
 
   if (N > 0) assert(l.back() == N - 1);
+
+  assert(l.size() == size_t(N));
 }
 
 void run_test(const list<int> &l, const int N) {
