@@ -39,7 +39,8 @@ class dictionary {
       }
     }
 
-    opts.size_needed += opts.num_unique * LOAD * sizeof(size_t) + sizeof(dictionary);
+    opts.size_needed += opts.num_unique * LOAD * sizeof(size_t) 
+                        + sizeof(dictionary);
 
     return opts;
   }
