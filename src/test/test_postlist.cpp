@@ -7,10 +7,9 @@
 #include <iostream>
 
 using namespace fast;
-using namespace index;
 
 void test(const list<post<Text>> &l) {
-  const auto space = index::postlist<Text>::size_needed(l);
+  const auto space = postlist<Text>::size_needed(l);
   auto pl = (postlist<Text>*) malloc(space);
   memset(pl, 0, space);
   postlist<Text>::write(l, pl);
@@ -34,7 +33,7 @@ void test(const list<post<Text>> &l) {
 
 int main() {
   srand(0);
-  list<index::post<index::Text>> l;
+  list<post<Text>> l;
   
   uint64_t base = 0;
 
