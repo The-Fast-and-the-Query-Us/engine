@@ -5,7 +5,7 @@
 #include "list.hpp"
 #include "types.hpp"
 
-namespace fast::index {
+namespace fast {
 
 // todo: add caching for last sync point accessed
 template <post_type PT>

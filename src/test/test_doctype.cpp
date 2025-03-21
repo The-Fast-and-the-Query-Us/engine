@@ -5,7 +5,7 @@
 #include <iostream>
 #include <ostream>
 
-using namespace fast::index;
+using namespace fast;
 
 int main() {
   fast::string_view sv = "some text";
