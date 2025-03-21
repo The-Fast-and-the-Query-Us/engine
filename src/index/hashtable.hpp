@@ -6,6 +6,7 @@
 
 #include <list.hpp>
 #include <hash.hpp>
+#include <types.hpp>
 
 namespace fast {
 
@@ -13,19 +14,14 @@ class hashtable {
   struct bucket {
     uint64_t hashval;
     string word;
-    list<uint64_t> posts;
+    list<post<Text>> posts;
 
     bucket(uint64_t hashval, const string_view &word) : hashval(hashval), word(word) {}
   };
 
-  struct doc {
-    uint64_t offset;
-    string url;
-  };
-
   size_t num_buckets, next_offset;
   list<bucket> *buckets;
-  list<doc> docs;
+  list<post<Doc>> docs;
 
   friend class dictionary;
   friend class doclist;
@@ -46,6 +42,9 @@ public:
 
   size_t tokens() const { return next_offset; }
 
+  /*
+  * Maybe change to allow for post types?
+  */
   void add(const string_view &word) {
     const auto hashval = hash(word);
 
@@ -62,7 +61,7 @@ public:
   }
 
   void doc_end(const string_view &url) {
-    docs.emplace_back(next_offset++, url);
+    docs.emplace_back(url, next_offset++);
   }
 };
 
