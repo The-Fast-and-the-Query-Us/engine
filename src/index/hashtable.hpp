@@ -24,7 +24,7 @@ class hashtable {
   list<post<Doc>> docs;
 
   friend class dictionary;
-  friend class doclist;
+  friend class hashblob;
 
 public:
 
