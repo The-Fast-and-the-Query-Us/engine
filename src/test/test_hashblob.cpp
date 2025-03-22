@@ -1,3 +1,4 @@
+#include <cassert>
 #include <cstdlib>
 #include <hashblob.hpp>
 #include <hashtable.hpp>
@@ -23,6 +24,28 @@ int main() {
   auto hb = (hashblob*) malloc(space);
   memset(hb, 0, space);
   hashblob::write(ht, hb);
+
+  {
+    auto it = hb->docs()->begin();
+    for (const auto &url : urls) {
+      assert(url == it.url());
+      assert(it != hb->docs()->end());
+      ++it;
+    }
+    assert(it == hb->docs()->end());
+  }
+
+  uint64_t i = 0;
+  for (const auto &word : words) {
+    auto list = hb->get(word.begin());
+    assert(list->words() == 3);
+    auto j = i;
+    for (const auto &s : *list) {
+      assert(s == j);
+      j += 6;
+    }
+    ++i;
+  }
 
   free(hb);
 }

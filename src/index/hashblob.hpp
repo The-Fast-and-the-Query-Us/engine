@@ -15,11 +15,6 @@ namespace fast {
 class hashblob {
   size_t doc_offset;
 
-  dictionary *dict() {
-    return align_ptr(reinterpret_cast<dictionary*>(&doc_offset + 1), alignof(dictionary));
-  }
-
-
 public:
   static size_t size_required(const hashtable &ht) {
     size_t needed{sizeof(hashblob)};
@@ -56,6 +51,10 @@ public:
       }
     }
 
+  }
+
+  dictionary *dict() {
+    return align_ptr(reinterpret_cast<dictionary*>(&doc_offset + 1), alignof(dictionary));
   }
 
   postlist<Doc> *docs() {
