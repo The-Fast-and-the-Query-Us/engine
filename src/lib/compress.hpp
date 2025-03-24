@@ -14,7 +14,7 @@ enum class EncodeMethod {
   Utf,
 };
 
-constexpr EncodeMethod default_em = EncodeMethod::Simple3;
+static constexpr EncodeMethod default_em = EncodeMethod::Simple3;
 
 template<EncodeMethod em = default_em>
 unsigned char *encode(uint64_t num, unsigned char *buffer);
@@ -63,18 +63,40 @@ inline const unsigned char *skip_encoded<EncodeMethod::Simple3>(const unsigned c
   return buffer + ((*buffer) >> 5) + 1;
 }
 
-// UTF : TODO
+// UTF : high bit is end of seq, stored MSB to LSB
 
 template<>
-inline unsigned char *encode<EncodeMethod::Utf>(uint64_t num, unsigned char *buffer);
+inline unsigned char *encode<EncodeMethod::Utf>(uint64_t num, unsigned char *buffer) {
+  while (num > 0x7F) {
+    *buffer = num & 0x7F;
+    num >>= 7;
+    ++buffer;
+  }
+  *buffer = num | 0x80;
+  return buffer + 1;
+}
 
 template<>
-inline const unsigned char *decode<EncodeMethod::Utf>(uint64_t &num, const unsigned char *buffer);
+inline const unsigned char *decode<EncodeMethod::Utf>(uint64_t &num, const unsigned char *buffer) {
+  size_t count = 0;
+  num = 0;
+  while (*buffer < 0x80) {
+    num |= uint64_t(*buffer) << 7 * count++;
+    ++buffer;
+  }
+  num |= uint64_t(*buffer & 0x7F) << 7 * count;
+  return buffer + 1;
+}
 
 template<>
-inline unsigned encoded_size<EncodeMethod::Utf>(uint64_t num);
+inline unsigned encoded_size<EncodeMethod::Utf>(uint64_t num) {
+  return (bit_width(num) + 6) / 7;
+}
 
 template<>
-inline const unsigned char *skip_encoded<EncodeMethod::Utf>(const unsigned char *buffer);
+inline const unsigned char *skip_encoded<EncodeMethod::Utf>(const unsigned char *buffer) {
+  while (*(buffer++) < 0x80);
+  return buffer;
+}
 
 }
