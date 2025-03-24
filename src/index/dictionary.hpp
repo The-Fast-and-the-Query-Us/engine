@@ -12,9 +12,9 @@ namespace fast {
 * used to map string to offset to postings list
 */
 class dictionary {
-  static constexpr double LOAD = 1; // multiple of tokens for num_buckets
+  static constexpr double LOAD = 1.0; // multiple of tokens for num_buckets
 
-  size_t num_buckets, num_unique, num_words, dict_size;
+  size_t num_buckets, num_unique, num_words, num_docs, dict_size;
 
   size_t *buckets() { return &dict_size + 1; }
 
@@ -24,34 +24,29 @@ class dictionary {
 
   public:
 
-  struct options {
-    size_t size_needed;
-    size_t num_unique;
-  };
-  
-  static options get_opts(const hashtable &ht) {
-    options opts{0, 0};
+  static size_t size_required(const hashtable &ht) {
+    size_t dynamic{0};
     
     for (auto i = 0u; i < ht.num_buckets; ++i) {
       for (const auto &bucket : ht.buckets[i]) {
-        ++opts.num_unique;
-        opts.size_needed += sizeof(size_t) + bucket.word.size() + 1;
+        dynamic += sizeof(size_t) + bucket.word.size() + 1;
       }
     }
 
-    opts.size_needed += opts.num_unique * LOAD * sizeof(size_t) + sizeof(dictionary);
+    dynamic += ht.unique_words * LOAD * sizeof(size_t) + sizeof(dictionary);
 
-    return opts;
+    return dynamic;
   }
 
   /*
    * buffer must be zero init and align of size_t.
    * constructs dictionary in buffer with each key set to dict[key] = 1
    */
-  static char *write(const hashtable &ht, dictionary *buffer, options opts) {
-    buffer->num_unique = opts.num_unique;
-    buffer->num_buckets = opts.num_unique * LOAD;
+  static char *write(const hashtable &ht, dictionary *buffer) {
+    buffer->num_unique = ht.unique_words;
+    buffer->num_buckets = ht.unique_words * LOAD;
     buffer->num_words = ht.next_offset;
+    buffer->num_docs = ht.docs.size();
 
     for (auto i = 0u; i < ht.num_buckets; ++i) {
       for (const auto &bucket : ht.buckets[i]) {
@@ -132,10 +127,6 @@ class dictionary {
   val_proxy operator[](const char *word) {
     return get(word);
   }
-
-  static options get_opts(const dictionary *lhs, const dictionary *rhs);
-
-  static char *merge(const dictionary *lhs, const dictionary *rhs, dictionary *buffer);
 };
 
 }

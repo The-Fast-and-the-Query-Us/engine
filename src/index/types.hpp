@@ -6,7 +6,7 @@
 #include <cstring>
 #include "string.hpp"
 
-namespace fast::index {
+namespace fast {
 
 enum post_type {
   Text,

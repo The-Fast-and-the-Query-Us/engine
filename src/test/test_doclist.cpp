@@ -8,7 +8,6 @@
 #include "string_view.hpp"
 
 using namespace fast;
-using namespace fast::index;
 
 const string_view urls[] = {"www.google.com", 
   "sdjkgbskjfhjksdfnksjdfjnskd something hella big", "a", 
