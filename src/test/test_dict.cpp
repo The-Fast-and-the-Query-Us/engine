@@ -31,6 +31,12 @@ int main() {
     val = 2;
   }
 
+  for (const auto &s : strings) {
+    assert(buffer->get(s) == 2);
+    buffer->put(s, 3);
+    assert(buffer->get(s) == 3);
+  }
+
   auto val = (*buffer)["notin"];
   assert(*val == false);
 

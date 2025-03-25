@@ -80,6 +80,37 @@ class dictionary {
     return buffer->dict() + buffer->dict_size;
   }
 
+  char *find_entry(const string_view &word) {
+    const auto hash_val = hash(word);
+    auto pos = buckets()[hash_val % num_buckets] + dict();
+    const auto end = dict() + (((hash_val + 1) % num_buckets) ?
+                     buckets()[(hash_val + 1) % num_buckets] : dict_size);
+
+    while (pos != end) {
+      auto key = pos + sizeof(size_t);
+      size_t len;
+
+      for (len = 0; len < word.size() && word[len] == *key; ++len, ++key);
+
+      if (len == word.size() && *key == 0) return pos;
+
+      pos = key + len;
+      while (*(pos++));
+    }
+
+    return nullptr;
+  }
+
+  void put(const string_view &word, size_t val) {
+    auto entry = find_entry(word);
+    write_unaligned(val, entry);
+  }
+
+  size_t get(const string_view &word) {
+    auto entry = find_entry(word);
+    return read_unaligned<size_t>(entry);
+  }
+
   /*
   * Proxy class to modify or get misaligned size_t
   */
