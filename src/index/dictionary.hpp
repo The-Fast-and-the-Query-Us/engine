@@ -29,6 +29,7 @@ class dictionary {
 
   public:
 
+
   size_t unique() const { return num_unique; }
   size_t words()  const { return num_words; }
   size_t docs()   const { return num_docs; }
@@ -114,7 +115,6 @@ class dictionary {
     return const_cast<char*>(static_cast<const dictionary*>(this)->find_entry(word));
   }
 
-
   // requires that word is in the dict
   void put(const string_view &word, size_t val) {
     auto entry = find_entry(word);
@@ -127,6 +127,7 @@ class dictionary {
     if (entry == nullptr) return {0, false};
     return {read_unaligned<size_t>(entry), true};
   }
+
 };
 
 }
