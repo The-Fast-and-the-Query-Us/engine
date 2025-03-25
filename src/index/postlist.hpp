@@ -99,6 +99,9 @@ class postlist {
     return ans;
   }
 
+  // TODO (Do we need this?)
+  isr<PT> before(uint64_t search);
+
 };
 
 }
