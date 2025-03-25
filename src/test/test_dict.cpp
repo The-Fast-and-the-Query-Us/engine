@@ -25,20 +25,18 @@ int main() {
   dictionary::write(ht, buffer);
 
   for (const auto &s : strings) {
-    auto val = (*buffer)[s.c_str()];
-    assert(*val);
-    assert(val == 1);
-    val = 2;
+    const auto p = buffer->get(s);
+    assert(p.second);
+    assert(p.first == 1);
+    buffer->put(s, 2);
   }
 
   for (const auto &s : strings) {
-    assert(buffer->get(s) == 2);
+    assert(buffer->get(s).first == 2);
     buffer->put(s, 3);
-    assert(buffer->get(s) == 3);
+    assert(buffer->get(s).first == 3);
   }
 
-  auto val = (*buffer)["notin"];
-  assert(*val == false);
-
+  assert(buffer->get("noin").second == false);
   free(buffer);
 }
