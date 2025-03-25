@@ -14,7 +14,7 @@ enum class EncodeMethod {
   Utf,
 };
 
-static constexpr EncodeMethod default_em = EncodeMethod::Simple3;
+static constexpr EncodeMethod default_em = EncodeMethod::Utf;
 
 template<EncodeMethod em = default_em>
 unsigned char *encode(uint64_t num, unsigned char *buffer);
