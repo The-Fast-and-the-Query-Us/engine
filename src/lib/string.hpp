@@ -118,13 +118,21 @@ class string {
   }
 
   template<class T>
-  bool operator==(const T &other) {
+  bool operator==(const T &other) const {
     return this->view() == static_cast<string_view>(other);
   }
 
   template<class T>
-  std::strong_ordering operator<=>(const T &other) {
+  std::strong_ordering operator<=>(const T &other) const {
     return this->view() <=> static_cast<string_view>(other);
+  }
+
+  bool operator==(const char *cstr) const {
+    return this->view() == cstr;
+  }
+
+  std::strong_ordering operator<=>(const char *cstr) const {
+    return this->view() <=> cstr;
   }
 };
 

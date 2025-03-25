@@ -45,8 +45,7 @@ public:
     for (auto i = 0ul; i < ht.num_buckets; ++i) {
       for (const auto &w : ht.buckets[i]) {
         wp = align_ptr(wp, alignof(postlist<Text>));
-
-        (*buffer->dict())[w.word.c_str()] = wp - (unsigned char*)buffer;
+        buffer->dict()->put(w.word, wp - (unsigned char*)buffer);
         wp = postlist<Text>::write(w.posts, (postlist<Text>*) wp);
       }
     }
@@ -63,10 +62,15 @@ public:
     );
   }
 
-  postlist<Text> *get(const char *word) {
-    return reinterpret_cast<postlist<Text>*>(
-      (char*)this + (*dict())[word]
-    );
+  postlist<Text> *get(const string_view &word) {
+    const auto p = dict()->get(word);
+    if (!p.second) {
+      return nullptr;
+    } else {
+      return reinterpret_cast<postlist<Text>*>(
+        (char*)this + p.first
+      );
+    }
   }
 };
 
