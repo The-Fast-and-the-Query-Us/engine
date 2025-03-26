@@ -7,8 +7,6 @@
 
 namespace fast {
 
-// todo: add caching for last sync point accessed
-template <post_type PT>
 class postlist {
   uint64_t word_count, post_len, sync_count;
 
@@ -25,6 +23,7 @@ class postlist {
 
   uint64_t words() const { return word_count; }
 
+  template <post_type PT>
   static size_t size_needed(const list<post<PT>> &posts) {
     size_t dynamic{0};
 
@@ -42,6 +41,7 @@ class postlist {
     return dynamic + sizeof(postlist);
   }
 
+  template <post_type PT>
   static unsigned char *write(const list<post<PT>> &posts, postlist *buffer) {
     buffer->word_count = posts.size();
     buffer->sync_count = fast_sqrt(posts.size());
@@ -73,34 +73,15 @@ class postlist {
   }
 
 
+  template<post_type PT>
   isr<PT> begin() {
     return isr<PT>(posts(), 0);
   }
 
+  template<post_type PT>
   isr<PT> end() {
     return isr<PT>(posts() + post_len);
   }
-
-  isr<PT> lower_bound(uint64_t search) {
-    size_t post_offset = 0;
-    uint64_t acc = 0;
-
-    auto table = sync();
-    for (size_t i = 0; i < sync_count; ++i) {
-      if (table[i].second >= search) break;
-      post_offset = table[i].first;
-      acc = table[i].second;
-    }
-
-    isr<PT> ans(posts() + post_offset, acc);
-
-    while (ans != end() && ans < search) ++ans;
-
-    return ans;
-  }
-
-  // TODO (Do we need this?)
-  isr<PT> before(uint64_t search);
 
 };
 

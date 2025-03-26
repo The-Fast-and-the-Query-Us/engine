@@ -14,12 +14,12 @@ const string_view urls[] = {"www.google.com",
   "medium", "www.nytimes.com"};
 
 void test(list<post<Doc>> &l) {
-  const auto space = postlist<Doc>::size_needed(l);
-  auto pl = (postlist<Doc>*) malloc(space);
+  const auto space = postlist::size_needed(l);
+  auto pl = (postlist*) malloc(space);
 
-  postlist<Doc>::write(l, pl);
+  postlist::write(l, pl);
 
-  auto is = pl->begin();
+  auto is = pl->begin<Doc>();
   for (auto it = l.begin(); it != l.end(); ++it) {
     const auto url = is.url();
     std::cout << "in list" << std::string_view((*it).url.begin(), (*it).url.size()) << std::endl;
@@ -30,11 +30,7 @@ void test(list<post<Doc>> &l) {
     ++is;
   }
 
-  assert(is == pl->end());
-
-  for (auto it = pl->begin(); it != pl->end(); ++it) {
-    assert(it == pl->lower_bound(it));
-  }
+  assert(is == pl->end<Doc>());
 
   assert(pl->words() == l.size());
   

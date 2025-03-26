@@ -22,13 +22,13 @@ public:
     needed = round_up(needed, alignof(dictionary));
     needed += dictionary::size_required(ht);
 
-    needed = round_up(needed, alignof(postlist<Doc>));
-    needed += postlist<Doc>::size_needed(ht.docs);
+    needed = round_up(needed, alignof(postlist));
+    needed += postlist::size_needed(ht.docs);
 
     for (auto i = 0u; i < ht.num_buckets; ++i) {
       for (const auto &b : ht.buckets[i]) {
-        needed = round_up(needed, alignof(postlist<Text>));
-        needed += postlist<Text>::size_needed(b.posts);
+        needed = round_up(needed, alignof(postlist));
+        needed += postlist::size_needed(b.posts);
       }
     }
 
@@ -38,15 +38,15 @@ public:
   static void write(const hashtable &ht, hashblob *buffer) {
     auto write_pos = dictionary::write(ht, buffer->dict());
 
-    write_pos = align_ptr(write_pos, alignof(postlist<Doc>));
+    write_pos = align_ptr(write_pos, alignof(postlist));
     buffer->doc_offset = write_pos - (char *)buffer;
-    auto wp = postlist<Doc>::write(ht.docs, buffer->docs());
+    auto wp = postlist::write(ht.docs, buffer->docs());
 
     for (auto i = 0ul; i < ht.num_buckets; ++i) {
       for (const auto &w : ht.buckets[i]) {
-        wp = align_ptr(wp, alignof(postlist<Text>));
+        wp = align_ptr(wp, alignof(postlist));
         buffer->dict()->put(w.word, wp - (unsigned char*)buffer);
-        wp = postlist<Text>::write(w.posts, (postlist<Text>*) wp);
+        wp = postlist::write(w.posts, (postlist*) wp);
       }
     }
 
@@ -56,18 +56,18 @@ public:
     return align_ptr(reinterpret_cast<dictionary*>(&doc_offset + 1), alignof(dictionary));
   }
 
-  postlist<Doc> *docs() {
-    return reinterpret_cast<postlist<Doc>*>(
+  postlist *docs() {
+    return reinterpret_cast<postlist*>(
       reinterpret_cast<char*>(this) + doc_offset
     );
   }
 
-  postlist<Text> *get(const string_view &word) {
+  postlist *get(const string_view &word) {
     const auto p = dict()->get(word);
     if (!p.second) {
       return nullptr;
     } else {
-      return reinterpret_cast<postlist<Text>*>(
+      return reinterpret_cast<postlist*>(
         (char*)this + p.first
       );
     }

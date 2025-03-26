@@ -26,13 +26,13 @@ int main() {
   hashblob::write(ht, hb);
 
   {
-    auto it = hb->docs()->begin();
+    auto it = hb->docs()->begin<Doc>();
     for (const auto &url : urls) {
       assert(url == it.url());
-      assert(it != hb->docs()->end());
+      assert(it != hb->docs()->end<Doc>());
       ++it;
     }
-    assert(it == hb->docs()->end());
+    assert(it == hb->docs()->end<Doc>());
   }
 
   uint64_t i = 0;
@@ -40,8 +40,8 @@ int main() {
     auto list = hb->get(word.begin());
     assert(list->words() == 3);
     auto j = i;
-    for (const auto &s : *list) {
-      assert(s == j);
+    for (auto it = list->begin<Text>(); it != list->end<Text>(); ++it) {
+      assert(it == j);
       j += 6;
     }
     ++i;

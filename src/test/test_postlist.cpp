@@ -9,22 +9,17 @@
 using namespace fast;
 
 void test(const list<post<Text>> &l) {
-  const auto space = postlist<Text>::size_needed(l);
-  auto pl = (postlist<Text>*) malloc(space);
+  const auto space = postlist::size_needed(l);
+  auto pl = (postlist*) malloc(space);
   memset(pl, 0, space);
-  postlist<Text>::write(l, pl);
+  postlist::write(l, pl);
 
   auto it = l.begin();
-  for (const auto num : *pl) {
-    assert(*it == num);
+  for (auto i = pl->begin<Text>(); i != pl->end<Text>(); ++i) {
+    assert(i == *it);
     ++it;
   }
-
   assert(it == l.end());
-
-  for (auto it = pl->begin(); it != pl->end(); ++it) {
-    assert(it == pl->lower_bound(it));
-  }
 
   assert(pl->words() == l.size());
 
