@@ -12,46 +12,51 @@ namespace fast {
 * used to map string to offset to postings list
 */
 class dictionary {
-  static constexpr double LOAD = 1; // multiple of tokens for num_buckets
+  static constexpr double LOAD = 1.0; // multiple of tokens for num_buckets
 
-  size_t num_buckets, num_unique, num_words, dict_size;
+  size_t num_buckets, num_unique, num_words, num_docs, dict_size;
 
   size_t *buckets() { return &dict_size + 1; }
+  const size_t *buckets() const { return &dict_size + 1; }
 
   char *dict() {
     return reinterpret_cast<char*>(buckets() + num_buckets);
   }
 
+  const char *dict() const {
+    return reinterpret_cast<const char*>(buckets() + num_buckets);
+  }
+
   public:
 
-  struct options {
-    size_t size_needed;
-    size_t num_unique;
-  };
-  
-  static options get_opts(const hashtable &ht) {
-    options opts{0, 0};
+
+  size_t unique() const { return num_unique; }
+  size_t words()  const { return num_words; }
+  size_t docs()   const { return num_docs; }
+
+  static size_t size_required(const hashtable &ht) {
+    size_t dynamic{0};
     
     for (auto i = 0u; i < ht.num_buckets; ++i) {
       for (const auto &bucket : ht.buckets[i]) {
-        ++opts.num_unique;
-        opts.size_needed += sizeof(size_t) + bucket.word.size() + 1;
+        dynamic += sizeof(size_t) + bucket.word.size() + 1;
       }
     }
 
-    opts.size_needed += opts.num_unique * LOAD * sizeof(size_t) + sizeof(dictionary);
+    dynamic += ht.unique_words * LOAD * sizeof(size_t) + sizeof(dictionary);
 
-    return opts;
+    return dynamic;
   }
 
   /*
    * buffer must be zero init and align of size_t.
    * constructs dictionary in buffer with each key set to dict[key] = 1
    */
-  static char *write(const hashtable &ht, dictionary *buffer, options opts) {
-    buffer->num_unique = opts.num_unique;
-    buffer->num_buckets = opts.num_unique * LOAD;
-    buffer->num_words = ht.next_offset;
+  static char *write(const hashtable &ht, dictionary *buffer) {
+    buffer->num_unique = ht.unique_words;
+    buffer->num_buckets = ht.unique_words * LOAD;
+    buffer->num_words = ht.next_offset - ht.docs.size();
+    buffer->num_docs = ht.docs.size();
 
     for (auto i = 0u; i < ht.num_buckets; ++i) {
       for (const auto &bucket : ht.buckets[i]) {
@@ -85,57 +90,44 @@ class dictionary {
     return buffer->dict() + buffer->dict_size;
   }
 
-  /*
-  * Proxy class to modify or get misaligned size_t
-  */
-  class val_proxy {
-    char *buf;
-  public:
-    val_proxy(char *b) : buf(b) {}
-
-    val_proxy& operator=(size_t st)  {
-      write_unaligned(st, buf);
-      return *this;
-    }
-
-    bool operator*() const {
-      return buf;
-    }
-
-    operator size_t() const {
-      return read_unaligned<size_t>(buf);
-    }
-  };
-
-  // returns pointer to entry val if it exists or nullptr otherwise
-  char* get(const char *word) {
+  const char *find_entry(const string_view &word) const {
     const auto hash_val = hash(word);
-
     auto pos = buckets()[hash_val % num_buckets] + dict();
-    const auto end = dict() + (((hash_val + 1) % num_buckets) ? buckets()[(hash_val + 1) % num_buckets] : dict_size);
+    const auto end = dict() + (((hash_val + 1) % num_buckets) ?
+                     buckets()[(hash_val + 1) % num_buckets] : dict_size);
 
-    while (pos != end) {// is strcmp faster here? since we iterate twice
+    while (pos != end) {
       auto key = pos + sizeof(size_t);
-      auto cmp = word;
+      size_t len;
 
-      for (; *key && *key == *cmp; ++key, ++cmp);
-      
-      if (*key == *cmp) return pos;
+      for (len = 0; len < word.size() && word[len] == *key; ++len, ++key);
 
-      while(*(key++));
-      pos = key;
+      if (len == word.size() && *key == 0) return pos;
+
+      pos = key + len;
+      while (*(pos++));
     }
 
     return nullptr;
   }
 
-  val_proxy operator[](const char *word) {
-    return get(word);
+  char *find_entry(const string_view &word) {
+    return const_cast<char*>(static_cast<const dictionary*>(this)->find_entry(word));
   }
 
-  static options get_opts(const dictionary *lhs, const dictionary *rhs);
+  // requires that word is in the dict
+  void put(const string_view &word, size_t val) {
+    auto entry = find_entry(word);
+    write_unaligned(val, entry);
+  }
 
-  static char *merge(const dictionary *lhs, const dictionary *rhs, dictionary *buffer);
+  // returns pair {value, present in map}
+  pair<size_t, bool> get(const string_view &word) const {
+    auto entry = find_entry(word);
+    if (entry == nullptr) return {0, false};
+    return {read_unaligned<size_t>(entry), true};
+  }
+
 };
 
 }

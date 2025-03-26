@@ -138,14 +138,22 @@ public:
 
   string_view view() const { return this->operator string_view(); }
 
-  template <class T>
-  bool operator==(const T &other) {
+  template<class T>
+  bool operator==(const T &other) const {
     return this->view() == static_cast<string_view>(other);
   }
 
-  template <class T>
-  std::strong_ordering operator<=>(const T &other) {
+  template<class T>
+  std::strong_ordering operator<=>(const T &other) const {
     return this->view() <=> static_cast<string_view>(other);
+  }
+
+  bool operator==(const char *cstr) const {
+    return this->view() == cstr;
+  }
+
+  std::strong_ordering operator<=>(const char *cstr) const {
+    return this->view() <=> cstr;
   }
 };
 

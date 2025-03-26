@@ -17,22 +17,26 @@ int main() {
 
   assert(ht.tokens() == sizeof(strings) / sizeof(string));
 
-  const auto opts = dictionary::get_opts(ht);
+  const auto opts = dictionary::size_required(ht);
 
-  auto buffer = (dictionary*) malloc(round_up(opts.size_needed, alignof(dictionary)));
-  memset(buffer, 0, opts.size_needed);
+  auto buffer = (dictionary*) malloc(round_up(opts, alignof(dictionary)));
+  memset(buffer, 0, opts);
 
-  dictionary::write(ht, buffer, opts);
+  dictionary::write(ht, buffer);
 
   for (const auto &s : strings) {
-    auto val = (*buffer)[s.c_str()];
-    assert(*val);
-    assert(val == 1);
-    val = 2;
+    const auto p = buffer->get(s);
+    assert(p.second);
+    assert(p.first == 1);
+    buffer->put(s, 2);
   }
 
-  auto val = (*buffer)["notin"];
-  assert(*val == false);
+  for (const auto &s : strings) {
+    assert(buffer->get(s).first == 2);
+    buffer->put(s, 3);
+    assert(buffer->get(s).first == 3);
+  }
 
+  assert(buffer->get("noin").second == false);
   free(buffer);
 }

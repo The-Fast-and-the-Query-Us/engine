@@ -1,157 +1,77 @@
 #pragma once
 
+#include "common.hpp"
+#include "dictionary.hpp"
+#include "hashtable.hpp"
+#include "postlist.hpp"
 #include <cstddef>
-#include <cstring>
-#include <static_string.hpp>
-#include <hashtable.hpp>
-#include <postlist.hpp>
-#include <common.hpp>
-
 namespace fast {
 
 /*
-* Hashblob structure
-* HEADERS
-* buckets [ ] -> dict entrys
-* dictentrys [ ] = size_t (posting start) + word + \0
+* Format
+* Dictionary, doc ends, <posting lists>
 */
 
 class hashblob {
-  static constexpr double TOKEN_MULT = 1.0; // factor for number of buckets
+  size_t doc_offset;
 
-  size_t // headers
-  magic, num_buckets, dict_len,
-  // dynamic array
-  data;
+public:
+  static size_t size_required(const hashtable &ht) {
+    size_t needed{sizeof(hashblob)};
 
-  static inline size_t dict_entry_size(const hashtable::bucket &b) {
-    return sizeof(size_t) + b.word.length() + 1;
-  }
+    needed = round_up(needed, alignof(dictionary));
+    needed += dictionary::size_required(ht);
 
-  // data access
-  size_t *buckets() {
-    return &data;
-  }
+    needed = round_up(needed, alignof(postlist<Doc>));
+    needed += postlist<Doc>::size_needed(ht.docs);
 
-  char *dict_start() {
-    return reinterpret_cast<char*>(&data + num_buckets);
-  }
-
-  char *dict_end() {
-    return dict_start() + dict_len;
-  }
-
-  // return a pointer to the size_t that is offset for the words posting list
-  char *get_dict_entry(const static_string &ss) {
-    const auto hashVal = hashtable::hash(ss);
-    auto start = dict_start() + buckets()[hashVal % num_buckets];
-    const auto end = ((hashVal + 1) % num_buckets == 0) ? dict_end() : dict_start() + buckets()[(hashVal + 1) % num_buckets];
-
-    while (start < end) {
-      if (ss == start + sizeof(size_t)) return start;
-      start += sizeof(size_t);
-      while (*(start++));
-    }
-
-    return nullptr;
-  }
-
-  public:
-
-  /*
-  * Configuration for hashmap
-  */
-  struct options {
-    size_t num_buckets;
-    size_t file_size;
-  };
-
-  static options get_opts(const hashtable *ht) {
-    size_t num_words{0}; 
-    size_t dynamic{0};
-
-    for (const auto &l : *ht) {
-      for (const auto &bucket : l) {
-        ++num_words;
-        dynamic += dict_entry_size(bucket) + postlist::size_needed(bucket.posts);
+    for (auto i = 0u; i < ht.num_buckets; ++i) {
+      for (const auto &b : ht.buckets[i]) {
+        needed = round_up(needed, alignof(postlist<Text>));
+        needed += postlist<Text>::size_needed(b.posts);
       }
     }
 
-    options opts;
-    opts.num_buckets = num_words * TOKEN_MULT;
-    opts.file_size = sizeof(hashblob) + sizeof(size_t) * (opts.num_buckets - 1) + dynamic;
-    return opts;
+    return needed;
   }
 
-  static void write(const hashtable *ht, hashblob *buffer, const options *opts) {
-    write_dict(ht, buffer, opts);
-    write_posts(ht, buffer);
-    buffer->magic = 42;
-  }
+  static void write(const hashtable &ht, hashblob *buffer) {
+    auto write_pos = dictionary::write(ht, buffer->dict());
 
-  // buffer must be zero init
-  static void write_dict(const hashtable *ht, hashblob *buffer, const options *opts) {
-    buffer->num_buckets = opts->num_buckets;
+    write_pos = align_ptr(write_pos, alignof(postlist<Doc>));
+    buffer->doc_offset = write_pos - (char *)buffer;
+    auto wp = postlist<Doc>::write(ht.docs, buffer->docs());
 
-    for (const auto &bucketList : *ht) {
-      for (const auto &bucket : bucketList) {
-        buffer->buckets()[bucket.hash_val % buffer->num_buckets] += dict_entry_size(bucket);
+    for (auto i = 0ul; i < ht.num_buckets; ++i) {
+      for (const auto &w : ht.buckets[i]) {
+        wp = align_ptr(wp, alignof(postlist<Text>));
+        buffer->dict()->put(w.word, wp - (unsigned char*)buffer);
+        wp = postlist<Text>::write(w.posts, (postlist<Text>*) wp);
       }
     }
 
-    auto accumulator = 0ul;
-    for (auto i = 0ul; i < buffer->num_buckets; ++i) {
-      accumulator += buffer->buckets()[i];
-      buffer->buckets()[i] = accumulator - buffer->buckets()[i];
-    }
-
-    buffer->dict_len = accumulator;
-
-    for (const auto &bucketList : *ht) {
-      for (const auto &bucket : bucketList) {
-        auto start = buffer->dict_start() + buffer->buckets()[bucket.hash_val % buffer->num_buckets];
-
-        for (auto t = read_unaligned<size_t>(start); t ; t = read_unaligned<size_t>(start)) {
-          start += sizeof(size_t);
-          while (*(start++));
-        }
-
-        write_unaligned(1, start);
-        memcpy(start + sizeof(size_t), bucket.word.begin(), bucket.word.length());
-        start[sizeof(size_t) + bucket.word.length()] = 0;
-      }
-    }
   }
 
-  static void write_posts(const hashtable *ht, hashblob *buffer) {
-    auto writePos = buffer->dict_end();
-
-    for (const auto &bucketList : *ht) {
-      for (const auto &bucket : bucketList) {
-        size_t offset = writePos - buffer->dict_end();
-        write_unaligned(offset, buffer->get_dict_entry(bucket.word));
-        writePos = postlist::write(bucket.posts, writePos);
-      }
-    }
-  }
-  
-  // reuse earlier function
-  char *get_posts(const static_string &ss) {
-    const auto hashVal = hashtable::hash(ss);
-    auto start = dict_start() + buckets()[hashVal % num_buckets];
-    const auto end = ((hashVal + 1) % num_buckets == 0) ? dict_end() : dict_start() + buckets()[(hashVal + 1) % num_buckets];
-
-    while (start < end) {
-      if (ss == start + sizeof(size_t)) {
-        return dict_end() + read_unaligned<size_t>(start);
-      }
-
-      start += sizeof(size_t);
-      while (*(start++));
-    }
-    return nullptr;
+  dictionary *dict() {
+    return align_ptr(reinterpret_cast<dictionary*>(&doc_offset + 1), alignof(dictionary));
   }
 
+  postlist<Doc> *docs() {
+    return reinterpret_cast<postlist<Doc>*>(
+      reinterpret_cast<char*>(this) + doc_offset
+    );
+  }
+
+  postlist<Text> *get(const string_view &word) {
+    const auto p = dict()->get(word);
+    if (!p.second) {
+      return nullptr;
+    } else {
+      return reinterpret_cast<postlist<Text>*>(
+        (char*)this + p.first
+      );
+    }
+  }
 };
 
 }

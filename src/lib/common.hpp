@@ -48,6 +48,17 @@ inline size_t round_up(size_t base, size_t mult) {
   return (base + (mult - 1)) & ~(mult - 1);
 }
 
+/*
+* Used to round a pointer to to next location that fits the alignment
+*/
+template <class T>
+inline T *align_ptr(T *ptr, size_t alignment) {
+  uintptr_t p = reinterpret_cast<uintptr_t>(ptr);
+  return reinterpret_cast<T*>(
+    (p + (alignment - 1)) & ~(alignment - 1)
+  );
+}
+
 // return number of bits needed to hold number n 
 // ie 1 past the index of the highest bit
 inline uint8_t bit_width(uint64_t n) {

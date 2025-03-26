@@ -4,8 +4,9 @@
 #include <cstddef>
 #include <cstdint>
 
-#include <hash.hpp>
 #include <list.hpp>
+#include <hash.hpp>
+#include <types.hpp>
 
 namespace fast {
 
@@ -13,20 +14,21 @@ class hashtable {
   struct bucket {
     uint64_t hashval;
     string word;
-    list<uint64_t> posts;
+    list<post<Text>> posts;
 
     bucket(uint64_t hashval, const string_view &word)
         : hashval(hashval), word(word) {}
   };
 
-  size_t num_buckets, next_offset;
+  size_t num_buckets, next_offset, unique_words;
   list<bucket> *buckets;
+  list<post<Doc>> docs;
 
   friend class dictionary;
+  friend class hashblob;
 
 public:
-  hashtable(size_t num_buckets = 2048)
-      : num_buckets(num_buckets), next_offset(0) {
+  hashtable(size_t num_buckets = 2048) : num_buckets(num_buckets), next_offset(0), unique_words(0) {
     buckets = new list<bucket>[num_buckets];
   }
 
@@ -38,6 +40,11 @@ public:
 
   size_t tokens() const { return next_offset; }
 
+  size_t unique() const { return unique_words; }
+
+  /*
+  * Maybe change to allow for post types? (Title vs Body)
+  */
   void add(const string_view &word) {
     const auto hashval = hash(word);
 
@@ -51,6 +58,11 @@ public:
     }
     l.emplace_back(hashval, word);
     l.back().posts.push_back(next_offset++);
+    ++unique_words;
+  }
+
+  void doc_end(const string_view &url) {
+    docs.emplace_back(url, next_offset++);
   }
 };
 
