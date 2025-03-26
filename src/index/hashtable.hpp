@@ -3,16 +3,15 @@
 #include "string.hpp"
 #include <cstddef>
 #include <cstdint>
-
 #include <list.hpp>
 #include <hash.hpp>
-#include <types.hpp>
 
 namespace fast {
 
 typedef pair<string, uint64_t> Url;
 
 class hashtable {
+
   struct bucket {
     uint64_t hashval;
     string word;
