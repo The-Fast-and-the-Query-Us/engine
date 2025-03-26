@@ -1,0 +1,4 @@
+CompileFlags:
+  Add: 
+    - -I/usr/local/opt/openssl/include
+    - -I/usr/local/include

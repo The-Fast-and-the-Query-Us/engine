@@ -3,6 +3,7 @@
 #include "../lib/bloom_filter.hpp"
 #include "frontier.hpp"
 #include "link_finder.hpp"
+#include "../index/hashtable.hpp"
 #include <pthread.h>
 #include <stdexcept>
 #include <unordered_map>
@@ -58,6 +59,7 @@ private:
   // Bloom filter and frontier are thread safe
   fast::bloom_filter<fast::string> visited_urls;
   fast::crawler::frontier crawl_frontier;
+  fast::hashtable
   /*std::unordered_map<fast::string, std::unordered_set<fast::string>>*/
   pthread_t blob_thread{};
   pthread_t thread_pool[THREAD_COUNT]{};
@@ -90,6 +92,7 @@ private:
       }
       visited_urls.insert(url);
       html_scraper.parse_url(url.begin());
+      html_scraper.parse_html()
       fast::vector<fast::string> extracted_links = html_scraper.extract_links();
       for (auto &link : extracted_links) {
         if (!visited_urls.contains(link)) {

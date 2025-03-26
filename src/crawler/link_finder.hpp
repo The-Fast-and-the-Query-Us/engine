@@ -2,6 +2,7 @@
 
 #include "../lib/string.hpp"
 #include "../lib/vector.hpp"
+#include "HtmlParser.h"
 #include <cstdint>
 #include <cstring>
 #include <fcntl.h>
@@ -86,8 +87,8 @@ public:
   ~link_finder() { destroy_objects(); }
 
   fast::vector<fast::string> extract_links() {
-    fast::vector<fast::string> links;
-
+    char* html{}; 
+    size_t html_cap = 0;
     char buffer[MAX_PACKET_SIZE];
     ssize_t bytes{};
     bool found_header_end = false;
@@ -97,7 +98,6 @@ public:
     setup_connection();
     send_get_request();
 
-    // TODO: Need to write to a file.
     while ((bytes = SSL_read(ssl, buffer, sizeof(buffer))) > 0) {
       if (!found_header_end) {
         for (int i = 0; i < bytes; i++) {
@@ -105,7 +105,11 @@ public:
             header_match_pos++;
             if (header_match_pos == 4) { // Found \r\n\r\n
               found_header_end = true;
-              write(1, buffer + i + 1, bytes - (i + 1));
+              
+              realloc(html, html_cap + bytes);
+              std::memcpy(html + html_cap, buffer, bytes);
+              html_cap += bytes;
+              // write(1, buffer + i + 1, bytes - (i + 1));
               break;
             }
           } else {
@@ -113,14 +117,19 @@ public:
           }
         }
       } else {
-        write(1, buffer, bytes);
+        realloc(html, html_cap + bytes);
+        std::memcpy(html + html_cap, buffer, bytes);
+        html_cap += bytes;
+        // write(1, buffer, bytes);
       }
     }
     if (bytes < 0) {
+      destroy_objects();
       throw std::runtime_error("SSL read failed with error.\n");
     }
 
     if (SSL_shutdown(ssl) < 0) {
+      destroy_objects();
       throw std::runtime_error("SSL shutdown failed with error.\n");
     }
 
@@ -129,7 +138,16 @@ public:
     // robots.txt If there is, then use that (and cache that info) to crawl
     // those links
     // TODO: Blobbify the robots.txt cache
+    //
 
+    HtmlParser parser(html, html_cap);
+    fast::vector<fast::string> links(parser.links.size());
+    for (size_t i = 0; i < parser.links.size(); ++i) {
+      links[i] = parser.links[i].URL;
+    }
+
+
+    if (html) free(html);
     destroy_objects();
 
     return links;
