@@ -13,6 +13,8 @@ class hashblob {
 
   size_t magic;
 
+public:
+
   const dictionary *dict() const {
     return reinterpret_cast<const dictionary*>(align_ptr(&magic + 1, alignof(dictionary)));
   }
@@ -23,7 +25,7 @@ class hashblob {
     );
   }
 
-public:
+  bool is_good() const { return magic == MAGIC; }
 
   static size_t size_needed(const hashtable &ht) {
     size_t needed = sizeof(hashblob);
@@ -56,6 +58,16 @@ public:
     return write_pos;
   }
 
+  const post_list *get(const string_view word) const {
+    const auto p = dict()->get(word);
+    if (p.second) {
+      return reinterpret_cast<const post_list *>(
+        reinterpret_cast<const char*>(this) + p.first
+      );
+    } else {
+      return nullptr;
+    }
+  }
 };
 
 }
