@@ -42,8 +42,7 @@ public:
   static unsigned char *write(const list<Offset> &posts, post_list *buffer) {
     buffer->num_words = posts.size();
 
-    const int SYNC_LEN = posts.size() / PER_SYNC;
-    buffer->sync_len = SYNC_LEN;
+    buffer->sync_len = posts.size() / PER_SYNC;
 
     auto wp = buffer->posts();
 
@@ -55,8 +54,8 @@ public:
       ++idx;
       last = post;
 
-      if (SYNC_LEN > 0 && idx % (posts.size() / SYNC_LEN) == 0) {
-        buffer->sync()[idx * SYNC_LEN / posts.size() - 1] = {size_t(wp - buffer->posts()), post};
+      if (idx % PER_SYNC == 0) {
+        buffer->sync()[idx / PER_SYNC - 1] = {size_t(wp - buffer->posts()), post};
       }
     }
 

@@ -20,6 +20,7 @@ void test(const list<Offset> &l) {
   }
   assert(it == l.end());
 
+  free(pl);
 }
 int main() {
   srand(0);
