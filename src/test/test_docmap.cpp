@@ -27,7 +27,6 @@ int main() {
   srand(0);
 
   list<Url> l;
-  test(l);
 
   for (int i = 0; i < 100; ++i) {
     l.emplace_back(urls[i % 4], rand());

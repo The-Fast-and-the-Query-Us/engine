@@ -25,7 +25,6 @@ void test(const list<Offset> &l) {
 int main() {
   srand(0);
   list<Offset> l;
-  test(l);
 
   while (l.size() < 100) {
     l.push_back((rand() % 100) + 1);
