@@ -43,6 +43,7 @@ public:
     return needed;
   }
 
+  // buffer must be zero init and alignof(size_t) (maybe just init for caller?)
   static unsigned char *write(const hashtable &ht, hashblob *buffer) {
     auto write_pos = dictionary::write(ht, buffer->dict());
 
