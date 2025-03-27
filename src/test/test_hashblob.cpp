@@ -1,50 +1,47 @@
+#include "hashblob.hpp"
+#include "hashtable.hpp"
+#include "string.hpp"
 #include <cassert>
 #include <cstdlib>
-#include <hashblob.hpp>
-#include <hashtable.hpp>
+#include <cstring>
 
 using namespace fast;
 
-const string_view words[] = {"word", "skjdfbk", "sdajfkbsdfk", "cpoffeeafjosnwsfj", "worrds"};
+const int NUM_WORDS = 6;
+const int COUNT = 60'000;
 
-const string_view urls[] = {"www.google.com", "github.com", "www.youtube.com"};
+static_assert(COUNT % NUM_WORDS == 0, "Must be even distribution");
+
+string words[NUM_WORDS] = {"the", "abc", "rare", "abg", "james lu", "ayo"};
+
 
 int main() {
   hashtable ht;
 
-  for (const auto &url : urls) {
-    for (const auto &word : words) {
-      ht.add(word);
-    }
-    ht.doc_end(url);
+  for (auto i = 0; i < COUNT; ++i) {
+    ht.add(words[i % NUM_WORDS]);
   }
 
-  const auto space = hashblob::size_required(ht);
+  const auto space = hashblob::size_needed(ht);
 
   auto hb = (hashblob*) malloc(space);
   memset(hb, 0, space);
   hashblob::write(ht, hb);
 
-  {
-    auto it = hb->docs()->begin();
-    for (const auto &url : urls) {
-      assert(url == it.url());
-      assert(it != hb->docs()->end());
-      ++it;
-    }
-    assert(it == hb->docs()->end());
-  }
+  // count checks
+  assert(hb->is_good());
+  assert(hb->dict()->unique() == ht.unique());
+  assert(hb->dict()->words() == ht.tokens());
 
-  uint64_t i = 0;
-  for (const auto &word : words) {
-    auto list = hb->get(word.begin());
-    assert(list->words() == 3);
-    auto j = i;
-    for (const auto &s : *list) {
-      assert(s == j);
-      j += 6;
+  for (size_t i = 0; i < NUM_WORDS; ++i) {
+    auto pl = hb->get(words[i]);
+
+    assert(pl->words() == COUNT / NUM_WORDS);
+    size_t acc = 0;
+    for (const auto off : *pl) {
+      assert(i + acc == off);
+      acc += NUM_WORDS;
     }
-    ++i;
   }
 
   free(hb);

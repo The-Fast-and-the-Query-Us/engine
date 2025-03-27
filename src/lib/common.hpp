@@ -83,8 +83,20 @@ inline uint64_t fast_sqrt(const uint64_t n) {
 }
 
 template <class T>
+inline void write_unaligned(const T &t, unsigned char *buffer) {
+  memcpy(buffer, &t, sizeof(t));
+}
+
+template <class T>
 inline void write_unaligned(const T &t, char *buffer) {
   memcpy(buffer, &t, sizeof(t));
+}
+
+template <class T>
+inline T read_unaligned(const unsigned char *buffer) {
+  T t;
+  memcpy(&t, buffer, sizeof(t));
+  return t;
 }
 
 template <class T>
