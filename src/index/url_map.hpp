@@ -99,8 +99,8 @@ public:
       data() + len : data() + buckets()[(offset + 1) % num_urls];
 
     while (start < end) {
-      const auto key = read_unaligned<uint64_t>(start);
-      start += sizeof(uint64_t);
+      const auto key = read_unaligned<Offset>(start);
+      start += sizeof(Offset);
 
       uint64_t tmp;
       start = decode(tmp, start);

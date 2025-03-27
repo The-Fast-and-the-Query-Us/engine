@@ -8,14 +8,15 @@
 
 namespace fast {
 
-typedef pair<string, uint64_t> Url;
+typedef uint32_t Offset;
+typedef pair<string, Offset> Url;
 
 class hashtable {
 
   struct bucket {
     uint64_t hashval;
     string word;
-    list<uint64_t> posts;
+    list<Offset> posts;
 
     bucket(uint64_t hashval, const string_view &word) : hashval(hashval), word(word) {}
   };
