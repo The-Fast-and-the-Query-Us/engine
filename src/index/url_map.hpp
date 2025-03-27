@@ -10,6 +10,7 @@
 
 namespace fast {
 
+// list of Urls should not be empty!
 class url_map {
   size_t num_urls, len;
 
