@@ -34,6 +34,8 @@ public:
       last = post;
     }
 
+    dynamic += encoded_size(0);
+
     return dynamic + sizeof(post_list);
   }
 
