@@ -7,8 +7,6 @@
 namespace fast {
 
 class post_list {
-  static constexpr size_t PER_SYNC = 5'000;
-
   size_t num_words, sync_len, len;
 
   pair<size_t> *sync() { return reinterpret_cast<pair<size_t>*>(&len + 1); }
@@ -21,11 +19,17 @@ class post_list {
     return reinterpret_cast<const unsigned char*>(sync() + sync_len);
   }
 
+  static size_t get_per_sync(const list<Offset> &posts) {
+    (void) posts; // for compile
+    return 5'000;
+  }
+
 public:
 
   static size_t size_needed(const list<Offset> &posts) {
-    size_t dynamic = 0;
+    const auto PER_SYNC = get_per_sync(posts);
 
+    size_t dynamic = 0;
     dynamic += posts.size() / PER_SYNC * sizeof(pair<size_t>);
 
     Offset last = 0;
@@ -40,8 +44,9 @@ public:
   }
 
   static unsigned char *write(const list<Offset> &posts, post_list *buffer) {
-    buffer->num_words = posts.size();
+    const auto PER_SYNC = get_per_sync(posts);
 
+    buffer->num_words = posts.size();
     buffer->sync_len = posts.size() / PER_SYNC;
 
     auto wp = buffer->posts();
@@ -70,11 +75,19 @@ public:
     Offset acc;
     const unsigned char *buff;
 
-    isr(Offset base, const unsigned char *buff) : acc(base), buff(buff) {}
+    size_t next_sync;
+    const post_list *pl;
+
+    isr(Offset base, const unsigned char *buff, size_t next_sync, const post_list *pl) 
+    : acc(base), buff(buff), next_sync(next_sync), pl(pl) {}
+
+    isr(const unsigned char *buff) : buff(buff) {};
 
   public:
 
     Offset operator*() const { return acc; }
+
+    operator Offset() const { return acc; }
 
     isr& operator++() {
       uint64_t tmp;
@@ -83,18 +96,31 @@ public:
       return *this;
     }
 
+    // seek forward to first post >= offset
+    void seek_forward(Offset offset) {
+      for (; next_sync < pl->sync_len; ++next_sync) {
+        const auto sync = pl->sync()[next_sync];
+        if (sync.second > offset) break;
+
+        buff = pl->posts() + sync.first;
+        acc = sync.second;
+      }
+
+      while (*this < offset) ++(*this);
+    }
+
     bool operator==(const isr &other) const {
       return buff == other.buff;
     }
   };
 
   isr begin() const {
-    isr ans(0, posts());
+    isr ans(0, posts(), 0, this);
     return ++ans;
   }
 
   isr end() const {
-    return isr(0, posts() + len);
+    return isr(posts() + len);
   }
 
 };
