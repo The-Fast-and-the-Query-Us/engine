@@ -23,7 +23,6 @@ class hashtable {
 
   size_t num_buckets, next_offset, unique_words;
   list<bucket> *buckets;
-  list<Url> docs;
 
 public:
 
@@ -58,10 +57,6 @@ public:
     l.emplace_back(hashval, word);
     l.back().posts.push_back(next_offset++);
     ++unique_words;
-  }
-
-  void doc_end(const string_view &url) {
-    docs.emplace_back(url, next_offset++);
   }
 };
 

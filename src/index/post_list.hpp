@@ -1,6 +1,7 @@
 #pragma once
 
 #include "list.hpp"
+#include "hashtable.hpp"
 
 namespace fast {
 
@@ -12,9 +13,9 @@ class post_list {
 
 public:
 
-  static size_t size_needed(const list<uint32_t> &posts);
+  static size_t size_needed(const list<Offset> &posts);
 
-  static unsigned char *write(const list<uint32_t> &posts, post_list *buffer);
+  static unsigned char *write(const list<Offset> &posts, post_list *buffer);
 };
 
 }
