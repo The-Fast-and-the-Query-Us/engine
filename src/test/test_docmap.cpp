@@ -18,6 +18,7 @@ void test(const list<Url> &l) {
   }
 
   assert(um->get(DONT) == "");
+  free(um);
 }
 
 string urls[] = {"www.amazon", "www.google.com", "www.github.com", "www.umich.edu"};
