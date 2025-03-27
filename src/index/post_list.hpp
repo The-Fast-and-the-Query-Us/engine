@@ -41,8 +41,6 @@ public:
     buffer->num_words = posts.size();
 
     const int SYNC_LEN = posts.size() / PER_SYNC;
-    const int POSTS_PER = posts.size() / SYNC_LEN;
-
     buffer->sync_len = SYNC_LEN;
 
     auto wp = buffer->posts();
@@ -55,8 +53,8 @@ public:
       ++idx;
       last = post;
 
-      if (idx % POSTS_PER == 0) {
-        buffer->sync()[idx / POSTS_PER - 1] = {size_t(wp - buffer->posts()), post};
+      if (SYNC_LEN > 0 && idx % (posts.size() / SYNC_LEN) == 0) {
+        buffer->sync()[idx * SYNC_LEN / posts.size() - 1] = {size_t(wp - buffer->posts()), post};
       }
     }
 
@@ -82,6 +80,10 @@ public:
       buff = decode(tmp, buff);
       acc += tmp;
       return *this;
+    }
+
+    bool operator==(const isr &other) const {
+      return buff == other.buff;
     }
   };
 
