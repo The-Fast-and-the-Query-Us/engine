@@ -26,6 +26,7 @@ class hashtable {
   list<bucket> *buckets;
 
   friend class dictionary;
+  friend class hashblob;
 
 public:
 
