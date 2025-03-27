@@ -3,6 +3,7 @@
 #include "string.hpp"
 #include <cassert>
 #include <cstdlib>
+#include <cstring>
 
 using namespace fast;
 
@@ -24,6 +25,7 @@ int main() {
   const auto space = hashblob::size_needed(ht);
 
   auto hb = (hashblob*) malloc(space);
+  memset(hb, 0, space);
   hashblob::write(ht, hb);
 
   // count checks
