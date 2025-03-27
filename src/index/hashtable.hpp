@@ -27,7 +27,6 @@ class hashtable {
 
   friend class dictionary;
   friend class hashblob;
-
 public:
 
 

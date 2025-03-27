@@ -26,6 +26,8 @@ class post_list {
 
 public:
 
+  size_t words() const { return num_words; }
+
   static size_t size_needed(const list<Offset> &posts) {
     const auto PER_SYNC = get_per_sync(posts);
 
