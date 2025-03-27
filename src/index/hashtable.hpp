@@ -18,11 +18,14 @@ class hashtable {
     string word;
     list<Offset> posts;
 
-    bucket(uint64_t hashval, const string_view &word) : hashval(hashval), word(word) {}
+    bucket(uint64_t hashval, const string_view &word) 
+    : hashval(hashval), word(word) {}
   };
 
   size_t num_buckets, next_offset, unique_words;
   list<bucket> *buckets;
+
+  friend class dictionary;
 
 public:
 

@@ -14,7 +14,7 @@ namespace fast {
 class dictionary {
   static constexpr double LOAD = 1.0; // multiple of tokens for num_buckets
 
-  size_t num_buckets, num_unique, num_words, num_docs, dict_size;
+  size_t num_buckets, num_unique, num_words, dict_size;
 
   size_t *buckets() { return &dict_size + 1; }
   const size_t *buckets() const { return &dict_size + 1; }
@@ -32,7 +32,6 @@ class dictionary {
 
   size_t unique() const { return num_unique; }
   size_t words()  const { return num_words; }
-  size_t docs()   const { return num_docs; }
 
   static size_t size_required(const hashtable &ht) {
     size_t dynamic{0};
@@ -55,8 +54,7 @@ class dictionary {
   static char *write(const hashtable &ht, dictionary *buffer) {
     buffer->num_unique = ht.unique_words;
     buffer->num_buckets = ht.unique_words * LOAD;
-    buffer->num_words = ht.next_offset - ht.docs.size();
-    buffer->num_docs = ht.docs.size();
+    buffer->num_words = ht.next_offset;
 
     for (auto i = 0u; i < ht.num_buckets; ++i) {
       for (const auto &bucket : ht.buckets[i]) {
@@ -121,7 +119,7 @@ class dictionary {
     write_unaligned(val, entry);
   }
 
-  // returns pair {value, present in map}
+  // returns pair {value, bool (true => present in map)}
   pair<size_t, bool> get(const string_view &word) const {
     auto entry = find_entry(word);
     if (entry == nullptr) return {0, false};

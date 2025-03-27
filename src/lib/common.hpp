@@ -88,7 +88,19 @@ inline void write_unaligned(const T &t, unsigned char *buffer) {
 }
 
 template <class T>
+inline void write_unaligned(const T &t, char *buffer) {
+  memcpy(buffer, &t, sizeof(t));
+}
+
+template <class T>
 inline T read_unaligned(const unsigned char *buffer) {
+  T t;
+  memcpy(&t, buffer, sizeof(t));
+  return t;
+}
+
+template <class T>
+inline T read_unaligned(const char *buffer) {
   T t;
   memcpy(&t, buffer, sizeof(t));
   return t;
