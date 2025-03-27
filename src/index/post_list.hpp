@@ -1,21 +1,56 @@
 #pragma once
 
+#include "compress.hpp"
 #include "list.hpp"
 #include "hashtable.hpp"
 
 namespace fast {
 
 class post_list {
+  static constexpr size_t PER_SYNC = 5'000;
+
   size_t num_words, sync_len, len;
 
-  size_t *sync() { return &len + 1; }
-  const size_t *sync() const { return &len + 1; }
+  pair<size_t> *sync() { return reinterpret_cast<pair<size_t>*>(&len + 1); }
+
+  const pair<size_t> *sync() const { return reinterpret_cast<const pair< size_t>*>(&len + 1); }
+
+  unsigned char *posts() { return reinterpret_cast<unsigned char*>(sync() + sync_len); }
+
+  const unsigned char *posts() const {
+    return reinterpret_cast<const unsigned char*>(sync() + sync_len);
+  }
 
 public:
 
-  static size_t size_needed(const list<Offset> &posts);
+  static size_t size_needed(const list<Offset> &posts) {
+    size_t dynamic = 0;
 
-  static unsigned char *write(const list<Offset> &posts, post_list *buffer);
+    dynamic += posts.size() / PER_SYNC * sizeof(pair<size_t>);
+
+    Offset last = 0;
+    for (const auto post : posts) {
+      dynamic += encoded_size(post - last);
+      last = post;
+    }
+
+    return dynamic + sizeof(post_list);
+  }
+
+  static unsigned char *write(const list<Offset> &posts, post_list *buffer) {
+    buffer->num_words = posts.size();
+    buffer->sync_len = posts.size() / PER_SYNC;
+
+    auto wp = buffer->posts();
+
+    size_t count = 0;
+    Offset last = 0;
+    for (const auto post : posts) {
+      wp = encode(post - last, ) 
+    }
+
+    return nullptr;
+  }
 };
 
 }
