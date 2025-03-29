@@ -19,7 +19,7 @@ public:
   // REQUIRES: Nothing
   // MODIFIES: *this
   // EFFECTS: Constructs an empty vector with capacity 0
-  vector() : elts{nullptr}, cap_{0}, size_{0} {}
+  vector() : elts{nullptr},  size_{0}, cap_{0} {}
 
   ~vector() {
     clear();
