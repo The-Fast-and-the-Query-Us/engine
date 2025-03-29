@@ -1,7 +1,6 @@
 #pragma once
 
 #include "string_view.hpp"
-#include <common.hpp>
 #include <compare>
 #include <cstddef>
 #include <cstdlib>
@@ -22,7 +21,7 @@ class string {
     cap = need;
   }
 
- public:
+public:
   string() {
     grow(8);
     len_ = 0;
@@ -32,12 +31,14 @@ class string {
   string(const string &other) {
     grow(other.cap);
     len_ = other.len_;
-    memcpy(start_, other.start_, len_ + 1);  // +1 for null
+    memcpy(start_, other.start_, len_ + 1); // +1 for null
   }
 
-  string(const char *cstr) { // maybe mark explicit to avoid accidentaly heap allocation?
+  string(const char *cstr) { // maybe mark explicit to avoid accidentaly heap
+                             // allocation?
     size_t str_len{0};
-    for (auto ptr = cstr; *ptr; ++ptr, ++str_len);
+    for (auto ptr = cstr; *ptr; ++ptr, ++str_len)
+      ;
 
     grow(str_len);
     len_ = str_len;
@@ -69,17 +70,42 @@ class string {
   const char *c_str() const { return start_; }
 
   void reserve(size_t need) {
-    if (need > cap) grow(need);
+    if (need > cap)
+      grow(need);
   }
 
+  void reverse(size_t l, size_t r) {
+    for (; l < (l + r) / 2; ++l) {
+      char temp = *(start_ + l);
+      *(start_ + l) = *(start_ + r);
+      *(start_ + r--) = temp;
+    }
+  }
+
+  bool operator==(const string &s) const {
+    if (s.size() != this->size())
+      return false;
+
+    for (size_t i = 0; i < s.size(); i++) {
+      if (s[i] != (*this)[i])
+        return false;
+    }
+
+    return true;
+  }
+
+  bool operator!=(string &s) { return !(*this == s); }
+
   void operator+=(char c) {
-    if (len_ == cap) grow(len_ << 1);
+    if (len_ == cap)
+      grow(len_ << 1);
     start_[len_++] = c;
     start_[len_] = 0;
   }
 
   void operator+=(const string &other) {
-    if (len_ + other.len_ > cap) grow(len_ + other.len_);
+    if (len_ + other.len_ > cap)
+      grow(len_ + other.len_);
     memcpy(start_ + len_, other.start_, other.len_);
     len_ += other.len_;
     start_[len_] = 0;
@@ -97,11 +123,9 @@ class string {
     start_[len_] = 0;
   }
 
-  string substr(size_t i, size_t len) {
-    return string(start_ + i, len);
-  }
+  string substr(size_t i, size_t len) { return string(start_ + i, len); }
 
-  char &operator[](size_t idx) { return start_[idx]; }
+  char &operator[](size_t idx) const { return start_[idx]; }
 
   char *begin() const { return start_; }
 
@@ -109,13 +133,9 @@ class string {
 
   size_t size() const { return len_; }
 
-  operator string_view() const {
-    return string_view(start_, len_);
-  }
+  operator string_view() const { return string_view(start_, len_); }
 
-  string_view view() const {
-    return this->operator string_view();
-  }
+  string_view view() const { return this->operator string_view(); }
 
   template<class T>
   bool operator==(const T &other) const {
@@ -136,4 +156,4 @@ class string {
   }
 };
 
-}  // namespace fast
+} // namespace fast

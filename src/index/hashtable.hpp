@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <list.hpp>
 #include <hash.hpp>
+#include <pair.hpp>
 
 namespace fast {
 
@@ -28,8 +29,6 @@ class hashtable {
   friend class dictionary;
   friend class hashblob;
 public:
-
-
   hashtable(size_t num_buckets = 2048) : num_buckets(num_buckets), next_offset(0), unique_words(0) {
     buckets = new list<bucket>[num_buckets];
   }
@@ -38,9 +37,7 @@ public:
 
   hashtable &operator=(const hashtable &ht) = delete;
 
-  ~hashtable() {
-    delete [] buckets;
-  }
+  ~hashtable() { delete[] buckets; }
 
   size_t tokens() const { return next_offset; }
 
@@ -63,4 +60,4 @@ public:
   }
 };
 
-}
+} // namespace fast
