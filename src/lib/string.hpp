@@ -1,7 +1,6 @@
 #pragma once
 
 #include "string_view.hpp"
-#include <common.hpp>
 #include <compare>
 #include <cstddef>
 #include <cstdlib>

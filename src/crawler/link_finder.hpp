@@ -2,7 +2,10 @@
 
 #include "../lib/string.hpp"
 #include "../lib/vector.hpp"
+#include "../index/hashtable.hpp"
+#include "../lib/mutex.hpp"
 #include "HtmlParser.h"
+#include <cctype>
 #include <cstdint>
 #include <cstring>
 #include <fcntl.h>
@@ -86,52 +89,7 @@ public:
 
   ~link_finder() { destroy_objects(); }
 
-  fast::vector<fast::string> extract_links() {
-    char* html{}; 
-    size_t html_cap = 0;
-    char buffer[MAX_PACKET_SIZE];
-    ssize_t bytes{};
-    bool found_header_end = false;
-    const char *header_end = "\r\n\r\n";
-    int header_match_pos = 0;
-
-    setup_connection();
-    send_get_request();
-
-    while ((bytes = SSL_read(ssl, buffer, sizeof(buffer))) > 0) {
-      if (!found_header_end) {
-        for (int i = 0; i < bytes; i++) {
-          if (buffer[i] == header_end[header_match_pos]) {
-            header_match_pos++;
-            if (header_match_pos == 4) { // Found \r\n\r\n
-              found_header_end = true;
-              
-              realloc(html, html_cap + bytes);
-              std::memcpy(html + html_cap, buffer, bytes);
-              html_cap += bytes;
-              // write(1, buffer + i + 1, bytes - (i + 1));
-              break;
-            }
-          } else {
-            header_match_pos = (buffer[i] == '\r') ? 1 : 0;
-          }
-        }
-      } else {
-        realloc(html, html_cap + bytes);
-        std::memcpy(html + html_cap, buffer, bytes);
-        html_cap += bytes;
-        // write(1, buffer, bytes);
-      }
-    }
-    if (bytes < 0) {
-      destroy_objects();
-      throw std::runtime_error("SSL read failed with error.\n");
-    }
-
-    if (SSL_shutdown(ssl) < 0) {
-      destroy_objects();
-      throw std::runtime_error("SSL shutdown failed with error.\n");
-    }
+  fast::vector<fast::string> parse_html(fast::hashtable &word_bank, fast::mutex &bank_mtx) {
 
     // TODO: Currently this function just dumps the html to std::cout.
     // We need to parse packet by packet and extract the links if there is no
@@ -139,15 +97,26 @@ public:
     // those links
     // TODO: Blobbify the robots.txt cache
     //
+    char* html{};
+    size_t html_cap{};
+    get_html(html, html_cap);
+    if (!html) return {};
 
     HtmlParser parser(html, html_cap);
     fast::vector<fast::string> links(parser.links.size());
-    for (size_t i = 0; i < parser.links.size(); ++i) {
+    for (size_t i = 0; i < links.size(); ++i) {
       links[i] = parser.links[i].URL;
     }
+    bank_mtx.lock();
+    for (fast::string &word : parser.words) {
+      while (!is_alphabet(word[0])) word = word.substr(1, word.size()-1);
+      while (!is_alphabet(word[word.size()-1])) word = word.substr(0, word.size()-1);
+      lower(word);
+      word_bank.add(word);
+    }
+    bank_mtx.unlock();
 
-
-    if (html) free(html);
+    free(html);
     destroy_objects();
 
     return links;
@@ -156,7 +125,7 @@ public:
   // Find all the links in each packet we receive. If we are still in a link
   // across a packet we can continue to the next packet write each packet to the
   // file correctly
-
+  
 private:
   struct addrinfo *address{};
   struct addrinfo hints{};
@@ -260,6 +229,64 @@ private:
       SSL_CTX_free(ctx);
       close(sock_fd);
       throw std::runtime_error("SSL write failed.\n");
+    }
+  }
+
+  void get_html(char* html, size_t html_cap) {
+    char buffer[MAX_PACKET_SIZE];
+    ssize_t bytes{};
+    bool found_header_end = false;
+    const char *header_end = "\r\n\r\n";
+    int header_match_pos = 0;
+
+    setup_connection();
+    send_get_request();
+
+    while ((bytes = SSL_read(ssl, buffer, sizeof(buffer))) > 0) {
+      if (!found_header_end) {
+        for (int i = 0; i < bytes; i++) {
+          if (buffer[i] == header_end[header_match_pos]) {
+            header_match_pos++;
+            if (header_match_pos == 4) { // Found \r\n\r\n
+              found_header_end = true;
+              
+              realloc(html, html_cap + bytes);
+              std::memcpy(html + html_cap, buffer, bytes);
+              html_cap += bytes;
+              // write(1, buffer + i + 1, bytes - (i + 1));
+              break;
+            }
+          } else {
+            header_match_pos = (buffer[i] == '\r') ? 1 : 0;
+          }
+        }
+      } else {
+        realloc(html, html_cap + bytes);
+        std::memcpy(html + html_cap, buffer, bytes);
+        html_cap += bytes;
+        // write(1, buffer, bytes);
+      }
+    }
+    if (bytes < 0) {
+      destroy_objects();
+      throw std::runtime_error("SSL read failed with error.\n");
+    }
+
+    if (SSL_shutdown(ssl) < 0) {
+      destroy_objects();
+      throw std::runtime_error("SSL shutdown failed with error.\n");
+    }
+  }
+
+  static bool is_alphabet(char c) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+  }
+
+  static void lower(fast::string &word) {
+    for (char &c : word) {
+      if (is_alphabet(c) && c <= 'Z' && c >= 'A') {
+        c = c + 32;
+      }
     }
   }
 

@@ -59,7 +59,8 @@ private:
   // Bloom filter and frontier are thread safe
   fast::bloom_filter<fast::string> visited_urls;
   fast::crawler::frontier crawl_frontier;
-  fast::hashtable
+  fast::hashtable word_bank;
+  fast::mutex bank_mtx;
   /*std::unordered_map<fast::string, std::unordered_set<fast::string>>*/
   pthread_t blob_thread{};
   pthread_t thread_pool[THREAD_COUNT]{};
@@ -92,8 +93,7 @@ private:
       }
       visited_urls.insert(url);
       html_scraper.parse_url(url.begin());
-      html_scraper.parse_html()
-      fast::vector<fast::string> extracted_links = html_scraper.extract_links();
+      fast::vector<fast::string> extracted_links = html_scraper.parse_html(word_bank, bank_mtx);
       for (auto &link : extracted_links) {
         if (!visited_urls.contains(link)) {
           crawl_frontier.insert(link);
