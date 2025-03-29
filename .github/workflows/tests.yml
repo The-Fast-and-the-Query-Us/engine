@@ -24,5 +24,5 @@ jobs:
       run: cmake --build ${{github.workspace}}/src/build --config ${{env.BUILD_TYPE}}
 
     - name: Test
-      working-directory: ${{github.workspace}}/src/build
+      working-directory: ${{github.workspace}}/src/build/test
       run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure
