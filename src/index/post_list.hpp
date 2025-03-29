@@ -19,6 +19,10 @@ class post_list {
     return reinterpret_cast<const unsigned char*>(sync() + sync_len);
   }
 
+  // open questions :
+  // should we use sqrt?
+  // should we binary search on this (because we can but we only seek forward)
+  // should we go by offset or number of posts (by offset we can jump directly into the table)
   static size_t get_per_sync(const list<Offset> &posts) {
     (void) posts; // for compile
     return 5'000;

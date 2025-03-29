@@ -44,5 +44,7 @@ int main() {
     }
   }
 
+  assert(hb->get("Notin") == nullptr);
+
   free(hb);
 }
