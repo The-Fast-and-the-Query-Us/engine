@@ -1,5 +1,5 @@
 // flat_map_test.cpp
-#include "../lib/flat_map.hpp"
+#include "flat_map.hpp"
 #include <unordered_map>
 #include <map>
 #include <string>

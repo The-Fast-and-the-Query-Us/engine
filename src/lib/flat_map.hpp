@@ -7,7 +7,6 @@
 #include <cstring>
 #include <cstddef>
 #include <cstdlib>
-#include <xxhash.h>
 #include "string.hpp"
 #include "common.hpp"
 #include <type_traits>
