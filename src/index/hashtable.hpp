@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <list.hpp>
 #include <hash.hpp>
+#include <pair.hpp>
 
 namespace fast {
 

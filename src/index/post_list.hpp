@@ -3,6 +3,7 @@
 #include "compress.hpp"
 #include "list.hpp"
 #include "hashtable.hpp"
+#include <pair.hpp>
 
 namespace fast {
 

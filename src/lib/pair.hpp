@@ -1,7 +1,10 @@
+#pragma once
+
 #include <utility>
+
 namespace fast {
 
-template <typename T1, typename T2>
+template <typename T1, typename T2 = T1>
 class pair {
 public:
   T1 first;
