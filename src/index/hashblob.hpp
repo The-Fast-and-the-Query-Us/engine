@@ -1,79 +1,74 @@
 #pragma once
 
 #include "common.hpp"
-#include "dictionary.hpp"
 #include "hashtable.hpp"
-#include "postlist.hpp"
 #include <cstddef>
+#include "dictionary.hpp"
+#include "post_list.hpp"
+
 namespace fast {
 
-/*
-* Format
-* Dictionary, doc ends, <posting lists>
-*/
-
 class hashblob {
-  size_t doc_offset;
+  static constexpr size_t MAGIC = 42;
+
+  size_t magic;
 
 public:
-  static size_t size_required(const hashtable &ht) {
-    size_t needed{sizeof(hashblob)};
+
+  const dictionary *dict() const {
+    return reinterpret_cast<const dictionary*>(align_ptr(&magic + 1, alignof(dictionary)));
+  }
+
+  dictionary *dict() {
+    return const_cast<dictionary*>(
+      static_cast<const hashblob*>(this)->dict()
+    );
+  }
+
+  bool is_good() const { return magic == MAGIC; }
+
+  static size_t size_needed(const hashtable &ht) {
+    size_t needed = sizeof(hashblob);
 
     needed = round_up(needed, alignof(dictionary));
-    needed += dictionary::size_required(ht);
+    needed += dictionary::size_needed(ht);
 
-    needed = round_up(needed, alignof(postlist<Doc>));
-    needed += postlist<Doc>::size_needed(ht.docs);
-
-    for (auto i = 0u; i < ht.num_buckets; ++i) {
-      for (const auto &b : ht.buckets[i]) {
-        needed = round_up(needed, alignof(postlist<Text>));
-        needed += postlist<Text>::size_needed(b.posts);
+    for (size_t i = 0; i < ht.num_buckets; ++i) {
+      for (const auto &bucket : ht.buckets[i]) {
+        needed = round_up(needed, alignof(post_list));
+        needed += post_list::size_needed(bucket.posts);
       }
     }
 
     return needed;
   }
 
-  static void write(const hashtable &ht, hashblob *buffer) {
+  // buffer must be zero init and alignof(size_t) (maybe just init for caller?)
+  static unsigned char *write(const hashtable &ht, hashblob *buffer) {
     auto write_pos = dictionary::write(ht, buffer->dict());
 
-    write_pos = align_ptr(write_pos, alignof(postlist<Doc>));
-    buffer->doc_offset = write_pos - (char *)buffer;
-    auto wp = postlist<Doc>::write(ht.docs, buffer->docs());
-
-    for (auto i = 0ul; i < ht.num_buckets; ++i) {
-      for (const auto &w : ht.buckets[i]) {
-        wp = align_ptr(wp, alignof(postlist<Text>));
-        buffer->dict()->put(w.word, wp - (unsigned char*)buffer);
-        wp = postlist<Text>::write(w.posts, (postlist<Text>*) wp);
+    for (size_t i = 0; i < ht.num_buckets; ++i) {
+      for (const auto &bucket : ht.buckets[i]) {
+        write_pos = align_ptr(write_pos, alignof(post_list));
+        buffer->dict()->put(bucket.word, size_t(write_pos - reinterpret_cast<unsigned char*>(buffer)));
+        write_pos = post_list::write(bucket.posts, reinterpret_cast<post_list*>(write_pos));
       }
     }
 
+    buffer->magic = MAGIC;
+    return write_pos;
   }
 
-  dictionary *dict() {
-    return align_ptr(reinterpret_cast<dictionary*>(&doc_offset + 1), alignof(dictionary));
-  }
-
-  postlist<Doc> *docs() {
-    return reinterpret_cast<postlist<Doc>*>(
-      reinterpret_cast<char*>(this) + doc_offset
-    );
-  }
-
-  postlist<Text> *get(const string_view &word) {
+  const post_list *get(const string_view word) const {
     const auto p = dict()->get(word);
-    if (!p.second) {
-      return nullptr;
-    } else {
-      return reinterpret_cast<postlist<Text>*>(
-        (char*)this + p.first
+    if (p.second) {
+      return reinterpret_cast<const post_list *>(
+        reinterpret_cast<const char*>(this) + p.first
       );
+    } else {
+      return nullptr;
     }
   }
 };
 
 }
-
-

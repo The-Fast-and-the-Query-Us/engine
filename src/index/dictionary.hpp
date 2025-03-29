@@ -14,17 +14,17 @@ namespace fast {
 class dictionary {
   static constexpr double LOAD = 1.0; // multiple of tokens for num_buckets
 
-  size_t num_buckets, num_unique, num_words, num_docs, dict_size;
+  size_t num_buckets, num_unique, num_words, dict_size;
 
   size_t *buckets() { return &dict_size + 1; }
   const size_t *buckets() const { return &dict_size + 1; }
 
-  char *dict() {
-    return reinterpret_cast<char*>(buckets() + num_buckets);
+  unsigned char *dict() {
+    return reinterpret_cast<unsigned char*>(buckets() + num_buckets);
   }
 
-  const char *dict() const {
-    return reinterpret_cast<const char*>(buckets() + num_buckets);
+  const unsigned char *dict() const {
+    return reinterpret_cast<const unsigned char*>(buckets() + num_buckets);
   }
 
   public:
@@ -32,9 +32,8 @@ class dictionary {
 
   size_t unique() const { return num_unique; }
   size_t words()  const { return num_words; }
-  size_t docs()   const { return num_docs; }
 
-  static size_t size_required(const hashtable &ht) {
+  static size_t size_needed(const hashtable &ht) {
     size_t dynamic{0};
     
     for (auto i = 0u; i < ht.num_buckets; ++i) {
@@ -52,11 +51,10 @@ class dictionary {
    * buffer must be zero init and align of size_t.
    * constructs dictionary in buffer with each key set to dict[key] = 1
    */
-  static char *write(const hashtable &ht, dictionary *buffer) {
+  static unsigned char *write(const hashtable &ht, dictionary *buffer) {
     buffer->num_unique = ht.unique_words;
     buffer->num_buckets = ht.unique_words * LOAD;
-    buffer->num_words = ht.next_offset - ht.docs.size();
-    buffer->num_docs = ht.docs.size();
+    buffer->num_words = ht.next_offset;
 
     for (auto i = 0u; i < ht.num_buckets; ++i) {
       for (const auto &bucket : ht.buckets[i]) {
@@ -90,7 +88,7 @@ class dictionary {
     return buffer->dict() + buffer->dict_size;
   }
 
-  const char *find_entry(const string_view &word) const {
+  const unsigned char *find_entry(const string_view &word) const {
     const auto hash_val = hash(word);
     auto pos = buckets()[hash_val % num_buckets] + dict();
     const auto end = dict() + (((hash_val + 1) % num_buckets) ?
@@ -111,8 +109,8 @@ class dictionary {
     return nullptr;
   }
 
-  char *find_entry(const string_view &word) {
-    return const_cast<char*>(static_cast<const dictionary*>(this)->find_entry(word));
+  unsigned char *find_entry(const string_view &word) {
+    return const_cast<unsigned char*>(static_cast<const dictionary*>(this)->find_entry(word));
   }
 
   // requires that word is in the dict
@@ -121,7 +119,7 @@ class dictionary {
     write_unaligned(val, entry);
   }
 
-  // returns pair {value, present in map}
+  // returns pair {value, bool (true => present in map)}
   pair<size_t, bool> get(const string_view &word) const {
     auto entry = find_entry(word);
     if (entry == nullptr) return {0, false};
