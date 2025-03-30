@@ -3,6 +3,8 @@
 #include "hashtable.hpp"
 #include <cassert>
 #include <cstdlib>
+#include <iostream>
+#include <ostream>
 
 using namespace fast;
 
@@ -23,6 +25,8 @@ void test(const list<Offset> &l) {
   auto pit = pl->begin();
   pit.seek_forward(l.back());
 
+  std::cout << *pit << std::endl;
+  std::cout << l.back() << std::endl;
   assert(*pit == l.back());
   assert(pit);
   ++pit;
@@ -34,14 +38,20 @@ int main() {
   srand(0);
   list<Offset> l;
 
+  Offset base = 0;
+
   while (l.size() < 100) {
-    l.push_back((rand() % 100) + 1);
+    l.push_back(base);
+    base += rand() % 100;
+    ++base;
   }
 
   test(l);
 
   while (l.size() < 10000) {
-    l.push_back((rand() % 500) + 1);
+    l.push_back(base);
+    base += rand() % 100;
+    ++base;
   }
 
   test(l);

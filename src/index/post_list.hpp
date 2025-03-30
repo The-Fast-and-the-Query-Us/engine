@@ -79,7 +79,6 @@ public:
   class isr {
     friend class post_list;
 
-    bool end;
     Offset acc;
     const unsigned char *buff;
 
@@ -87,21 +86,20 @@ public:
     const post_list *pl;
 
     isr(Offset base, const unsigned char *buff, size_t next_sync, const post_list *pl) 
-    : end(false), acc(base), buff(buff), next_sync(next_sync), pl(pl) {}
+    : acc(base), buff(buff), next_sync(next_sync), pl(pl) {}
 
-    isr(const unsigned char *buff) : end(true), buff(buff) {};
+    isr(const unsigned char *buff) : buff(buff) {};
 
   public:
 
     Offset operator*() const { return acc; }
 
-    operator bool() const { return !end; }
+    operator bool() const { return *this != pl->end(); }
 
     isr& operator++() {
       uint64_t tmp;
       buff = decode(tmp, buff);
       acc += tmp;
-      end = !tmp;
       return *this;
     }
 
