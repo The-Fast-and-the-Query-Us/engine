@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../lib/string.hpp"
-#include "../lib/vector.hpp"
-#include "../index/hashtable.hpp"
-#include "../lib/mutex.hpp"
+#include "string.hpp"
+#include "vector.hpp"
+#include "hashtable.hpp"
+#include "mutex.hpp"
 #include "HtmlParser.h"
 #include <cctype>
 #include <cstdint>
