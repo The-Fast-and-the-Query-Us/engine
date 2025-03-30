@@ -12,6 +12,8 @@ namespace fast {
 typedef uint32_t Offset;
 typedef pair<string, Offset> Url;
 
+const string_view DOC_END = " ";
+
 class hashtable {
 
   struct bucket {
@@ -25,6 +27,8 @@ class hashtable {
 
   size_t num_buckets, next_offset, unique_words;
   list<bucket> *buckets;
+
+  list<Url> docs;
 
   friend class dictionary;
   friend class hashblob;
@@ -57,6 +61,12 @@ public:
     l.emplace_back(hashval, word);
     l.back().posts.push_back(next_offset++);
     ++unique_words;
+  }
+
+  // add a doc end with url
+  void doc(const string_view &url) {
+    docs.emplace_back(url, next_offset);
+    add(DOC_END);
   }
 };
 
