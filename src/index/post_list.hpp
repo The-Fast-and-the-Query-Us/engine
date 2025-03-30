@@ -93,9 +93,9 @@ public:
 
   public:
 
-    bool operator*() const { return !end; }
+    Offset operator*() const { return acc; }
 
-    operator Offset() const { return acc; }
+    operator bool() const { return !end; }
 
     isr& operator++() {
       uint64_t tmp;
@@ -115,7 +115,7 @@ public:
         acc = sync.second;
       }
 
-      while (*this < offset) ++(*this);
+      while (*this && **this < offset) ++(*this);
     }
 
     bool operator==(const isr &other) const {

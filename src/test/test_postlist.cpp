@@ -20,6 +20,14 @@ void test(const list<Offset> &l) {
   }
   assert(it == l.end());
 
+  auto pit = pl->begin();
+  pit.seek_forward(l.back());
+
+  assert(*pit == l.back());
+  assert(pit);
+  ++pit;
+  assert(!pit);
+
   free(pl);
 }
 int main() {
