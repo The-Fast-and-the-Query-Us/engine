@@ -19,6 +19,8 @@
 // <script>, <style>, and <svg> require discarding the the entire section.
 // <!--, <title>, <a>, <base> and <embed> are special-cased.
 
+#include <cstddef>
+
 enum class DesiredAction
    {
    OrdinaryText,
