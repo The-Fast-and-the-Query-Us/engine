@@ -36,14 +36,15 @@ class hashmap {
   // number of key, val pairs in the map
   size_t size() const { return num_nodes; }
 
-  const V& operator[](const K &key) const {
+  V& operator[](const K &key) {
     const auto hashval = hash(key);
     const auto bucket = hashval % num_buckets;
 
-    for (const auto &node : buckets[bucket]) {
+    for (auto &node : buckets[bucket]) {
       if (node.hashval == hashval && node.key == key) return node.val;
     }
 
+    ++num_nodes;
     buckets[bucket].emplace_back(hashval, key);
     return buckets[bucket].back().val;
   }
