@@ -10,6 +10,15 @@
 #include "query.hpp"
 
 const int PORT = 8080;
+int FD;
+
+// close FD on SIGINT
+void handle_cleanup(int signal) {
+  if (signal == SIGINT) {
+    close(FD);
+    exit(0);
+  }
+}
 
 int main(int argc, char **argv) {
   if (argc != 2) {
@@ -25,7 +34,7 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  const auto FD = socket(AF_INET, SOCK_STREAM, 0);
+  FD = socket(AF_INET, SOCK_STREAM, 0);
 
   if (FD < 0) {
     perror("socket(...)");
@@ -54,6 +63,7 @@ int main(int argc, char **argv) {
 
   // allow child to clean up immediately
   signal(SIGCHLD, SIG_IGN);
+  signal(SIGINT, handle_cleanup);
 
   while (true) {
     const auto client = accept(FD, NULL, NULL);
