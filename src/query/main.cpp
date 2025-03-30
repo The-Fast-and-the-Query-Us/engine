@@ -7,8 +7,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <dirent.h>
 #include "query.hpp"
 
+constexpr int MAX_PATH = 4096;
 const int PORT = 8080;
 int FD;
 
@@ -21,8 +23,8 @@ void handle_cleanup(int signal) {
 }
 
 int main(int argc, char **argv) {
-  if (argc != 2) {
-    perror("Useage: query <NUM_CHUNKS>");
+  if (argc != 3) {
+    perror("Useage: query <NUM_CHUNKS> <index_path>");
     exit(1);
   }
 
@@ -34,8 +36,20 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  FD = socket(AF_INET, SOCK_STREAM, 0);
+  // check that directory exists
+  const auto dir = opendir(argv[2]);
+  if (!dir) {
+    perror("Invalid index path");
+    exit(1);
+  }
+  closedir(dir);
 
+  // store dir so that we can append number to it
+  char index_dir[MAX_PATH + 1];
+  auto dir_end = index_dir;
+  for (auto ptr = argv[2]; *ptr; ++ptr, ++dir_end) *dir_end = *ptr;
+
+  FD = socket(AF_INET, SOCK_STREAM, 0);
   if (FD < 0) {
     perror("socket(...)");
     exit(1);
@@ -76,7 +90,7 @@ int main(int argc, char **argv) {
     if (fork() == 0) {
 
       close(FD); // both parent and child must close
-      fast::query::handle(client, NUM_CHUNKS);
+      fast::query::handle(client, NUM_CHUNKS, index_dir, dir_end);
       close(client);
       return 0;
 

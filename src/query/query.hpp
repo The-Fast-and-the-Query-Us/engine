@@ -5,6 +5,6 @@ namespace fast::query {
 /*
 * Handles a clients request, leaving fd open
 */
-void handle(const int client_fd, const int num_chunks);
+void handle(const int client_fd, const int num_chunks, const char *index_dir, char *dir_end);
 
 }
