@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include "query.hpp"
 
 const int PORT = 8080;
 
@@ -63,9 +64,12 @@ int main(int argc, char **argv) {
     }
 
     if (fork() == 0) {
-      close(FD);
-      // handle
+
+      close(FD); // both parent and child must close
+      fast::query::handle(client, NUM_CHUNKS);
+      close(client);
       return 0;
+
     } else {
       close(client);
     }
