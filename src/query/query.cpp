@@ -17,8 +17,9 @@ static string get_query(const int client_fd) {
   __builtin_unreachable(); // TODO
 }
 
-// todo
-static void rank_chunk(const hashblob *blob, const string &query, array<Result, MAX_RESULTS> &results);
+static void rank_chunk(const hashblob *blob, const string &query, array<Result, MAX_RESULTS> &results) {
+  __builtin_unreachable(); // TODO
+}
 
 void handle(const int client_fd, const int num_chunks, const char *index_dir, char *dir_end) {
   const auto query = get_query(client_fd);
