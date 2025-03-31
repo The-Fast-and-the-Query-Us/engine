@@ -8,11 +8,9 @@
 #include <hashblob.hpp>
 #include <array.hpp>
 #include <network.hpp>
+#include "constants.hpp"
 
 namespace fast::query {
-
-static constexpr size_t MAX_RESULTS = 10;
-typedef pair<uint32_t, string> Result;
 
 static string get_query(const int client_fd) {
   __builtin_unreachable(); // TODO

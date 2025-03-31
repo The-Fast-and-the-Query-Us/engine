@@ -8,18 +8,26 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <dirent.h>
-#include "query.hpp"
 
-constexpr int MAX_PATH = 4096;
-const int PORT = 8080;
-int FD;
+static constexpr int MAX_PATH = 4096;
+static const int PORT = 8080;
+
+static int FD;
+static int NUM_CHUNKS;
+static char INDEX_DIR[MAX_PATH + 1];
+static char *DIR_END;
 
 // close FD on SIGINT
-void handle_cleanup(int signal) {
+static void handle_cleanup(int signal) {
   if (signal == SIGINT) {
     close(FD);
     exit(0);
   }
+}
+
+// TODO
+static void handle_client(const int fd) {
+
 }
 
 int main(int argc, char **argv) {
@@ -29,7 +37,7 @@ int main(int argc, char **argv) {
   }
 
   char *end;
-  const auto NUM_CHUNKS = strtol(argv[1], &end, 10);
+  NUM_CHUNKS = strtol(argv[1], &end, 10);
 
   if (end == argv[1] || *end != 0) {
     perror("Invlid number of chunks (should be a positive number)");
@@ -44,10 +52,9 @@ int main(int argc, char **argv) {
   }
   closedir(dir);
 
-  // store dir so that we can append number to it
-  char index_dir[MAX_PATH + 1];
-  auto dir_end = index_dir;
-  for (auto ptr = argv[2]; *ptr; ++ptr, ++dir_end) *dir_end = *ptr;
+  DIR_END = INDEX_DIR;
+  for (auto ptr = argv[2]; *ptr; ++ptr, ++DIR_END) *DIR_END = *ptr;
+  *(DIR_END++) = '/';
 
   FD = socket(AF_INET, SOCK_STREAM, 0);
   if (FD < 0) {
@@ -91,7 +98,7 @@ int main(int argc, char **argv) {
     if (fork() == 0) {
 
       close(FD); // both parent and child must close
-      fast::query::handle(client, NUM_CHUNKS, index_dir, dir_end);
+      handle_client(client);
       close(client);
       return 0;
 
