@@ -8,16 +8,38 @@ namespace fast::query {
 class isr {
 public:
   virtual void next();
-  virtual bool has_next();
-  virtual void seekf(Offset offset);
+  virtual void next_document();
+  virtual void seek(Offset offset);
   virtual Offset offset();
+  virtual bool end();
 };
 
-class isr_word : isr {
-  const post_list *pl;
+// figure out which methods we need
+class isr_or : public isr {
+  isr **terms;
+  unsigned term_count;
 
-  public:
-  isr_word(const post_list *pl) : pl(pl) {}
+public:
+
+  void next() override {
+
+  }
+
+  void next_document() override {
+
+  }
+
+  void seek(Offset offset) override {
+
+  }
+
+  Offset offset() override {
+
+  }
+
+  bool end() override {
+
+  }
 };
 
 }
