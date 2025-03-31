@@ -6,15 +6,24 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <hashblob.hpp>
+#include <array.hpp>
 
 namespace fast::query {
+
+static constexpr size_t MAX_RESULTS = 10;
+typedef pair<uint64_t, string> Result;
 
 static string get_query(const int client_fd) {
   __builtin_unreachable(); // TODO
 }
 
+// todo
+static void rank_chunk(const hashblob *blob, const string &query, array<Result, MAX_RESULTS> &results);
+
 void handle(const int client_fd, const int num_chunks, const char *index_dir, char *dir_end) {
   const auto query = get_query(client_fd);
+
+  array<Result, MAX_RESULTS> results;
 
   for (auto chunk_num = 0; chunk_num < num_chunks; ++chunk_num) {
     sprintf(dir_end, "%d", chunk_num); // deprecated
@@ -47,14 +56,15 @@ void handle(const int client_fd, const int num_chunks, const char *index_dir, ch
 
     auto blob = reinterpret_cast<const hashblob*>(map_ptr);
     
-
-    // do processing
+    rank_chunk(blob, query, results);
 
     if (munmap(map_ptr, chunk_size) == -1) [[unlikely]] {
       perror("Fail to unmap chunk");
-      exit(1);
+      exit(1); // maybe shouldnt exit here?
     }
   }
+
+  // send results
 }
 
 }
