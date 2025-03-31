@@ -23,6 +23,7 @@ int main(void) {
   post_list::write(l, pl);
 
   assert(pl->words() == l.size());
+  assert(pl->get_last() == l.back());
 
   free(pl);
 }
