@@ -33,7 +33,7 @@ static void handle_cleanup(int signal) {
 
 static void handle_client(const int fd) {
   fast::string query;
-  fast::recv_all(fd, query);
+  fast::recv_all(fd, query); // Check return?
 
   for (auto chunk_num = 0; chunk_num < NUM_CHUNKS; ++chunk_num) {
     sprintf(DIR_END, "%d", chunk_num); // deprecated
@@ -66,12 +66,15 @@ static void handle_client(const int fd) {
 
     auto blob = reinterpret_cast<const fast::hashblob*>(map_ptr);
     
+    // todo call ranker
 
     if (munmap(map_ptr, chunk_size) == -1) [[unlikely]] {
       perror("Fail to unmap chunk");
       exit(1); // maybe shouldnt exit here?
     }
   }
+
+  // send results
 }
 
 int main(int argc, char **argv) {
