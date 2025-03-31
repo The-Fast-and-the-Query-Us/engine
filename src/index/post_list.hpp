@@ -91,6 +91,7 @@ public:
     isr(const unsigned char *buff) : buff(buff) {};
 
   public:
+    isr(){}
 
     Offset operator*() const { return acc; }
 
