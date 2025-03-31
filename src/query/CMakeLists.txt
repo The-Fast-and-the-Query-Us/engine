@@ -1,2 +1,2 @@
-add_executable(query main.cpp query.cpp)
-target_link_libraries(query lib index)
+add_executable(server server.cpp query.cpp)
+target_link_libraries(server lib index)
