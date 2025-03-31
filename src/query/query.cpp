@@ -9,13 +9,15 @@
 
 namespace fast::query {
 
-static string get_query(const int client_fd);
+static string get_query(const int client_fd) {
+  __builtin_unreachable(); // TODO
+}
 
 void handle(const int client_fd, const int num_chunks, const char *index_dir, char *dir_end) {
   const auto query = get_query(client_fd);
 
   for (auto chunk_num = 0; chunk_num < num_chunks; ++chunk_num) {
-    sprintf(dir_end, "%d", chunk_num);
+    sprintf(dir_end, "%d", chunk_num); // deprecated
     const int fd = open(index_dir, O_RDONLY);
 
     if (fd == -1) [[unlikely]] {
