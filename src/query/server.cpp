@@ -33,6 +33,11 @@ static void handle_cleanup(int signal) {
   }
 }
 
+// todo
+void blob_rank(const fast::hashblob*, const fast::string&, fast::array<fast::query::Result, fast::query::MAX_RESULTS>) {
+  return;
+}
+
 static void handle_client(const int client_fd) {
   fast::string query;
   fast::recv_all(client_fd, query); // Check return?
@@ -70,7 +75,7 @@ static void handle_client(const int client_fd) {
 
     auto blob = reinterpret_cast<const fast::hashblob*>(map_ptr);
     
-    // todo call ranker
+    blob_rank(blob, query, results);
 
     if (munmap(map_ptr, chunk_size) == -1) [[unlikely]] {
       perror("Fail to unmap chunk");
