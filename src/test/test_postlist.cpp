@@ -1,3 +1,4 @@
+#include <cassert>
 #include <cstdlib>
 #include <post_list.hpp>
 #include <list.hpp>
@@ -20,6 +21,8 @@ int main(void) {
 
   auto pl = (post_list*) malloc(needed);
   post_list::write(l, pl);
+
+  assert(pl->words() == l.size());
 
   free(pl);
 }
