@@ -65,7 +65,8 @@ void handle(const int client_fd, const int num_chunks, const char *index_dir, ch
     }
   }
 
-  // send results
+  // send results format:
+  // count [<rank uint64_t> <lenth uint64_t> <string>]
 }
 
 }
