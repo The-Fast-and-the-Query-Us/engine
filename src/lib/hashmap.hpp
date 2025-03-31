@@ -16,7 +16,7 @@ class hashmap {
     K key;
     V val;
 
-    node(uint64_t hashval, K key) : hashval(hashval), key(key) {}
+    node(uint64_t hashval, K key) : hashval(hashval), key(key), V() {}
   };
 
   list<node> *buckets;
