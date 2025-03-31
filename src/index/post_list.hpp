@@ -7,7 +7,26 @@
 
 namespace fast {
 
+namespace {
+  template<class T>
+  size_t post_size(const T &elt, Offset last);
+
+  template<>
+  size_t post_size(const Offset &elt, Offset last) {
+    return encoded_size(elt - last);
+  }
+
+  template<class T>
+  unsigned char *write_post(const T &elt, Offset last, unsigned char *wp);
+
+  template<>
+  unsigned char *write_post(const Offset &elt, Offset last, unsigned char *wp) {
+    return encode(elt - last, wp);
+  }
+}
+
 class post_list {
+  Offset last;
   size_t num_words, sync_len, len;
 
   pair<size_t> *sync() { return reinterpret_cast<pair<size_t>*>(&len + 1); }
@@ -20,11 +39,8 @@ class post_list {
     return reinterpret_cast<const unsigned char*>(sync() + sync_len);
   }
 
-  // open questions :
-  // should we use sqrt?
-  // should we binary search on this (because we can but we only seek forward)
-  // should we go by offset or number of posts (by offset we can jump directly into the table)
-  static size_t get_per_sync(const list<Offset> &posts) {
+  template<class T>
+  static size_t get_per_sync(const list<T> &posts) {
     (void) posts; // for compile
     return 5'000;
   }
@@ -33,7 +49,8 @@ public:
 
   size_t words() const { return num_words; }
 
-  static size_t size_needed(const list<Offset> &posts) {
+  template<class T>
+  static size_t size_needed(const list<T> &posts) {
     const auto PER_SYNC = get_per_sync(posts);
 
     size_t dynamic = 0;
@@ -41,16 +58,14 @@ public:
 
     Offset last = 0;
     for (const auto post : posts) {
-      dynamic += encoded_size(post - last);
+      dynamic += post_size(post, last);
       last = post;
     }
-
-    dynamic += encoded_size(0);
-
     return dynamic + sizeof(post_list);
   }
 
-  static unsigned char *write(const list<Offset> &posts, post_list *buffer) {
+  template<class T>
+  static unsigned char *write(const list<T> &posts, post_list *buffer) {
     const auto PER_SYNC = get_per_sync(posts);
 
     buffer->num_words = posts.size();
@@ -61,8 +76,8 @@ public:
     size_t idx = 0;
     Offset last = 0;
 
-    for (const auto post : posts) {
-      wp = encode(post - last, wp);
+    for (const auto &post : posts) {
+      wp = write_post(post, last, wp);
       ++idx;
       last = post;
 
@@ -71,64 +86,9 @@ public:
       }
     }
 
-    wp = encode(0, wp);
     buffer->len = size_t(wp - buffer->posts());
+    buffer->last = posts.back();
     return wp;
-  }
-
-  class isr {
-    friend class post_list;
-
-    Offset acc;
-    const unsigned char *buff;
-
-    size_t next_sync;
-    const post_list *pl;
-
-    isr(Offset base, const unsigned char *buff, size_t next_sync, const post_list *pl) 
-    : acc(base), buff(buff), next_sync(next_sync), pl(pl) {}
-
-    isr(const unsigned char *buff) : buff(buff) {};
-
-  public:
-    isr(){}
-
-    Offset operator*() const { return acc; }
-
-    operator bool() const { return *this != pl->end(); }
-
-    isr& operator++() {
-      uint64_t tmp;
-      buff = decode(tmp, buff);
-      acc += tmp;
-      return *this;
-    }
-
-    // seek forward to first post >= offset
-    void seek_forward(Offset offset) {
-      for (; next_sync < pl->sync_len; ++next_sync) {
-        const auto sync = pl->sync()[next_sync];
-        if (sync.second > offset) break;
-
-        buff = pl->posts() + sync.first;
-        acc = sync.second;
-      }
-
-      while (*this && **this < offset) ++(*this);
-    }
-
-    bool operator==(const isr &other) const {
-      return buff == other.buff;
-    }
-  };
-
-  isr begin() const {
-    isr ans(0, posts(), 0, this);
-    return ++ans;
-  }
-
-  isr end() const {
-    return isr(posts() + len);
   }
 
 };
