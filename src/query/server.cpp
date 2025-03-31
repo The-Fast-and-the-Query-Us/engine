@@ -3,11 +3,17 @@
 #include <cstdlib>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/fcntl.h>
 #include <sys/signal.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <string.hpp>
+#include <network.hpp>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <hashblob.hpp>
 
 static constexpr int MAX_PATH = 4096;
 static const int PORT = 8080;
@@ -25,9 +31,47 @@ static void handle_cleanup(int signal) {
   }
 }
 
-// TODO
 static void handle_client(const int fd) {
+  fast::string query;
+  fast::recv_all(fd, query);
 
+  for (auto chunk_num = 0; chunk_num < NUM_CHUNKS; ++chunk_num) {
+    sprintf(DIR_END, "%d", chunk_num); // deprecated
+    const int fd = open(INDEX_DIR, O_RDONLY);
+
+    if (fd == -1) [[unlikely]] {
+      perror("Fail to open index chunk");
+      fprintf(stderr, "Failed to open index chunk : %d\n", chunk_num);
+      exit(1); // should we continue?
+    }
+
+    struct stat sb;
+    if (fstat(fd, &sb) == -1) [[unlikely]] {
+      close(fd);
+      perror("Fail to get chunk stats");
+      fprintf(stderr, "Failed to get stat for chunk : %d\n", chunk_num);
+      exit(1);
+    }
+    const size_t chunk_size = sb.st_size;
+
+    const auto map_ptr = mmap(nullptr, chunk_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (map_ptr == MAP_FAILED) [[unlikely]] {
+      close(fd);
+      perror("Fail to mmap index chunk");
+      fprintf(stderr, "Fail to mmap chunk number : %d\n", chunk_num);
+      exit(1);
+    }
+
+    close(fd);
+
+    auto blob = reinterpret_cast<const fast::hashblob*>(map_ptr);
+    
+
+    if (munmap(map_ptr, chunk_size) == -1) [[unlikely]] {
+      perror("Fail to unmap chunk");
+      exit(1); // maybe shouldnt exit here?
+    }
+  }
 }
 
 int main(int argc, char **argv) {
