@@ -3,6 +3,7 @@
 #include "common.hpp"
 #include "hashtable.hpp"
 #include <cstddef>
+#include <memory>
 #include "dictionary.hpp"
 #include "post_list.hpp"
 
@@ -11,7 +12,7 @@ namespace fast {
 class hashblob {
   static constexpr size_t MAGIC = 42;
 
-  size_t magic;
+  size_t doc_offset, magic;
 
 public:
 
@@ -40,6 +41,9 @@ public:
       }
     }
 
+    needed = round_up(needed, alignof(post_list));
+    needed += post_list::size_needed(ht.docs);
+
     return needed;
   }
 
@@ -55,6 +59,10 @@ public:
       }
     }
 
+    write_pos = align_ptr(write_pos, alignof(post_list));
+    buffer->doc_offset = write_pos - reinterpret_cast<unsigned char*>(buffer);
+    write_pos = post_list::write(ht.docs, reinterpret_cast<post_list*>(write_pos));
+
     buffer->magic = MAGIC;
     return write_pos;
   }
@@ -68,6 +76,12 @@ public:
     } else {
       return nullptr;
     }
+  }
+
+  const post_list *docs() const {
+    return reinterpret_cast<const post_list *>(
+      reinterpret_cast<const unsigned char*>(this) + doc_offset
+    );
   }
 };
 
