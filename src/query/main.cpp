@@ -87,6 +87,7 @@ int main(int argc, char **argv) {
       exit(1);
     }
 
+    // use fork to prevent sharing address space
     if (fork() == 0) {
 
       close(FD); // both parent and child must close
