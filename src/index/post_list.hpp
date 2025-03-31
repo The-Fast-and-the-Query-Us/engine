@@ -8,18 +8,18 @@
 
 namespace fast {
 
-namespace {
+namespace hidden {
 
 template<class T>
-size_t post_size(const T &elt, Offset last);
+inline size_t post_size(const T &elt, Offset last);
 
 template<>
-size_t post_size(const Offset &elt, Offset last) {
+inline size_t post_size(const Offset &elt, Offset last) {
   return encoded_size(elt - last);
 }
 
 template<>
-size_t post_size(const url_post &elt, Offset last) {
+inline size_t post_size(const url_post &elt, Offset last) {
   size_t dyn = 0;
   dyn += encoded_size(elt - last);
   dyn += encoded_size(elt.doc_len);
@@ -29,15 +29,15 @@ size_t post_size(const url_post &elt, Offset last) {
 }
 
 template<class T>
-unsigned char *write_post(const T &elt, Offset last, unsigned char *wp);
+inline unsigned char *write_post(const T &elt, Offset last, unsigned char *wp);
 
 template<>
-unsigned char *write_post(const Offset &elt, Offset last, unsigned char *wp) {
+inline unsigned char *write_post(const Offset &elt, Offset last, unsigned char *wp) {
   return encode(elt - last, wp);
 }
 
 template<>
-unsigned char *write_post(const url_post &elt, Offset last, unsigned char *wp) {
+inline unsigned char *write_post(const url_post &elt, Offset last, unsigned char *wp) {
   wp = encode(elt.offset - last, wp);
   wp = encode(elt.doc_len, wp);
   wp = encode(elt.url.size(), wp);
@@ -80,7 +80,7 @@ public:
 
     Offset last = 0;
     for (const auto post : posts) {
-      dynamic += post_size(post, last);
+      dynamic += hidden::post_size(post, last);
       last = post;
     }
     return dynamic + sizeof(post_list);
@@ -99,7 +99,7 @@ public:
     Offset last = 0;
 
     for (const auto &post : posts) {
-      wp = write_post(post, last, wp);
+      wp = hidden::write_post(post, last, wp);
       ++idx;
       last = post;
 
