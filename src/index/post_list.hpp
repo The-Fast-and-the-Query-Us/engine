@@ -68,6 +68,7 @@ class post_list {
   }
 
 public:
+  Offset get_last() const { return last; }
 
   size_t words() const { return num_words; }
 
