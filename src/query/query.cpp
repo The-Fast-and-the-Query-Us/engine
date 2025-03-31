@@ -7,18 +7,19 @@
 #include <sys/mman.h>
 #include <hashblob.hpp>
 #include <array.hpp>
+#include <network.hpp>
 
 namespace fast::query {
 
 static constexpr size_t MAX_RESULTS = 10;
-typedef pair<uint64_t, string> Result;
+typedef pair<uint32_t, string> Result;
 
 static string get_query(const int client_fd) {
   __builtin_unreachable(); // TODO
 }
 
 static void rank_chunk(const hashblob *blob, const string &query, array<Result, MAX_RESULTS> &results) {
-  __builtin_unreachable(); // TODO
+  return; // TODO
 }
 
 void handle(const int client_fd, const int num_chunks, const char *index_dir, char *dir_end) {
@@ -66,7 +67,19 @@ void handle(const int client_fd, const int num_chunks, const char *index_dir, ch
   }
 
   // send results format:
-  // count [<rank uint64_t> <lenth uint64_t> <string>]
+  // count [<rank uint32_t> <lenth uint32_t> <string>]
+  uint32_t count = 0;
+  for (const auto &p : results) {
+    if (p.second != "") ++count;
+  }
+  send_all(client_fd, count);
+
+  for (const auto &p : results) {
+    send_all(client_fd, p.first);
+    send_all(client_fd, p.second.size());
+    send_all(client_fd, p.second.begin(), p.second.size());
+  }
+
 }
 
 }
