@@ -79,7 +79,7 @@ public:
     dynamic += posts.size() / PER_SYNC * sizeof(pair<size_t>);
 
     Offset last = 0;
-    for (const auto post : posts) {
+    for (const auto &post : posts) {
       dynamic += hidden::post_size(post, last);
       last = post;
     }
