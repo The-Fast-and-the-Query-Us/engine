@@ -14,6 +14,8 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <hashblob.hpp>
+#include "constants.hpp"
+#include <array.hpp>
 
 static constexpr int MAX_PATH = 4096;
 static const int PORT = 8080;
@@ -31,12 +33,14 @@ static void handle_cleanup(int signal) {
   }
 }
 
-static void handle_client(const int fd) {
+static void handle_client(const int client_fd) {
   fast::string query;
-  fast::recv_all(fd, query); // Check return?
+  fast::recv_all(client_fd, query); // Check return?
+
+  fast::array<fast::query::Result, fast::query::MAX_RESULTS> results;
 
   for (auto chunk_num = 0; chunk_num < NUM_CHUNKS; ++chunk_num) {
-    sprintf(DIR_END, "%d", chunk_num); // deprecated
+    sprintf(DIR_END, "%d", chunk_num);
     const int fd = open(INDEX_DIR, O_RDONLY);
 
     if (fd == -1) [[unlikely]] {
@@ -75,6 +79,18 @@ static void handle_client(const int fd) {
   }
 
   // send results
+  size_t count = 0;
+  for (const auto &result : results) {
+    if (result.second.size() > 0) ++count;
+  }
+
+  fast::send_all(client_fd, count);
+  for (const auto &result : results) {
+    if (result.second.size() > 0) {
+      fast::send_all(client_fd, result.first);
+      fast::send_all(client_fd, result.second);
+    }
+  }
 }
 
 int main(int argc, char **argv) {
