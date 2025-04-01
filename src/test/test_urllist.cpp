@@ -10,15 +10,17 @@ string urls[] = {"www.amazon.com", "www.google.com", "www.github.com", "s", "hel
 
 const int NUM_URL = sizeof(urls) / sizeof(string);
 
-int main() {
-  list<url_post> l;
-  
-  Offset base = 0;
-  while (l.size() < 100) {
+Offset base = 0;
+list<url_post> l;
+
+void generate(size_t len) {
+  while (l.size() < len) {
     l.emplace_back(rand(), base, urls[base %NUM_URL]);
     base += (rand() % 100) + 1;
   }
+}
 
+void test(void) {
   const auto space = post_list::size_needed(l);
 
   auto pl = (post_list*) malloc(space);
@@ -27,5 +29,34 @@ int main() {
   assert(pl->words() == l.size());
   assert(pl->get_last() == l.back().offset);
 
+  auto isr = pl->get_doc_isr();
+  isr_doc *other = nullptr;
+  for (const auto &post : l) {
+    assert(isr->next());
+    assert(isr->offset() == post.offset);
+    assert(isr->len() == post.doc_len);
+    assert(isr->get_url() == urls[isr->offset() % NUM_URL]);
+
+    if (other) {
+      assert(other->get_url() == isr->get_url());
+      assert(other->offset() == isr->offset());
+      assert(other->len() == isr->len());
+      delete other;
+    }
+
+    other = pl->get_doc_isr();
+    other->seek(isr->offset());
+  }
+
+  delete other;
+  delete isr;
+
   free(pl);
+}
+
+int main() {
+  generate(100);
+  test();
+  generate(10'000);
+  test();
 }

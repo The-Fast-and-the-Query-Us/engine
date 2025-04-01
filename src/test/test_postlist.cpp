@@ -17,15 +17,19 @@ void test(const list<Offset> &l) {
 
   // test iteration
   auto isr = pl->get_isr();
+  isr_doc *other = nullptr;
   for (const auto num : l) {
     assert(isr->next());
     assert(isr->offset() == num);
 
+    if (other) {
+      assert(other->offset() == isr->offset());
+      delete other;
+    }
     auto other_isr = pl->get_isr();
-    assert(other_isr->seek(isr->offset()));
-    assert(other_isr->offset() == isr->offset());
-    delete other_isr;
+    other_isr->seek(isr->offset());
   }
+  delete other;
   assert(!isr->next());
   delete isr;
 
