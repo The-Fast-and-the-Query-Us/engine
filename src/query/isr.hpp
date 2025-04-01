@@ -161,9 +161,7 @@ class isr_container : public isr {
 
 // call seek 0 to init
 class isr_phrase : public isr {
-
   vector<isr*> streams;
-
   public:
 
   void add_stream(isr *stream) {
@@ -198,7 +196,6 @@ class isr_phrase : public isr {
         } else {
           ++i;
         }
-
       }
     }
   }
