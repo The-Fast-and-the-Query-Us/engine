@@ -61,6 +61,10 @@ class isr_or : public isr {
     }
     return true;
   }
+
+  ~isr_or() override {
+    delete []streams;
+  }
 };
 
 // use this for AND and NOT
@@ -147,6 +151,12 @@ class isr_container : public isr {
     }
     return false;
   }
+
+  ~isr_container() override {
+    delete []include;
+    delete []exclude;
+    delete doc_end;
+  }
 };
 
 class isr_phrase : public isr {
@@ -196,6 +206,10 @@ class isr_phrase : public isr {
       if (streams[i]->is_end()) return true;
     }
     return false;
+  }
+
+  ~isr_phrase() override {
+    delete []streams;
   }
 };
 
