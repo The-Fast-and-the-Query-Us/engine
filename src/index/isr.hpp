@@ -12,7 +12,9 @@ class isr {
   virtual void next() = 0;
 
   // jump to first post >= offset
-  // or stop at end
+  // or stop at end. NOTE: this only seeks
+  // forward and wont do anything for 
+  // backwards seek
   virtual void seek(Offset offset) = 0;
 
   // current offset of isr
