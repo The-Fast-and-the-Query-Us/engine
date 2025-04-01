@@ -17,6 +17,8 @@ class isr {
 
   virtual Offset offset() = 0;
 
+  virtual bool end(); // todo impl
+
   virtual ~isr(){};
 };
 
@@ -66,6 +68,7 @@ class isr_word : public isr {
   ~isr_word() override {}
 };
 
+// should initialize
 class isr_doc : public isr_word {
 
   Offset doc_len;
