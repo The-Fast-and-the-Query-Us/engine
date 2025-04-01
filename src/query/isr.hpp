@@ -63,8 +63,84 @@ class isr_or : public isr {
   }
 };
 
-class isr_and : public isr {
+// use this for AND and NOT
+class isr_container : public isr {
+  isr **include, **exclude;
+  unsigned count_inc, count_ex;
+  isr_doc *doc_end;
+
   public:
+
+  void next() override {
+    seek(doc_end->offset()); // should we check here?
+  }
+
+  void seek(Offset offset) override {
+        
+    // 1. Seek all the included ISRs to the first occurrence beginning at
+    // the target location.
+    for (auto i = 0u; i < count_inc; ++i) {
+      include[i]->seek(offset);
+      if (include[i]->is_end()) return;
+    }
+
+    while (1) {
+
+      // 2. Move the document end ISR to just past the furthest
+      // contained ISR, then calculate the document begin location.
+      Offset farthest = 0;
+      for (auto i = 0u; i < count_inc; ++i) {
+        farthest = max(farthest, include[i]->offset());
+      }
+
+      doc_end->seek(farthest + 1);
+      if (doc_end->is_end()) return;
+      const auto doc_begin = doc_end->offset() - doc_end->len();
+
+
+      // 3. Seek all the other contained terms to past the document begin.
+      bool good = true;
+      for (auto i = 0u; i < count_inc && good; ++i) {
+        include[i]->seek(doc_begin);
+
+        // 5. If any ISR reaches the end, there is no match.
+        if (include[i]->is_end()) return;
+
+        // 4. If any contained erm is past the document end, return to
+        // step 2.
+        if (include[i]->offset() > doc_end->offset()) good = false;
+      }
+    }
+
+    const auto doc_begin = doc_end->offset() - doc_end->len();
+    //
+    // 6. Seek all the excluded ISRs to the first occurrence beginning at
+    // the document begin location.
+    for (auto i = 0u; i < count_ex; ++i) {
+      if (exclude[i]->is_end()) continue;
+
+      exclude[i]->seek(doc_begin);
+
+      // 7. If any excluded ISR falls within the document, reset the
+      // target to one past the end of the document and return to
+      // step 1.
+      if (exclude[i]->offset() < doc_end->offset()) {
+        return seek(doc_end->offset());
+
+      }
+    }
+  }
+
+  Offset offset() override {
+    return 0;
+  }
+
+  bool is_end() override {
+    for (auto i = 0u; i < count_inc; ++i) {
+      if (include[i]->is_end()) return true;
+    }
+    return false;
+  }
 };
 
 class isr_phrase : public isr {
