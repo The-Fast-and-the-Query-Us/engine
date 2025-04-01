@@ -27,7 +27,10 @@ void test(const list<Offset> &l) {
     delete other_isr;
   }
   assert(!isr->next());
+  delete isr;
 
+  isr = pl->get_isr();
+  assert(!isr->seek(l.back() + 1));
   delete isr;
 
   free(pl);
@@ -40,6 +43,13 @@ int main(void) {
   Offset base = 0;
 
   while (l.size() < 100) {
+    l.push_back(base);
+    base += (rand() % 100) + 1;
+  }
+
+  test(l);
+
+  while (l.size() < 10'000) {
     l.push_back(base);
     base += (rand() % 100) + 1;
   }
