@@ -27,7 +27,7 @@ class isr_word : public isr {
   const unsigned char *buff;
 
   public:
-  isr_word(Offset last, const unsigned char *base, pair<size_t> *sync_start, pair<size_t> *sync_end) : 
+  isr_word(Offset last, const unsigned char *base, const pair<size_t> *sync_start, const pair<size_t> *sync_end) : 
     last(last), acc(0), base(base), sync_start(sync_start), sync_end(sync_end), buff(base) {};
   
   void next() override {
@@ -62,7 +62,7 @@ class isr_doc : public isr_word {
   const char *url;
 
 public:
-  isr_doc(Offset last, const unsigned char *base, pair<size_t> *sync_start, pair<size_t> *sync_end) : 
+  isr_doc(Offset last, const unsigned char *base, const pair<size_t> *sync_start, const pair<size_t> *sync_end) : 
     isr_word(last, base, sync_start, sync_end) {}
 
   Offset len() const { return doc_len; }

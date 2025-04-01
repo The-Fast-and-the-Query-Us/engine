@@ -6,6 +6,7 @@
 #include <cstring>
 #include <pair.hpp>
 #include <type_traits>
+#include "isr.hpp"
 
 namespace fast {
 
@@ -121,6 +122,18 @@ public:
     }
 
     return wp;
+  }
+
+  isr get_isr() const {
+    if (is_doc) {
+      return isr_doc(last, posts(), sync(), sync() + sync_len);
+    } else {
+      return isr_word(last, posts(), sync(), sync() + sync_len);
+    }
+  }
+
+  isr_doc get_doc_isr() const {
+    return isr_doc(last, posts(), sync(), sync() + sync_len);
   }
 
 };
