@@ -50,7 +50,7 @@ class isr_or : public isr {
   Offset offset() override {
     auto ans = MAX_OFFSET;
     for (auto i = 0u; i < count; ++i) {
-      if (!is_end()) ans = min(ans, streams[i]->offset());
+      if (!streams[i]->is_end()) ans = min(ans, streams[i]->offset());
     }
     return ans;
   }
