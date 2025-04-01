@@ -47,23 +47,21 @@ class ranker {
     isrs = (isr**)malloc((sz - 1) * sizeof(isr*));
 
     // get rarest word
-    string min_word;
+    rare_word_idx = 0;
     size_t min_num_words = ~0;
-    for (auto& word : flattened) {
-      size_t num_words = index_chunk->get(word)->words();
+    for (size_t i = 0; i < sz; ++i) {
+      size_t num_words = index_chunk->get(flattened[i])->words();
       if (num_words < min_num_words) {
-        min_word = word;
+        rare_word_idx = i;
         min_num_words = num_words;
-        // rarest is first in list
-        swap(word, flattened[0]);
       }
     }
 
-    rarest_isr = new isr_word(flattened[0]);
-
-    for (size_t i = 1; i < sz; ++i) {
-      isrs[i - 1] = new isr_word(flattened[i]);
+    for (size_t i = 0; i < sz; ++i) {
+      isrs[i] = new isr_word(flattened[i]);
     }
+
+    rarest_isr = isrs[rare_word_idx];
   }
 
   double score_doc(size_t doc_offset) {
@@ -88,50 +86,90 @@ class ranker {
     // url
   }
 
-  double count_spans(size_t doc_end, size_t num_isrs) {
+  double count_spans(size_t doc_end, size_t num_isrs, isr** cur_isrs,
+                     size_t rare_idx) {
     double score(0.0);
     while (/*rarest is less than doc_end*/) {
       // move other isrs to closest
+      advance_isrs(doc_end, num_isrs, cur_isrs, rare_idx);
 
-      int span_length = get_span_length();
-      if (span_length <= SHORT_SPAN_LENGTH) {  // TODO: figure out thresholds
+      int span_length = get_span_length(num_isrs, cur_isrs);
+      if (span_length <= SHORT_SPAN_LENGTH) {
         // add to score
       }
-      // match exact phrases
+
+      if (span_same_order()) {
+        // add to score
+      }
+
+      if (span_phrase_match()) {
+        // add to score
+      }
 
       // term frequencies
     }
   }
 
   double count_full(size_t doc_offset) {
-    rarest_isr->seek(doc_offset);
-
-    for (size_t i = 0; i < sz - 1; ++i) {
+    for (size_t i = 0; i < sz; ++i) {
       isrs[i]->seek(doc_offset);
     }
-    count_spans(doc_offset, sz - 1);
+    count_spans(doc_offset, sz, isrs, rare_word_idx);
   }
 
   double count_doubles(size_t doc_offset) {
-    rarest_isr->seek(doc_offset);
-
-    for (size_t i = 0; i < sz - 1; ++i) {
-      swap(isrs[0], isrs[i]);
-      isrs[0]->seek(doc_offset);
-      count_spans(doc_offset, 1);
+    isr* cur_isrs[2];
+    for (size_t i = 0; i < sz; ++i) {
+      if (i < rare_word_idx) {
+        cur_isrs[0] = isrs[i];
+        cur_isrs[1] = isrs[rare_word_idx];
+        cur_isrs[0]->seek(doc_offset);
+        cur_isrs[1]->seek(doc_offset);
+        count_spans(doc_offset, 2, cur_isrs, 1);
+      } else if (i > rare_word_idx) {
+        cur_isrs[0] = isrs[rare_word_idx];
+        cur_isrs[1] = isrs[i];
+        cur_isrs[0]->seek(doc_offset);
+        cur_isrs[1]->seek(doc_offset);
+        count_spans(doc_offset, 2, cur_isrs, 0);
+      }
     }
   }
 
   double count_triples(size_t doc_offset) {
     rarest_isr->seek(doc_offset);
-
+    isr* cur_isrs[3];
+    size_t rare_idx = 3;
     for (size_t i = 0; i < sz - 1; ++i) {
-      swap(isrs[0], isrs[i]);
+      if (i == rare_word_idx) {
+        continue;
+      } else if (i < rare_word_idx) {
+        cur_isrs[0] = isrs[i];
+      } else {
+        cur_isrs[0] = isrs[rare_word_idx];
+        cur_isrs[1] = isrs[i];
+        rare_idx = 0;
+      }
       for (size_t j = i + 1; j < sz; ++j) {
-        swap(isrs[1], isrs[j]);
-        isrs[0]->seek(doc_offset);
-        isrs[1]->seek(doc_offset);
-        count_spans(doc_offset, 2);
+        if (j == rare_word_idx) {
+          continue;
+        } else if (j < rare_word_idx) {
+          cur_isrs[1] = isrs[j];
+          cur_isrs[2] = isrs[rare_word_idx];
+          rare_idx = 2;
+        } else {
+          if (rare_idx == 3) {
+            cur_isrs[1] = isrs[rare_word_idx];
+            cur_isrs[2] = isrs[j];
+            rare_idx = 1;
+          } else {
+            cur_isrs[2] = isrs[j];
+          }
+        }
+        cur_isrs[0]->seek(doc_offset);
+        cur_isrs[1]->seek(doc_offset);
+        cur_isrs[2]->seek(doc_offset);
+        count_spans(doc_offset, 3, cur_isrs, rare_idx);
       }
     }
   }
@@ -139,9 +177,35 @@ class ranker {
   size_t size() { return sz; }
 
  private:
+  void advance_isrs(size_t doc_end, size_t num_isrs, isr** cur_isrs) {
+    for (size_t i = 0; i < num_isrs; ++i) {
+      while (/*moving isrs[i] moves it closer to rarest_isr*/) {
+        // update isr[i]
+      }
+    }
+  }
+
+  size_t get_span_length(size_t num_isrs, isr** cur_isrs) {
+    Offset min_off = rarest_isr->offset();
+    Offset max_off = rarest_isr->offset() + 1;
+
+    for (size_t i = 0; i < num_isrs; ++i) {
+      min_off = min(min_off, cur_isrs[i]->offset());
+      max_off = max(max_off, cur_isrs[i]->offset());
+    }
+
+    return max_off - min_off;
+  }
+
+  bool span_same_order(isr** isrs) {}
+
+  bool span_phrase_match(isr** isrs) {}
+
+ private:
   vector<string> flattened;
   size_t sz;
 
+  size_t rare_word_idx;
   isr* rarest_isr;
   isr** isrs;
 };
