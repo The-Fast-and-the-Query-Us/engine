@@ -11,6 +11,7 @@ class isr {
   virtual bool next() = 0;
 
   // return false if seek tried to read past EOS
+  // stops at first offset >= <offset>
   virtual bool seek(Offset offset) = 0;
 
   virtual Offset offset() = 0;
@@ -51,7 +52,7 @@ class isr_word : public isr {
       ++sync_start;
     }
 
-    while (buff != end && acc <= offset) next();
+    while (buff != end && acc < offset) next();
     return acc > offset;
   }
 
