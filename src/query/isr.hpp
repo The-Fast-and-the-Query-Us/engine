@@ -16,6 +16,10 @@ class isr_and : public isr {
 };
 
 class isr_phrase : public isr {
+  isr *stream;
+  size_t count;
+
+  public:
 
 };
 

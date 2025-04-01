@@ -7,18 +7,21 @@ namespace fast {
 
 class isr {
   public:
-  virtual void next();
-  virtual void seek(Offset offset);
+  // return false if called at EOS
+  virtual bool next();
+
+  // return false if seek tried to read past EOS
+  virtual bool seek(Offset offset);
+
   virtual Offset offset();
-  virtual bool has_next();
 };
 
 class isr_word : public isr {
   private:
 
-  Offset last;
   Offset acc;
 
+  const unsigned char *end;
   const unsigned char *base;
   const pair<size_t> *sync_start, *sync_end;
 
@@ -27,31 +30,32 @@ class isr_word : public isr {
   const unsigned char *buff;
 
   public:
-  isr_word(Offset last, const unsigned char *base, const pair<size_t> *sync_start, const pair<size_t> *sync_end) : 
-    last(last), acc(0), base(base), sync_start(sync_start), sync_end(sync_end), buff(base) {};
+  isr_word(size_t len, const unsigned char *base, const pair<size_t> *sync_start, const pair<size_t> *sync_end) : 
+    acc(0), end(base + len), base(base), sync_start(sync_start), sync_end(sync_end), buff(base) {};
   
-  void next() override {
+  bool next() override {
+    if (buff == end) 
+      return false;
+
     uint64_t tmp;
     buff = decode(tmp, buff);
     acc += tmp;
+    return true;
   }
 
-  void seek(Offset offset) override {
+  bool seek(Offset offset) override {
     while (sync_start != sync_end && sync_start->second <= offset) {
       acc = sync_start->second;
       buff = base + sync_start->first;
       ++sync_start;
     }
 
-    while (acc < last && acc <= offset) next();
+    while (buff != end && acc <= offset) next();
+    return acc > offset;
   }
 
   Offset offset() override {
     return acc;
-  }
-
-  bool has_next() override {
-    return acc < last;
   }
 };
 
@@ -69,8 +73,9 @@ public:
 
   string_view get_url() const { return {url, url_len}; }
 
-  void next() override {
-    isr_word::next();
+  bool next() override {
+    if (!isr_word::next()) 
+      return false;
 
     uint64_t tmp;
     buff = decode(tmp, buff);
@@ -79,6 +84,8 @@ public:
     url_len = tmp;
     url = (const char *)buff;
     buff += url_len;
+
+    return true;
   }
 };
 
