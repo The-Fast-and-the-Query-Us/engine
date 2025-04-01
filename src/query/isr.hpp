@@ -185,6 +185,7 @@ class isr_phrase : public isr {
         streams[0]->next(); 
         if (streams[0]->is_end()) return;
         goal = streams[0]->offset();
+        i = 1;
 
       } else {
 
