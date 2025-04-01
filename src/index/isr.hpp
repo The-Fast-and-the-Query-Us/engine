@@ -8,19 +8,20 @@ namespace fast {
 class isr {
   public:
   // return false if called at EOS
-  virtual bool next();
+  virtual bool next() = 0;
 
   // return false if seek tried to read past EOS
-  virtual bool seek(Offset offset);
+  virtual bool seek(Offset offset) = 0;
 
-  virtual Offset offset();
+  virtual Offset offset() = 0;
+
+  virtual ~isr(){};
 };
 
 class isr_word : public isr {
   private:
 
   Offset acc;
-
   const unsigned char *end;
   const unsigned char *base;
   const pair<size_t> *sync_start, *sync_end;
@@ -57,6 +58,8 @@ class isr_word : public isr {
   Offset offset() override {
     return acc;
   }
+
+  ~isr_word() override {}
 };
 
 class isr_doc : public isr_word {

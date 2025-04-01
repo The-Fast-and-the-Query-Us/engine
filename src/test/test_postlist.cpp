@@ -25,5 +25,14 @@ int main(void) {
   assert(pl->words() == l.size());
   assert(pl->get_last() == l.back());
 
+  auto isr = pl->get_isr();
+  for (const auto num : l) {
+    assert(isr->next());
+    assert(isr->offset() == num);
+  }
+  assert(!isr->next());
+
+  delete isr;
+
   free(pl);
 }
