@@ -47,8 +47,10 @@ class isr_word : public isr {
 
   bool seek(Offset offset) override {
     while (sync_start != sync_end && sync_start->second <= offset) {
-      acc = sync_start->second;
-      buff = base + sync_start->first;
+      if (sync_start->second > acc) {
+        acc = sync_start->second;
+        buff = base + sync_start->first;
+      }
       ++sync_start;
     }
 
