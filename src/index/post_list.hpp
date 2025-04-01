@@ -87,6 +87,9 @@ public:
       dynamic += hidden::post_size(post, last);
       last = post;
     }
+
+    dynamic += encoded_size(0);
+
     return dynamic + sizeof(post_list);
   }
 
