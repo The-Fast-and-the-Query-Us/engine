@@ -31,6 +31,7 @@ void test(const list<Offset> &l) {
   }
 
   assert(isr->is_end());
+  delete isr;
 
   free(pl);
 }
