@@ -74,6 +74,10 @@ class isr_phrase : public isr {
 
   public:
 
+  isr_phrase(isr **streams, size_t count) : streams(streams), count(count) {
+    next();
+  }
+
   void next() override {
     seek(offset() + 1);
   }
