@@ -5,6 +5,7 @@
 #include "hashtable.hpp"
 #include <cstring>
 #include <pair.hpp>
+#include <type_traits>
 
 namespace fast {
 
@@ -48,6 +49,7 @@ inline unsigned char *write_post(const url_post &elt, Offset last, unsigned char
 }
 
 class post_list {
+  bool is_doc;
   Offset last;
   size_t num_words, sync_len, len;
 
@@ -111,6 +113,13 @@ public:
 
     buffer->len = size_t(wp - buffer->posts());
     buffer->last = posts.back();
+
+    if constexpr (std::is_same_v<T, url_post>) {
+      buffer->is_doc = true;
+    } else {
+      buffer->is_doc = false;
+    }
+
     return wp;
   }
 
