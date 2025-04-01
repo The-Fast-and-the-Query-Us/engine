@@ -44,4 +44,5 @@ int main(void) {
     base += (rand() % 100) + 1;
   }
 
+  test(l);
 }

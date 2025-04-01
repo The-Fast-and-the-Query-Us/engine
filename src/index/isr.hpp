@@ -53,7 +53,7 @@ class isr_word : public isr {
     }
 
     while (buff != end && acc < offset) next();
-    return acc > offset;
+    return acc >= offset;
   }
 
   Offset offset() override {
