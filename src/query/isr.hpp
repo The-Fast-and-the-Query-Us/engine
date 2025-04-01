@@ -69,11 +69,48 @@ class isr_and : public isr {
 
 class isr_phrase : public isr {
 
-  isr *stream;
+  isr **streams;
   size_t count;
 
   public:
 
+  void next() override {
+    seek(offset() + 1);
+  }
+
+  void seek(Offset offset) override {
+    for (auto i = 0u; i < count; ++i) {
+      streams[i]->seek(offset);
+    }
+
+    while (!streams[count - 1]->is_end()) {
+      const auto base = streams[count - 1]->offset();
+      bool good = true;
+      for (auto i = 0u; i < count - 1 && good; ++i) {
+        const auto goal = base - count + i + 1;
+        streams[i]->seek(goal);
+
+        if (streams[i]->is_end()) return;
+        else if (streams[i]->offset() != goal) {
+          streams[count - 1]->next();
+          good = false;
+        }
+      }
+
+      if (good) return;
+    }
+  }
+
+  Offset offset() override {
+    return streams[0]->offset();
+  }
+
+  bool is_end() override {
+    for (auto i = 0u; i < count; ++i) {
+      if (streams[i]->is_end()) return true;
+    }
+    return false;
+  }
 };
 
 }
