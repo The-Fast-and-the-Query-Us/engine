@@ -132,7 +132,7 @@ class isr_container : public isr {
   }
 
   Offset offset() override {
-    return 0;
+    return include[0]->offset();
   }
 
   bool is_end() override {
