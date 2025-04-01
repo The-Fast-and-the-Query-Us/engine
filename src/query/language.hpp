@@ -31,6 +31,20 @@ class query_stream {
   const string_view query;
   size_t pos;
 
+  bool important(char c) {
+    switch (c) {
+     case '+' :
+     case '-':
+     case '|':
+     case '"':
+     case '[':
+     case ']':
+      return true;
+     default:
+      return false;
+    }
+  }
+
   public:
 
   query_stream(const string &query) : query(query), pos(0) {};
@@ -50,7 +64,11 @@ class query_stream {
     return true;
   }
 
-  string_view get_word();
+  string_view get_word() {
+    auto start = query.begin() + pos;
+    while (pos < query.size() && !important(query[pos])) ++pos;
+    return string_view(start, query.begin() + pos);
+  }
 };
 
 class contraint_parser {
