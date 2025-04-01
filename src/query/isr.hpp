@@ -71,8 +71,14 @@ class isr_container : public isr {
 
   public:
 
+  isr_container(isr **include, isr **exclude, unsigned count_inc, unsigned count_ex, isr_doc *doc_end) :
+    include(include), exclude(exclude), count_inc(count_inc), count_ex(count_ex), doc_end(doc_end) {
+    seek(0);
+  }
+
+  // jumps to next document
   void next() override {
-    seek(doc_end->offset()); // should we check here?
+    seek(doc_end->offset()); 
   }
 
   void seek(Offset offset) override {
