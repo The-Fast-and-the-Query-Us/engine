@@ -126,14 +126,14 @@ public:
 
   isr *get_isr() const {
     if (is_doc) {
-      return new isr_doc(last, posts(), sync(), sync() + sync_len);
+      return new isr_doc(len, posts(), sync(), sync() + sync_len);
     } else {
-      return new isr_word(last, posts(), sync(), sync() + sync_len);
+      return new isr_word(len, posts(), sync(), sync() + sync_len);
     }
   }
 
   isr_doc *get_doc_isr() const {
-    return new isr_doc(last, posts(), sync(), sync() + sync_len);
+    return new isr_doc(len, posts(), sync(), sync() + sync_len);
   }
 
 };
