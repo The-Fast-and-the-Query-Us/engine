@@ -10,6 +10,7 @@
 namespace fast {
 
 typedef uint32_t Offset;
+constexpr Offset MAX_OFFSET = 0xFFFFFFFF;
 
 struct url_post {
   Offset doc_len;
