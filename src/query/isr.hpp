@@ -175,25 +175,31 @@ class isr_phrase : public isr {
   }
 
   void seek(Offset offset) override {
-    for (auto stream : streams) {
-      stream->seek(offset);
-    }
+    streams[0]->seek(offset);
+    if (streams[0]->is_end()) return;
 
-    while (!streams.back()->is_end()) {
-      const auto base = streams.back()->offset();
-      bool good = true;
-      for (auto i = 0u; i < streams.size() - 1 && good; ++i) {
-        const auto goal = base - streams.size() + i + 1;
-        streams[i]->seek(goal);
+    Offset goal = streams[0]->offset();
+    size_t i = 1;
 
-        if (streams[i]->is_end()) return;
-        else if (streams[i]->offset() != goal) {
-          streams.back()->next();
-          good = false;
+    while (i < streams.size()) {
+      if (i == 0) {
+
+        streams[0]->next(); 
+        if (streams[0]->is_end()) return;
+        goal = streams[0]->offset();
+
+      } else {
+
+        streams[i]->seek(i + goal);
+        if (streams[i]->is_end()) {
+          return;
+        } else if (streams[i]->offset() != goal + i) {
+          i = 0;
+        } else {
+          ++i;
         }
-      }
 
-      if (good) return;
+      }
     }
   }
 

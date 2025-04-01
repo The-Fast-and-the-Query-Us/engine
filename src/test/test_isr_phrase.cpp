@@ -32,19 +32,19 @@ int main() {
     fast::post_list::write(lists[i], pls[i]);
   }
 
-  fast::query::isr_phrase ands;
+  fast::query::isr_phrase phrase;
   for (int i = 0; i < 3; ++i) {
-    ands.add_stream(pls[i]->get_isr());
+    phrase.add_stream(pls[i]->get_isr());
   }
 
-  ands.seek(0); // init
+  phrase.seek(0); // init
   for (const auto num : phrases) {
-    assert(!ands.is_end());
-    assert(ands.offset() == num);
-    ands.next();
+    assert(!phrase.is_end());
+    assert(phrase.offset() == num);
+    phrase.next();
   }
 
-  assert(ands.is_end());
+  assert(phrase.is_end());
 
   for (int i = 0; i < 3; ++i) {
     free(pls[i]);
