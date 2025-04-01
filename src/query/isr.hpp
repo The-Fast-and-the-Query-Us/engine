@@ -74,6 +74,8 @@ class isr_container : public isr {
 
   public:
 
+  isr_container(isr_doc *doc_end) : doc_end(doc_end) {}
+
   void add_stream(isr *stream, bool ex = false) {
     if (ex) {
       exclude.push_back(stream);

@@ -2,6 +2,8 @@
 
 #include <isr.hpp>
 #include <string.hpp>
+#include "isr.hpp"
+#include <hashblob.hpp>
 
 namespace fast::query {
 
@@ -16,14 +18,13 @@ BNF:
 
   Definitions
 
-  <Constraint> ::= <BaseConstraint> { <OrOp> <BaseConstraint> }
-  <OrOp> ::= 'OR'
-  <BaseConstraint> ::= <SimpleConstaint> { [ <AndOp> ] <SimpleConstraint> }
-  <AndOp> ::= 'AND'
-  <SimpleConstraint> ::= <Phrase> | <NestedConstraint> | <UnaryOp> <SimpleConstraint> | <SearchWord>
-  <UnaryOp> ::= 'NOT'
+  <Constraint> ::= <BaseConstraint> { < + or - > <BaseConstraint> }
+  <BaseConstraint> ::= <SimpleConstaint> { < | > <SimpleConstraint> }
+  <SimpleConstraint> ::= <Phrase> | <NestedConstraint> | <SearchWord>
   <Phrase> ::= '"' { <SearchWord> } '"'
-  <NestedConstraint> ::= '(' <Constraint> ')'
+  <NestedConstraint> ::= '[' <Constraint> ']'
+
+  example: wikipedia | wikihow + minecraft - programming
 */
 
 class query_stream {
@@ -34,21 +35,96 @@ class query_stream {
 
   query_stream(const string &query) : query(query), pos(0) {};
 
-  bool match_or();
+  bool is_end() const { return pos == query.size(); }
+
+  bool peek(char c) {
+    return (
+      pos < query.size() &&
+      c == query[0]
+    );
+  }
+
+  bool match(char c) {
+    if (pos == query.size() || query[pos] != c) return false;
+    ++pos;
+    return true;
+  }
+
+  string_view get_word();
 };
 
 class contraint_parser {
   public:
 
-  static isr *parse_contraint(query_stream &query) {
-    auto bases = (isr**) malloc(sizeof(isr*));
-    bases[0] = parse_base_contraint(query);
+  static isr *parse_contraint(query_stream &query, const hashblob *blob) {
+    auto left = parse_base_contraint(query, blob);
 
-    if (!bases[0]) return nullptr;
+    if (!left) return nullptr;
+    if (!query.peek('+') && !query.peek('-')) return left;
 
+    auto ans = new isr_container(blob->docs()->get_doc_isr());
+    ans->add_stream(left);
+
+    while (1) {
+      bool exclude;
+      if (query.match('+')) {
+        exclude = false;
+      } else if (query.match('-')) {
+        exclude = true;
+      } else {
+        ans->seek(0); // init
+        return ans;
+      }
+
+      auto right = parse_base_contraint(query, blob);
+
+      if (!right) {
+        delete ans;
+        return nullptr;
+      }
+
+      ans->add_stream(right, exclude);
+    }
   }
-  static isr *parse_base_contraint(query_stream &query);
-  static isr *parse_simple_contraint(query_stream &query);
+
+  static isr *parse_base_contraint(query_stream &query, const hashblob *blob) {
+    auto left = parse_simple_contraint(query, blob);
+
+    if (!left) return nullptr;
+    if (!query.peek('|')) return left;
+
+    auto ans = new isr_or;
+    ans->add_stream(left);
+
+    while (query.match('|')) {
+      auto right = parse_simple_contraint(query, blob);
+      if (!right) {
+        delete ans;
+        return nullptr;
+      }
+      ans->add_stream(right);
+    }
+
+    return ans;
+  }
+
+  static isr *parse_simple_contraint(query_stream &query, const hashblob *blob) {
+    if (query.match('[')) {
+      // todo
+    } else if (query.match('"')) {
+      // todo
+    } else {
+      auto word = query.get_word();
+      auto pl = blob->get(word);
+
+      if (pl) {
+        return pl->get_isr();
+      } else {
+        return nullptr;
+      }
+    }
+    return nullptr;
+  }
 
 };
 
