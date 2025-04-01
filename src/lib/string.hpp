@@ -74,6 +74,15 @@ public:
       grow(need);
   }
 
+  void resize(size_t size, char fill = 'a') {
+    reserve(size);
+    for (auto i = len_; i < size; ++i) {
+      start_[i] = fill;
+    }
+    len_ = size;
+    start_[len_] = 0;
+  }
+
   void reverse(size_t l, size_t r) {
     for (; l < (l + r) / 2; ++l) {
       char temp = *(start_ + l);

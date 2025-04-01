@@ -10,6 +10,8 @@ public:
   T1 first;
   T2 second;
 
+  pair() : first(), second() {}
+
   // constructor
   pair(T1 f, T2 s) : first(f), second(s) {}
 
