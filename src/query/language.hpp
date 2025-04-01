@@ -138,7 +138,7 @@ class contraint_parser {
       if (pl) {
         return pl->get_isr();
       } else {
-        return nullptr;
+        return new isr_null;
       }
     }
     return nullptr;
