@@ -58,7 +58,7 @@ class ranker {
     }
 
     for (size_t i = 0; i < sz; ++i) {
-      isrs[i] = new isr_word(flattened[i]);
+      isrs[i] = index_chunk->get(flattened[i])->get_isr();
     }
 
     rarest_isr = isrs[rare_word_idx];
@@ -98,11 +98,11 @@ class ranker {
         // add to score
       }
 
-      if (span_same_order()) {
+      if (span_same_order(num_isrs, cur_isrs)) {
         // add to score
       }
 
-      if (span_phrase_match()) {
+      if (span_phrase_match(num_isrs, cur_isrs)) {
         // add to score
       }
 
@@ -177,7 +177,8 @@ class ranker {
   size_t size() { return sz; }
 
  private:
-  void advance_isrs(size_t doc_end, size_t num_isrs, isr** cur_isrs) {
+  void advance_isrs(size_t doc_end, size_t num_isrs, isr** cur_isrs,
+                    size_t rare_idx) {
     for (size_t i = 0; i < num_isrs; ++i) {
       while (/*moving isrs[i] moves it closer to rarest_isr*/) {
         // update isr[i]
