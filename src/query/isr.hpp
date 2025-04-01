@@ -219,4 +219,13 @@ class isr_phrase : public isr {
   }
 };
 
+// special isr for word not in index
+class isr_null : public isr {
+  public:
+  void next() override {}
+  void seek(Offset offset) override {}
+  Offset offset() override { return 0; }
+  bool is_end() override { return true; }
+};
+
 }
