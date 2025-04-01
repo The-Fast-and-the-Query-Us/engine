@@ -30,25 +30,26 @@ void test(void) {
   assert(pl->get_last() == l.back().offset);
 
   auto isr = pl->get_doc_isr();
-  isr_doc *other = nullptr;
   for (const auto &post : l) {
-    assert(isr->next());
+    assert(!isr->is_end());
     assert(isr->offset() == post.offset);
     assert(isr->len() == post.doc_len);
     assert(isr->get_url() == urls[isr->offset() % NUM_URL]);
 
-    if (other) {
-      assert(other->get_url() == isr->get_url());
-      assert(other->offset() == isr->offset());
-      assert(other->len() == isr->len());
-      delete other;
-    }
-
-    other = pl->get_doc_isr();
+    auto other = pl->get_doc_isr();
     other->seek(isr->offset());
+    
+    assert(!other->is_end());
+    assert(other->offset() == isr->offset());
+    assert(other->get_url() == isr->get_url());
+    assert(other->len() == isr->len());
+
+    delete other;
+
+    isr->next();
   }
 
-  delete other;
+  assert(isr->is_end());
   delete isr;
 
   free(pl);

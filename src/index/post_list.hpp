@@ -111,6 +111,8 @@ public:
         buffer->sync()[idx / PER_SYNC - 1] = {size_t(wp - buffer->posts()), post};
       }
     }
+    
+    wp = encode(0, wp); // zero terminator
 
     buffer->len = size_t(wp - buffer->posts());
     buffer->last = posts.back();

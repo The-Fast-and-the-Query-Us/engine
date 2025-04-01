@@ -8,16 +8,20 @@ namespace fast {
 
 class isr {
   public:
-  // return false if called at EOS
-  virtual bool next() = 0;
+  // jump forward one post
+  virtual void next() = 0;
 
-  // return false if seek tried to read past EOS
-  // stops at first offset > <offset>
-  virtual bool seek(Offset offset) = 0;
+  // jump to first post >= offset
+  // or stop at end
+  virtual void seek(Offset offset) = 0;
 
+  // current offset of isr
+  // call is_end to make sure this is valid
   virtual Offset offset() = 0;
 
-  virtual bool end(); // todo impl
+  // returns true if isr was 'nexted' or seeked past the 
+  // last occurence
+  virtual bool is_end() = 0; // todo impl
 
   virtual ~isr(){};
 };
@@ -35,21 +39,22 @@ class isr_word : public isr {
   const unsigned char *buff;
 
   public:
-  isr_word(size_t len, const unsigned char *base, const pair<size_t> *sync_start, const pair<size_t> *sync_end) : 
-    acc(0), end(base + len), base(base), sync_start(sync_start), sync_end(sync_end), buff(base) {};
-  
-  bool next() override {
-    if (buff == end) 
-      return false;
 
+  isr_word(size_t len, const unsigned char *base, const pair<size_t> *sync_start, const pair<size_t> *sync_end) : 
+    acc(0), end(base + len), base(base), sync_start(sync_start), sync_end(sync_end), buff(base) {
     uint64_t tmp;
     buff = decode(tmp, buff);
     acc += tmp;
-    return true;
+  };
+  
+  void next() override {
+    uint64_t tmp;
+    buff = decode(tmp, buff);
+    acc += tmp;
   }
 
-  bool seek(Offset offset) override {
-    while (sync_start != sync_end && sync_start->second <= offset) {
+  void seek(Offset offset) override {
+    while (sync_start != sync_end && sync_start->second < offset) {
       if (sync_start->second > acc) {
         acc = sync_start->second;
         buff = base + sync_start->first;
@@ -57,12 +62,15 @@ class isr_word : public isr {
       ++sync_start;
     }
 
-    while (buff != end && acc <= offset) next();
-    return acc > offset;
+    while (buff != end && acc < offset) next();
   }
 
   Offset offset() override {
     return acc;
+  }
+
+  bool is_end() override {
+    return buff == end;
   }
 
   ~isr_word() override {}
@@ -75,27 +83,31 @@ class isr_doc : public isr_word {
   Offset url_len;
   const char *url;
 
+  void next_impl() {
+    if (!is_end()) {
+      uint64_t tmp;
+      buff = decode(tmp, buff);
+      doc_len = tmp;
+      buff = decode(tmp, buff);
+      url_len = tmp;
+      url = (const char *)buff;
+      buff += url_len;
+    }
+  }
+
 public:
   isr_doc(Offset last, const unsigned char *base, const pair<size_t> *sync_start, const pair<size_t> *sync_end) : 
-    isr_word(last, base, sync_start, sync_end) {}
+    isr_word(last, base, sync_start, sync_end) {
+    next_impl();
+  }
 
   Offset len() const { return doc_len; }
 
   string_view get_url() const { return {url, url_len}; }
 
-  bool next() override {
-    if (!isr_word::next()) 
-      return false;
-
-    uint64_t tmp;
-    buff = decode(tmp, buff);
-    doc_len = tmp;
-    buff = decode(tmp, buff);
-    url_len = tmp;
-    url = (const char *)buff;
-    buff += url_len;
-
-    return true;
+  void next() override {
+    isr_word::next();
+    next_impl();
   }
 };
 
