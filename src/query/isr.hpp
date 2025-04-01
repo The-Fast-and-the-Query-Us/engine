@@ -223,7 +223,9 @@ class isr_phrase : public isr {
 class isr_null : public isr {
   public:
   void next() override {}
-  void seek(Offset offset) override {}
+  void seek(Offset offset) override {
+    (void) offset;
+  }
   Offset offset() override { return 0; }
   bool is_end() override { return true; }
 };
