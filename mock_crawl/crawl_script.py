@@ -4,6 +4,7 @@ import re
 from urllib.parse import urljoin
 from bloom_filter import BloomFilter
 import queue
+import subprocess
 
 def get_html(url: str) -> str | None:
     """Fetch HTML content of a URL."""
@@ -45,9 +46,19 @@ for url in start_urls:
     bloom.add(url)
     q.put(url)
 
+# start c++ client
+process = subprocess.Popen(["./mock ./index"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+
 # run crawl
 while q.qsize() > 0:
     url = q.get()
     html = get_html(url)
     if html is not None:
         words, links = extract_words_and_links(html, url)
+        for word in words:
+            process.stdin.write("1\n")
+            process.stdin.write(word+'\n')
+        process.stdin.write("0\n")
+        process.stdin.write(url+'\n')
+
+process.stdin.write("q\n") #quit program
