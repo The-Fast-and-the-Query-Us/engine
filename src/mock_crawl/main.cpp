@@ -59,14 +59,7 @@ void write(const fast::hashtable *ht) {
   std::cout << "Map written" << std::endl;
 }
 
-void handler(int sig) {
-  std::cout << "Seg faulted fn" << std::endl;
-  std::exit(sig);
-}
-
 int main(int argc, char **argv) {
-  std::signal(SIGSEGV, handler);
-
   auto ht =  new fast::hashtable;
 
   strcpy(path, argv[1]);
