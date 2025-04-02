@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <hashtable.hpp>
 #include <hash.hpp>
+#include <iostream>
 
 namespace fast {
 
@@ -90,18 +91,39 @@ class dictionary {
 
   const unsigned char *find_entry(const string_view &word) const {
     const auto hash_val = hash(word);
-    auto pos = buckets()[hash_val % num_buckets] + dict();
-    const auto end = dict() + (((hash_val + 1) % num_buckets) ?
-                     buckets()[(hash_val + 1) % num_buckets] : dict_size);
+    auto pos = (const char*) (buckets()[hash_val % num_buckets] + dict());
+    const auto end = (const char *)(dict() + (((hash_val + 1) % num_buckets) ?
+                     buckets()[(hash_val + 1) % num_buckets] : dict_size));
 
     while (pos < end) {
       auto key = pos + sizeof(size_t);
       size_t len;
 
+      size_t j;
+      for (j = 0; key[j]; ++j);
+      std::cout << "Looking at : " << key << " with size : " << j << std::endl;
+      std::cout << "Raw values" << std::endl;
+      for (size_t i = 0; i < j; ++i) {
+        std::cout << int(key[i]) << std::endl;
+      }
+
+      std::cout << "for key : " << word.begin() << " with size : " << word.size() << std::endl;
+      std::cout << "Raw values" << std::endl;
+      for (size_t i = 0; i < word.size(); ++i) {
+        std::cout << int(word[i]) << std::endl;
+      }
+
       for (len = 0; len < word.size() && word[len] == *key; ++len, ++key);
 
-      if (len == word.size() && *key == 0) return pos;
+      if (len == word.size() && *key == 0) 
+              return (const unsigned char*) pos;
 
+      std::cout << "No match! difference at : " << len << std::endl; 
+      if (len < word.size())
+        std::cout << "word[i] : " << int(word[len]) << std::endl;
+      if (len < j)
+        std::cout << "key[i] : " << int(*key) << std::endl;
+      
       pos = key + len;
       while (*(pos++));
     }
