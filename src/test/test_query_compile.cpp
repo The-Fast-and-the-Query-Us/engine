@@ -7,6 +7,7 @@
 using namespace fast;
 
 string_view abc = "abc", xyz = "xyz";
+
 int main() {
   hashtable ht;
   ht.add(abc);
