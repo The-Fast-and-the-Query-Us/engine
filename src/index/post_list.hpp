@@ -66,8 +66,8 @@ class post_list {
 
   template<class T>
   static size_t get_per_sync(const list<T> &posts) {
-    (void) posts; // for compile
-    return 5'000;
+    if (posts.size() <= 50) return 5;
+    return fast_sqrt(posts.size());
   }
 
 public:

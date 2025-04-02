@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cstdio>
 #include <hashtable.hpp>
 #include <post_list.hpp>
 #include <isr.hpp>
+#include <vector.hpp>
 
 namespace fast::query {
 
@@ -14,21 +16,20 @@ namespace fast::query {
 * bool is_end()
 */
 
-// add phrase, OR, and AND
 class isr_or : public isr {
 
-  isr **streams;
-  size_t count;
-
+  vector<isr*> streams;
   public:
 
-  isr_or(isr **streams, size_t count) : streams(streams), count(count) {}
+  void add_stream(isr *stream) {
+    streams.push_back(stream);
+  }
 
   void next() override {
     Offset small = MAX_OFFSET;
     size_t small_idx;
 
-    for (auto i = 0u; i < count; ++i) {
+    for (auto i = 0u; i < streams.size(); ++i) {
       if (streams[i]->is_end()) continue;
 
       const auto this_offset = streams[i]->offset();
@@ -42,40 +43,138 @@ class isr_or : public isr {
   }
 
   void seek(Offset offset) override {
-    for (auto i = 0u; i < count; ++i) {
-      streams[i]->seek(offset);
+    for (auto s : streams) {
+      s->seek(offset);
     }
   }
 
   Offset offset() override {
     auto ans = MAX_OFFSET;
-    for (auto i = 0u; i < count; ++i) {
-      if (!streams[i]->is_end()) ans = min(ans, streams[i]->offset());
+    for (auto s : streams) {
+      if (!s->is_end()) ans = min(ans, s->offset());
     }
     return ans;
   }
   
   bool is_end() override {
-    for (auto i = 0u; i < count; ++i) {
-      if (!streams[i]->is_end()) return false;
+    for (auto s : streams) {
+      if (!s->is_end()) return false;
     }
     return true;
   }
+
+  ~isr_or() override {
+    for (const auto stream : streams) delete stream;
+  }
 };
 
-class isr_and : public isr {
+// use this for AND and NOT (seek 0 to init)
+class isr_container : public isr {
+  vector<isr*> include, exclude;
+  isr_doc *doc_end;
+
   public:
+
+  isr_container(isr_doc *doc_end) : doc_end(doc_end) {}
+
+  Offset get_doc_start() const {
+    return (
+      doc_end->offset() - doc_end->len()
+    );
+  }
+
+  void add_stream(isr *stream, bool ex = false) {
+    if (ex) {
+      exclude.push_back(stream);
+    } else {
+      include.push_back(stream);
+    }
+  }
+
+  // jumps to next document
+  void next() override { // maybe wrong
+    seek(doc_end->offset()); 
+  }
+
+  void seek(Offset offset) override {
+        
+    // 1. Seek all the included ISRs to the first occurrence beginning at
+    // the target location.
+    for (auto &stream : include) {
+      stream->seek(offset);
+      if (stream->is_end()) return;
+    }
+
+    while (1) {
+
+      // 2. Move the document end ISR to just past the furthest
+      // contained ISR, then calculate the document begin location.
+      Offset farthest = 0;
+      for (auto stream : include) {
+        farthest = max(farthest, stream->offset());
+      }
+      doc_end->seek(farthest + 1);
+      if (doc_end->is_end()) return;
+      const auto doc_begin = doc_end->offset() - doc_end->len();
+
+      // 3. Seek all the other contained terms to past the document begin.
+      bool good = true;
+      for (auto stream : include) {
+        stream->seek(doc_begin);
+
+        // 5. If any ISR reaches the end, there is no match.
+        if (stream->is_end()) return;
+
+        // 4. If any contained term is past the document end, return to
+        // step 2.
+        if (stream->offset() > doc_end->offset()) good = false;
+      }
+
+      if (good) break;
+    }
+
+    // 6. Seek all the excluded ISRs to the first occurrence beginning at
+    // the document begin location.
+    const auto doc_begin = doc_end->offset() - doc_end->len();
+    for (auto stream : exclude) {
+      if (stream->is_end()) continue;
+
+      stream->seek(doc_begin);
+
+      // 7. If any excluded ISR falls within the document, reset the
+      // target to one past the end of the document and return to
+      // step 1.
+      if (stream->offset() < doc_end->offset()) {
+        return seek(doc_end->offset());
+      }
+    }
+  }
+
+  Offset offset() override { // can return bascially any offset in the doc, maybe this is wrong
+    return include[0]->offset();
+  }
+
+  bool is_end() override {
+    for (auto stream : include) {
+      if (stream->is_end()) return true;
+    }
+    return false;
+  }
+
+  ~isr_container() override {
+    for (auto stream : include) delete stream;
+    for (auto stream : exclude) delete stream;
+    delete doc_end;
+  }
 };
 
+// call seek 0 to init
 class isr_phrase : public isr {
-
-  isr **streams;
-  size_t count;
-
+  vector<isr*> streams;
   public:
 
-  isr_phrase(isr **streams, size_t count) : streams(streams), count(count) {
-    next();
+  void add_stream(isr *stream) {
+    streams.push_back(stream);
   }
 
   void next() override {
@@ -83,25 +182,31 @@ class isr_phrase : public isr {
   }
 
   void seek(Offset offset) override {
-    for (auto i = 0u; i < count; ++i) {
-      streams[i]->seek(offset);
-    }
+    streams[0]->seek(offset);
+    if (streams[0]->is_end()) return;
 
-    while (!streams[count - 1]->is_end()) {
-      const auto base = streams[count - 1]->offset();
-      bool good = true;
-      for (auto i = 0u; i < count - 1 && good; ++i) {
-        const auto goal = base - count + i + 1;
-        streams[i]->seek(goal);
+    Offset goal = streams[0]->offset();
+    size_t i = 1;
 
-        if (streams[i]->is_end()) return;
-        else if (streams[i]->offset() != goal) {
-          streams[count - 1]->next();
-          good = false;
+    while (i < streams.size()) {
+      if (i == 0) {
+
+        streams[0]->next(); 
+        if (streams[0]->is_end()) return;
+        goal = streams[0]->offset();
+        i = 1;
+
+      } else {
+
+        streams[i]->seek(i + goal);
+        if (streams[i]->is_end()) {
+          return;
+        } else if (streams[i]->offset() != goal + i) {
+          i = 0;
+        } else {
+          ++i;
         }
       }
-
-      if (good) return;
     }
   }
 
@@ -110,11 +215,26 @@ class isr_phrase : public isr {
   }
 
   bool is_end() override {
-    for (auto i = 0u; i < count; ++i) {
-      if (streams[i]->is_end()) return true;
+    for (auto stream : streams) {
+      if (stream->is_end()) return true;
     }
     return false;
   }
+
+  ~isr_phrase() override {
+    for (auto stream : streams) delete stream;
+  }
+};
+
+// special isr for word not in index
+class isr_null : public isr {
+  public:
+  void next() override {}
+  void seek(Offset offset) override {
+    (void) offset; // for compile
+  }
+  Offset offset() override { return 0; }
+  bool is_end() override { return true; }
 };
 
 }

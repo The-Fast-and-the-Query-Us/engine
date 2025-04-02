@@ -25,15 +25,13 @@ int main() {
   }
 
   post_list *pls[2];
-  isr *isrs[2];
+  query::isr_or ors;
 
   for (int i = 0; i < 2; ++i) {
     pls[i] = (post_list*) malloc(post_list::size_needed(ls[i]));
     post_list::write(ls[i], pls[i]);
-    isrs[i] = pls[i]->get_isr();
+    ors.add_stream(pls[i]->get_isr());
   }
-
-  query::isr_or ors(isrs, 2);
 
   for (const auto num : ls[2]) {
     assert(!ors.is_end());
@@ -43,9 +41,7 @@ int main() {
 
   assert(ors.is_end());
 
-
   for (int i = 0; i < 2; ++i) {
-    delete isrs[i];
     free(pls[i]);
   }
 }
