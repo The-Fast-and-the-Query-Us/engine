@@ -16,6 +16,8 @@ char *path_end;
 constexpr int MAX_SZ = 50'000;
 
 void write(const fast::hashtable *ht) {
+  std::cout << "Writing map" << std::endl;
+
   static int next = 0;
   sprintf(path_end, "%d", next);
   ++next;
@@ -45,6 +47,8 @@ void write(const fast::hashtable *ht) {
 
   munmap(mptr, space);
   close(fd);
+
+  std::cout << "Map written" << std::endl;
 }
 
 int main(int argc, char **argv) {
