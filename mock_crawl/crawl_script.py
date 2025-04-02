@@ -5,9 +5,7 @@ import re
 from urllib.parse import urljoin
 from bloom_filter import BloomFilter
 import queue
-import subprocess
 import time
-import sys
 
 def get_html(url: str) -> str | None:
     """Fetch HTML content of a URL."""
@@ -50,13 +48,6 @@ for url in start_urls:
     bloom.add(url)
     q.put(url)
 
-# start c++ client
-index_path = os.path.abspath("./index")
-process = subprocess.Popen(["../src/build/mock_crawl/mock", index_path], stdin=subprocess.PIPE, stderr=sys.stdout, stdout=sys.stdout, text=True)
-
-print(f"pid: {process.pid}")
-input("enter to start")
-
 crawl_count = 0
 start = time.time()
 
@@ -68,24 +59,11 @@ while q.qsize() > 0 and time.time() - start < 30:
         words, links = extract_words_and_links(html, url)
         crawl_count += 1
 
-        try:
-            for word in words:
-                process.stdin.write("1\n")
-                process.stdin.write(word+'\n')
-            process.stdin.write("0\n")
-            process.stdin.write(url+'\n')
-
-        except Exception as e:
-            print(f"error {e}")
-            print("getting c++ status")
-            return_val = process.poll()
-            if return_val is None:
-                process.terminate()
-                process.wait()
-                print("not done")
-            else:
-                print(f"return {return_val}")
-            exit(1)
+        for word in words:
+            print("1")
+            print(word)
+        print("0")
+        print(url)
 
         for link in links:
             if q.qsize() == MAX_QUEUE:
@@ -94,9 +72,4 @@ while q.qsize() > 0 and time.time() - start < 30:
                 bloom.add(link)
                 q.put(link)
 
-print("killing process")
-process.stdin.write("q\n") #quit program
-process.wait()
-
-print("blobber returned status", process.returncode)
 print(f"crawled {crawl_count} sites")
