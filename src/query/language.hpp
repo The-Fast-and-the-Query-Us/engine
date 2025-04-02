@@ -46,7 +46,20 @@ class query_stream {
     }
   }
 
-  void skip_ws() {
+  // brainstorm
+  bool word_break(char c) {
+    switch (c) {
+      case ' ':
+      case '"':
+      case '[':
+      case ']':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  inline void skip_ws() {
     while (pos < query.size() && query[pos] == ' ') ++pos;
   }
 
@@ -137,9 +150,42 @@ class contraint_parser {
 
   static isr *parse_simple_contraint(query_stream &query, const hashblob *blob) {
     if (query.match('[')) {
-      // todo
+      if (query.match(']')) return new isr_null; // isr any?
+      
+      auto ans = parse_contraint(query, blob);
+
+      if (!query.match(']')) {
+        delete ans;
+        return nullptr;
+      }
+
+      return ans;
+
     } else if (query.match('"')) {
-      // todo
+
+      if (query.match('"')) return new isr_null; // maybe return isr_any here?
+
+      auto ans = new isr_phrase;
+      while (!query.match('"')) {
+        auto word = query.get_word();
+        if (query.is_end()) {
+          delete ans;
+          return nullptr;
+        }
+
+        auto pl = blob->get(word);
+
+        if (pl) {
+          ans->add_stream(pl->get_isr());
+        } else {
+          delete ans;
+          return new isr_null;
+        }
+      }
+
+      // maybe ans->seek(0) to init but container should call that
+      return ans;
+
     } else {
       auto word = query.get_word();
       auto pl = blob->get(word);
