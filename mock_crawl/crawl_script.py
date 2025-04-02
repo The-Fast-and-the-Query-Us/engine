@@ -1,3 +1,4 @@
+from bloom_filter.bloom_filter import os
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -50,10 +51,15 @@ for url in start_urls:
     q.put(url)
 
 # start c++ client
-process = subprocess.Popen(["./mock", "./index"], stdin=subprocess.PIPE, stderr=sys.stdout, stdout=sys.stdout, text=True)
+index_path = os.path.abspath("./index")
+process = subprocess.Popen(["../src/build/mock_crawl/mock", index_path], stdin=subprocess.PIPE, stderr=sys.stdout, stdout=sys.stdout, text=True)
+
+print(f"pid: {process.pid}")
+input("enter to start")
 
 crawl_count = 0
 start = time.time()
+
 # run crawl
 while q.qsize() > 0 and time.time() - start < 30:
     url = q.get()

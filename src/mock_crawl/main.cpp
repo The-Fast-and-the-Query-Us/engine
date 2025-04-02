@@ -1,5 +1,7 @@
 // This file is for testing with data from the python script
 
+#include <cassert>
+#include <csignal>
 #include <cstring>
 #include <hashtable.hpp>
 #include <iostream>
@@ -7,6 +9,7 @@
 #include <sys/fcntl.h>
 #include <hashblob.hpp>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 char path[5000];
@@ -35,6 +38,11 @@ void write(const fast::hashtable *ht) {
     exit(1);
   }
 
+  struct stat fd_stat;
+
+  fstat(fd, &fd_stat);
+  assert(fd_stat.st_size >= space);
+
   auto mptr = mmap(NULL, space, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (mptr == MAP_FAILED) {
     perror("cant mmap");
@@ -51,7 +59,14 @@ void write(const fast::hashtable *ht) {
   std::cout << "Map written" << std::endl;
 }
 
+void handler(int sig) {
+  std::cout << "Seg faulted fn" << std::endl;
+  std::exit(sig);
+}
+
 int main(int argc, char **argv) {
+  std::signal(SIGSEGV, handler);
+
   auto ht =  new fast::hashtable;
 
   strcpy(path, argv[1]);
