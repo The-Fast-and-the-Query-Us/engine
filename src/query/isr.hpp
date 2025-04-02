@@ -150,7 +150,7 @@ class isr_container : public isr {
     }
   }
 
-  Offset offset() override {
+  Offset offset() override { // can return bascially any offset in the doc, maybe this is wrong
     return include[0]->offset();
   }
 
@@ -231,7 +231,7 @@ class isr_null : public isr {
   public:
   void next() override {}
   void seek(Offset offset) override {
-    (void) offset;
+    (void) offset; // for compile
   }
   Offset offset() override { return 0; }
   bool is_end() override { return true; }
