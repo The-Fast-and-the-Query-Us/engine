@@ -13,32 +13,6 @@ constexpr size_t SHORT_SPAN_LENGTH = 10;
 
 class ranker {
  public:
-  static void blob_rank(
-      const fast::hashblob* index_chunk, const fast::string& raw_query,
-      const fast::list<size_t>& matching_docs,
-      fast::array<fast::query::Result, fast::query::MAX_RESULTS>& results) {
-    // preprocess
-    fast::ranker ranker(index_chunk, raw_query);
-
-    // score each document
-    for (const size_t& doc_offset : matching_docs) {
-      double score = ranker.score_doc(doc_offset);
-
-      // insertion sort top k
-      if (score < results[fast::query::MAX_RESULTS - 1].first) {
-        continue;
-      }
-      size_t i = fast::query::MAX_RESULTS - 1;
-
-      results[i].first = score;
-      results[i].second = doc_offset;
-      while (i >= 1 && score > results[i - 1].first) {
-        swap(results[i], results[i - 1]);
-        --i;
-      }
-    }
-  }
-
   ranker(const hashblob* index_chunk, const string& raw_query) {
     // flatten query into unique words
     flattened = flatten_query(raw_query);
@@ -64,7 +38,7 @@ class ranker {
     rarest_isr = isrs[rare_word_idx];
   }
 
-  double score_doc(size_t doc_offset) {
+  void score_doc(size_t doc_offset) {
     double score(0.0);
 
     score += count_full(doc_offset);
@@ -84,6 +58,18 @@ class ranker {
     // title
 
     // url
+
+    if (score < results[fast::query::MAX_RESULTS - 1].first) {
+      return;
+    }
+    size_t i = fast::query::MAX_RESULTS - 1;
+
+    results[i].first = score;
+    results[i].second = doc_offset;
+    while (i >= 1 && score > results[i - 1].first) {
+      swap(results[i], results[i - 1]);
+      --i;
+    }
   }
 
   double count_spans(size_t doc_end, size_t num_isrs, isr** cur_isrs,
@@ -198,11 +184,12 @@ class ranker {
     return max_off - min_off;
   }
 
-  bool span_same_order(isr** isrs) {}
+  bool span_same_order(size_t num_isrs, isr** isrs) {}
 
-  bool span_phrase_match(isr** isrs) {}
+  bool span_phrase_match(size_t num_isrs, isr** isrs) {}
 
  private:
+  fast::array<fast::query::Result, fast::query::MAX_RESULTS> results;
   vector<string> flattened;
   size_t sz;
 
