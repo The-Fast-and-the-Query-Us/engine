@@ -1,0 +1,12 @@
+[
+  "https://stackoverflow.com/questions/838511/how-should-i-create-a-child-window-in-win32-while-programming-with-c",
+  "http://winapi.freetechsecrets.com/win32/WIN32Child_Window00000024.htm",
+  "https://learn.microsoft.com/en-us/answers/questions/54756/can-i-subclass-the-same-parent-window-hwnd-several?childtoview=54943",
+  "https://dee.miguelgrinberg.com/how-to-check-if-child-window-is-open/",
+  "https://winterdom.com/dev/ui/wnd/",
+  "https://www.tek-tips.com/threads/wm_close-and-child-windows.634523/",
+  "https://www.vbforums.com/showthread.php?513828-How-to-get-the-child-window-handler",
+  "https://community.khronos.org/t/opengl-child-windows/29317",
+  "https://www.displayfusion.com/Discussions/View/open-sub-windows-on-the-same-monitor-as-the-parent-windows/?ID=a9a9477b-093d-4303-abb0-3b50d40a0d66",
+  "https://dotmorten.github.io/WinUIEx/api/WinUIEx.WindowStyle.html"
+]
