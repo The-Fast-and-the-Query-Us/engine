@@ -25,7 +25,7 @@ BNF:
   <Phrase> ::= '"' { <SearchWord> } '"'
   <NestedConstraint> ::= '[' <Constraint> ']'
 
-  example: wikipedia | wikihow + minecraft - programming
+  example: wikipedia | wikihow + minecraft - programming + [ creeper | zombie ] + " steve jobs "
 */
 
 class query_stream {
@@ -46,6 +46,10 @@ class query_stream {
     }
   }
 
+  void skip_ws() {
+    while (pos < query.size() && query[pos] == ' ') ++pos;
+  }
+
   public:
 
   query_stream(const string_view &query) : query(query), pos(0) {};
@@ -53,21 +57,25 @@ class query_stream {
   bool is_end() const { return pos == query.size(); }
 
   bool peek(char c) {
+    skip_ws();
     return (
       pos < query.size() &&
       c == query[pos]
     );
   }
 
+  // enforce ws?
   bool match(char c) {
+    skip_ws();
     if (pos == query.size() || query[pos] != c) return false;
     ++pos;
     return true;
   }
 
   string_view get_word() {
+    skip_ws();
     auto start = query.begin() + pos;
-    while (pos < query.size() && !important(query[pos])) ++pos;
+    while (pos < query.size() && query[pos] != ' ') ++pos;
     auto res = string_view(start, query.begin() + pos);
     return res;
   }
