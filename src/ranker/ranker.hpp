@@ -2,6 +2,7 @@
 
 #include <array.hpp>
 #include <constants.hpp>
+#include <cstddef>
 #include <hashblob.hpp>
 #include <isr.hpp>
 #include <string.hpp>
@@ -19,11 +20,11 @@ class ranker {
     flattened = flatten_query(raw_query);
     sz = flattened.size();
 
-    isrs = (isr**)malloc((sz - 1) * sizeof(isr*));
+    isrs = (isr**)malloc((sz) * sizeof(isr*));
 
     // get rarest word
     rare_word_idx = 0;
-    size_t min_num_words = ~0;
+    size_t min_num_words = SIZE_MAX;
     for (size_t i = 0; i < sz; ++i) {
       size_t num_words = index_chunk->get(flattened[i])->words();
       if (num_words < min_num_words) {
@@ -39,19 +40,24 @@ class ranker {
     rarest_isr = isrs[rare_word_idx];
 
     // iterate through doc container
+    while () {
+      cur_doc_offset = 0;
+      cur_doc_end = 0;
+      score_doc();
+    }
   }
 
-  void score_doc(size_t doc_offset) {
+  void score_doc() {
     double score(0.0);
 
-    score += count_full(doc_offset);
+    score += count_full();
 
     if (sz > 2) {
-      score += count_doubles(doc_offset);
+      score += count_doubles();
     }
 
     if (sz > 3) {
-      score += count_triples(doc_offset);
+      score += count_triples();
     }
 
     // static ranks
@@ -69,25 +75,24 @@ class ranker {
     size_t i = fast::query::MAX_RESULTS - 1;
 
     results[i].first = score;
-    results[i].second = doc_offset;
+    results[i].second = "";
     while (i >= 1 && score > results[i - 1].first) {
       swap(results[i], results[i - 1]);
       --i;
     }
   }
 
-  double count_spans(Offset doc_offset, size_t num_isrs, isr** cur_isrs,
-                     size_t rare_idx) {
+  double count_spans(size_t num_isrs, isr** cur_isrs, size_t rare_idx) {
+    vector<Offset> positions(num_isrs);
+
     double score(0.0);
     for (size_t i = 0; i < num_isrs; ++i) {
-      cur_isrs[i]->seek(doc_offset);
+      cur_isrs[i]->seek(cur_doc_offset);
     }
 
-    Offset doc_end;  // TODO
-
     while (!cur_isrs[rare_idx]->is_end() &&
-           cur_isrs[rare_idx]->offset() < doc_end) {
-      int span_length = get_span_length(num_isrs, cur_isrs);
+           cur_isrs[rare_idx]->offset() < cur_doc_end) {
+      int span_length = get_span_length(num_isrs, cur_isrs, positions);
       if (span_length <= SHORT_SPAN_LENGTH) {
         // add to score
       }
@@ -102,38 +107,33 @@ class ranker {
 
       // term frequencies
 
-      increment_isr(num_isrs, cur_isrs, rare_idx);
+      increment_isr(num_isrs, cur_isrs, rare_idx, positions);
     }
   }
 
-  double count_full(size_t doc_offset) {
+  double count_full() {
     for (size_t i = 0; i < sz; ++i) {
-      isrs[i]->seek(doc_offset);
+      isrs[i]->seek(cur_doc_offset);
     }
-    count_spans(doc_offset, sz, isrs, rare_word_idx);
+    count_spans(sz, isrs, rare_word_idx);
   }
 
-  double count_doubles(size_t doc_offset) {
+  double count_doubles() {
     isr* cur_isrs[2];
     for (size_t i = 0; i < sz; ++i) {
       if (i < rare_word_idx) {
         cur_isrs[0] = isrs[i];
         cur_isrs[1] = isrs[rare_word_idx];
-        cur_isrs[0]->seek(doc_offset);
-        cur_isrs[1]->seek(doc_offset);
-        count_spans(doc_offset, 2, cur_isrs, 1);
+        count_spans(2, cur_isrs, 1);
       } else if (i > rare_word_idx) {
         cur_isrs[0] = isrs[rare_word_idx];
         cur_isrs[1] = isrs[i];
-        cur_isrs[0]->seek(doc_offset);
-        cur_isrs[1]->seek(doc_offset);
-        count_spans(doc_offset, 2, cur_isrs, 0);
+        count_spans(2, cur_isrs, 0);
       }
     }
   }
 
-  double count_triples(size_t doc_offset) {
-    rarest_isr->seek(doc_offset);
+  double count_triples() {
     isr* cur_isrs[3];
     size_t rare_idx = 3;
     for (size_t i = 0; i < sz - 1; ++i) {
@@ -162,10 +162,8 @@ class ranker {
             cur_isrs[2] = isrs[j];
           }
         }
-        cur_isrs[0]->seek(doc_offset);
-        cur_isrs[1]->seek(doc_offset);
-        cur_isrs[2]->seek(doc_offset);
-        count_spans(doc_offset, 3, cur_isrs, rare_idx);
+
+        count_spans(3, cur_isrs, rare_idx);
       }
     }
   }
@@ -173,7 +171,8 @@ class ranker {
   size_t size() { return sz; }
 
  private:
-  size_t get_span_length(size_t num_isrs, isr** cur_isrs) {
+  size_t get_span_length(size_t num_isrs, isr** cur_isrs,
+                         vector<Offset>& positions) {
     Offset min_off = rarest_isr->offset();
     Offset max_off = rarest_isr->offset() + 1;
 
@@ -185,21 +184,40 @@ class ranker {
     return max_off - min_off;
   }
 
-  bool span_same_order(size_t num_isrs, isr** isrs) {
+  bool span_same_order(size_t num_isrs, isr** isrs,
+                       const vector<Offset>& positions) {
     for (size_t i = 0; i < num_isrs - 1; ++i) {
-      if (isrs[i]->offset() >= isrs[i + 1]->offset()) {
+      if (positions[i] >= positions[i + 1]) {
         return false;
       }
     }
     return true;
   }
 
-  bool span_phrase_match(size_t num_isrs, isr** isrs) {}
+  bool span_phrase_match(size_t num_isrs, isr** isrs,
+                         const vector<Offset>& positions) {
+    for (size_t i = 0; i < num_isrs - 1; ++i) {
+      if (positions[i] + 1 != positions[i + 1]) {
+        return false;
+      }
+    }
+    return true;
+  }
 
-  void increment_isr(size_t num_isrs, isr** isrs, size_t rare_idx) {
+  void increment_isr(size_t num_isrs, isr** isrs, size_t rare_idx,
+                     vector<Offset>& positions) {
+    isrs[rare_idx]->next();
+    Offset target_pos = isrs[rare_idx]->offset();
     for (size_t i = 0; i < num_isrs; ++i) {
-      while (/*moving isrs[i] moves it closer to rarest_isr*/) {
+      Offset cur_pos = isrs[i]->offset();
+      if (i == rare_idx || cur_pos >= cur_doc_end) {
+        continue;
+      }
+
+      while (abs(target_pos - cur_pos) < abs(target_pos - positions[i])) {
         // update isr[i]
+        positions[i] = cur_pos;
+        isrs[i]->next();
       }
     }
   }
@@ -208,6 +226,8 @@ class ranker {
   fast::array<fast::query::Result, fast::query::MAX_RESULTS> results;
   vector<string> flattened;
   size_t sz;
+  Offset cur_doc_offset;
+  Offset cur_doc_end;
 
   size_t rare_word_idx;
   isr* rarest_isr;
