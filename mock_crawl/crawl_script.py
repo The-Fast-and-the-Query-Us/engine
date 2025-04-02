@@ -47,7 +47,7 @@ for url in start_urls:
     q.put(url)
 
 # start c++ client
-process = subprocess.Popen(["./mock ./index"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+process = subprocess.Popen(["./mock", "./index"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
 
 # run crawl
 while q.qsize() > 0:
