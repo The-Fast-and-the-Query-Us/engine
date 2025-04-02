@@ -69,7 +69,6 @@ class query_stream {
     auto start = query.begin() + pos;
     while (pos < query.size() && !important(query[pos])) ++pos;
     auto res = string_view(start, query.begin() + pos);
-    printf("%s\n", res.begin());
     return res;
   }
 };
