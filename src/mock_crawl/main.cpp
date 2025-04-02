@@ -91,4 +91,6 @@ int main(int argc, char **argv) {
   }
 
   delete ht;
+
+  std::cout << "Bro exited" << std::endl;
 }
