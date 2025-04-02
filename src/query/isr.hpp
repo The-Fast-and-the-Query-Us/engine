@@ -76,6 +76,12 @@ class isr_container : public isr {
 
   isr_container(isr_doc *doc_end) : doc_end(doc_end) {}
 
+  Offset get_doc_start() const {
+    return (
+      doc_end->offset() - doc_end->len()
+    );
+  }
+
   void add_stream(isr *stream, bool ex = false) {
     if (ex) {
       exclude.push_back(stream);
