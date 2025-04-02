@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdio>
 #include <isr.hpp>
 #include <string.hpp>
 #include "isr.hpp"
@@ -28,7 +29,7 @@ BNF:
 */
 
 class query_stream {
-  const string_view query;
+  const string query;
   size_t pos;
 
   bool important(char c) {
@@ -47,7 +48,7 @@ class query_stream {
 
   public:
 
-  query_stream(const string &query) : query(query), pos(0) {};
+  query_stream(const string_view &query) : query(query), pos(0) {};
 
   bool is_end() const { return pos == query.size(); }
 
@@ -67,7 +68,9 @@ class query_stream {
   string_view get_word() {
     auto start = query.begin() + pos;
     while (pos < query.size() && !important(query[pos])) ++pos;
-    return string_view(start, query.begin() + pos);
+    auto res = string_view(start, query.begin() + pos);
+    printf("%s\n", res.begin());
+    return res;
   }
 };
 
