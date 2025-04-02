@@ -74,11 +74,10 @@ class query_stream {
 class contraint_parser {
   public:
 
-  static isr *parse_contraint(query_stream &query, const hashblob *blob) {
+  static isr_container *parse_contraint(query_stream &query, const hashblob *blob) {
     auto left = parse_base_contraint(query, blob);
 
     if (!left) return nullptr;
-    if (!query.peek('+') && !query.peek('-')) return left;
 
     auto ans = new isr_container(blob->docs()->get_doc_isr());
     ans->add_stream(left);
