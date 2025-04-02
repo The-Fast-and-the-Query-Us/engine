@@ -48,6 +48,7 @@ int main() {
 
     isr->next();
     assert(isr->is_end());
+    delete isr;
   }
 
   {
@@ -58,6 +59,7 @@ int main() {
 
     isr->next();
     assert(isr->is_end());
+    delete isr;
   }
 
   free(blob);
