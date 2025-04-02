@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdio>
 #include <hashtable.hpp>
 #include <post_list.hpp>
 #include <isr.hpp>
@@ -124,7 +125,7 @@ class isr_container : public isr {
         // 5. If any ISR reaches the end, there is no match.
         if (stream->is_end()) return;
 
-        // 4. If any contained erm is past the document end, return to
+        // 4. If any contained term is past the document end, return to
         // step 2.
         if (stream->offset() > doc_end->offset()) good = false;
       }

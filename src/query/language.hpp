@@ -55,7 +55,7 @@ class query_stream {
   bool peek(char c) {
     return (
       pos < query.size() &&
-      c == query[0]
+      c == query[pos]
     );
   }
 
