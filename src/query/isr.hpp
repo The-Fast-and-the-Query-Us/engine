@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdio>
 #include <hashtable.hpp>
 #include <post_list.hpp>
 #include <isr.hpp>
@@ -74,6 +75,14 @@ class isr_container : public isr {
 
   public:
 
+  isr_container(isr_doc *doc_end) : doc_end(doc_end) {}
+
+  Offset get_doc_start() const {
+    return (
+      doc_end->offset() - doc_end->len()
+    );
+  }
+
   void add_stream(isr *stream, bool ex = false) {
     if (ex) {
       exclude.push_back(stream);
@@ -116,7 +125,7 @@ class isr_container : public isr {
         // 5. If any ISR reaches the end, there is no match.
         if (stream->is_end()) return;
 
-        // 4. If any contained erm is past the document end, return to
+        // 4. If any contained term is past the document end, return to
         // step 2.
         if (stream->offset() > doc_end->offset()) good = false;
       }
@@ -215,6 +224,17 @@ class isr_phrase : public isr {
   ~isr_phrase() override {
     for (auto stream : streams) delete stream;
   }
+};
+
+// special isr for word not in index
+class isr_null : public isr {
+  public:
+  void next() override {}
+  void seek(Offset offset) override {
+    (void) offset;
+  }
+  Offset offset() override { return 0; }
+  bool is_end() override { return true; }
 };
 
 }

@@ -94,7 +94,7 @@ class dictionary {
     const auto end = dict() + (((hash_val + 1) % num_buckets) ?
                      buckets()[(hash_val + 1) % num_buckets] : dict_size);
 
-    while (pos != end) {
+    while (pos < end) {
       auto key = pos + sizeof(size_t);
       size_t len;
 
