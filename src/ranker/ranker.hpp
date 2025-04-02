@@ -13,7 +13,8 @@ constexpr size_t SHORT_SPAN_LENGTH = 10;
 
 class ranker {
  public:
-  ranker(const hashblob* index_chunk, const string& raw_query) {
+  ranker(const hashblob* index_chunk, const string& raw_query,
+         isr_container* container) {
     // flatten query into unique words
     flattened = flatten_query(raw_query);
     sz = flattened.size();
@@ -36,6 +37,8 @@ class ranker {
     }
 
     rarest_isr = isrs[rare_word_idx];
+
+    // iterate through doc container
   }
 
   void score_doc(size_t doc_offset) {
@@ -59,6 +62,7 @@ class ranker {
 
     // url
 
+    // insertion sort into top 10
     if (score < results[fast::query::MAX_RESULTS - 1].first) {
       return;
     }
@@ -72,13 +76,17 @@ class ranker {
     }
   }
 
-  double count_spans(size_t doc_end, size_t num_isrs, isr** cur_isrs,
+  double count_spans(Offset doc_offset, size_t num_isrs, isr** cur_isrs,
                      size_t rare_idx) {
     double score(0.0);
-    while (/*rarest is less than doc_end*/) {
-      // move other isrs to closest
-      advance_isrs(doc_end, num_isrs, cur_isrs, rare_idx);
+    for (size_t i = 0; i < num_isrs; ++i) {
+      cur_isrs[i]->seek(doc_offset);
+    }
 
+    Offset doc_end;  // TODO
+
+    while (!cur_isrs[rare_idx]->is_end() &&
+           cur_isrs[rare_idx]->offset() < doc_end) {
       int span_length = get_span_length(num_isrs, cur_isrs);
       if (span_length <= SHORT_SPAN_LENGTH) {
         // add to score
@@ -93,6 +101,8 @@ class ranker {
       }
 
       // term frequencies
+
+      increment_isr(num_isrs, cur_isrs, rare_idx);
     }
   }
 
@@ -163,15 +173,6 @@ class ranker {
   size_t size() { return sz; }
 
  private:
-  void advance_isrs(size_t doc_end, size_t num_isrs, isr** cur_isrs,
-                    size_t rare_idx) {
-    for (size_t i = 0; i < num_isrs; ++i) {
-      while (/*moving isrs[i] moves it closer to rarest_isr*/) {
-        // update isr[i]
-      }
-    }
-  }
-
   size_t get_span_length(size_t num_isrs, isr** cur_isrs) {
     Offset min_off = rarest_isr->offset();
     Offset max_off = rarest_isr->offset() + 1;
@@ -184,9 +185,24 @@ class ranker {
     return max_off - min_off;
   }
 
-  bool span_same_order(size_t num_isrs, isr** isrs) {}
+  bool span_same_order(size_t num_isrs, isr** isrs) {
+    for (size_t i = 0; i < num_isrs - 1; ++i) {
+      if (isrs[i]->offset() >= isrs[i + 1]->offset()) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   bool span_phrase_match(size_t num_isrs, isr** isrs) {}
+
+  void increment_isr(size_t num_isrs, isr** isrs, size_t rare_idx) {
+    for (size_t i = 0; i < num_isrs; ++i) {
+      while (/*moving isrs[i] moves it closer to rarest_isr*/) {
+        // update isr[i]
+      }
+    }
+  }
 
  private:
   fast::array<fast::query::Result, fast::query::MAX_RESULTS> results;
