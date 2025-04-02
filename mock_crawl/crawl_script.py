@@ -14,7 +14,6 @@ def get_html(url: str) -> str | None:
         response.raise_for_status()  # Raise error if bad response
         return response.text
     except requests.RequestException as e:
-        print(f"Error fetching {url}: {e}")
         return None
 
 def extract_words_and_links(html: str, base_url: str):
@@ -72,4 +71,4 @@ while q.qsize() > 0 and time.time() - start < 30:
                 bloom.add(link)
                 q.put(link)
 
-print(f"crawled {crawl_count} sites")
+print("q")
