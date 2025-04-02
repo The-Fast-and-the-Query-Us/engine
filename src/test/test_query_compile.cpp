@@ -30,11 +30,23 @@ int main() {
     query::query_stream qs(abc);
     auto isr = query::contraint_parser::parse_contraint(qs, blob);
     assert(!isr->is_end());
+    assert(isr->get_doc_start() == 0);
     isr->next();
     assert(!isr->is_end());
+    assert(isr->get_doc_start() == 4);
     isr->next();
     assert(isr->is_end());
     delete isr;
+  }
+
+  { 
+    query::query_stream qs("abc-xyz");
+    auto isr = query::contraint_parser::parse_contraint(qs, blob);
+    assert(!isr->is_end());
+    assert(isr->get_doc_start() == 0);
+
+    isr->next();
+    assert(isr->is_end());
   }
 
   free(blob);
