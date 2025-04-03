@@ -197,10 +197,10 @@ public:
       return false;
     }
 
+    size_t value_size = sizeof(V);
     for (size_t i = 0; i < cap; ++i) {
       if (buckets[i].status == FULL) {
         size_t key_size = buckets[i].key.size();
-        auto value_size = sizeof(buckets[i].value);
         if (write(fd, &key_size, sizeof(key_size)) != sizeof(key_size)) {
           return false;
         }
@@ -226,11 +226,10 @@ public:
     erase();
 
     size_t temp_cap{};
+    size_t map_size{};
     if (read(fd, &temp_cap, sizeof(cap)) != sizeof(cap)) {
       return false;
     }
-
-    size_t map_size{};
     if (read(fd, &map_size, sizeof(map_size)) != sizeof(map_size)) {
       return false;
     }
@@ -238,9 +237,9 @@ public:
     if (!temp_cap) { temp_cap = INITIAL_CAPACITY; }
     grow(temp_cap);
 
+    size_t value_size{sizeof(V)};
     for (size_t i = 0; i < map_size; ++i) {
       size_t key_size{};
-      size_t value_size{};
       if (read(fd, &key_size, sizeof(key_size)) != sizeof(key_size)) {
         return false;
       }
@@ -248,15 +247,21 @@ public:
         return false;
       }
 
+      value_size = fast::min(sizeof(V), value_size);
+
       if (key_size >= MAX_URL_LEN || !key_size) {
         continue;
       }
 
+      char buf[MAX_URL_LEN + 1];
       K key{};
-      key.resize(key_size);
+      
       if (key_size > 0 && 
-        read(fd, key.begin(), key_size) != static_cast<ssize_t>(key_size)) {
+        read(fd, buf, key_size) != static_cast<ssize_t>(key_size)) {
         return false;
+      }
+      for (size_t i = 0; i < key_size; ++i) {
+        key += buf[i];
       }
 
       V val{};
