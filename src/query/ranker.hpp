@@ -355,16 +355,4 @@ class ranker {
   isr** isrs;
 };
 
-// deprecate
-void rank_from_constraints(const hashblob* blob, const string& query,
-                           array<Result, MAX_RESULTS>& results,
-                           isr_container* constraints) {
-  vector<string_view> flattened_query;
-  query_stream qs(query);
-  rank_parser::parse_query(qs, blob, flattened_query);
-
-  // TODO
-  ranker(blob, flattened_query, constraints, results);
-}
-
 }  // namespace fast::query
