@@ -14,12 +14,11 @@
 
 namespace fast::query {
 
-
 constexpr size_t SHORT_SPAN_LENGTH = 10;
 
 class ranker {
  public:
-  ranker(const hashblob* index_chunk, vector<string_view> &sv,
+  ranker(const hashblob* index_chunk, vector<string_view>& sv,
          isr_container* container, array<Result, MAX_RESULTS>& res)
       : results(res), flattened(sv) {
     sz = flattened.size();
@@ -75,11 +74,10 @@ class ranker {
 
     // static ranks
 
-    // anchor text
-
     // title
 
     // url
+    score += url_score();
 
     // insertion sort into top 10
     if (score < results[fast::query::MAX_RESULTS - 1].first) {
@@ -123,16 +121,17 @@ class ranker {
     while (!cur_isrs[rare_idx]->is_end() &&
            cur_isrs[rare_idx]->offset() < cur_doc_end) {
       int span_length = get_span_length(num_isrs, rare_idx, positions);
-      if (span_length <= SHORT_SPAN_LENGTH) {
-        // add to score
-      }
+
+      // add to score
+      score += num_isrs * (50.0 / span_length);
 
       if (span_same_order(num_isrs, positions)) {
         // add to score
+        score += num_isrs * 25;
       }
 
       if (span_phrase_match(num_isrs, positions)) {
-        // add to score
+        score += num_isrs * 100;
       }
       if (word_to_isrs == nullptr) {
         increment_isrs(num_isrs, cur_isrs, rare_idx, positions, freqs);
@@ -144,10 +143,15 @@ class ranker {
 
     finish_counting(num_isrs, cur_isrs, positions, freqs);
 
+    size_t total_counts = 0;
     // count frequencies
     for (size_t i = 0; i < num_isrs; ++i) {
       // do something
+      total_counts += freqs[i];
     }
+    score += total_counts / sz;
+
+    return score;
   }
 
   double count_full() {
@@ -155,10 +159,11 @@ class ranker {
     for (size_t i = 0; i < sz; ++i) {
       word_to_isrs[flattened[i]].push_back(i);
     }
-    count_spans(sz, isrs, rare_word_idx, &word_to_isrs);
+    return count_spans(sz, isrs, rare_word_idx, &word_to_isrs);
   }
 
   double count_doubles() {
+    double score(0);
     isr* cur_isrs[2];
     for (size_t i = 0; i < sz; ++i) {
       if (flattened[i] == flattened[rare_word_idx]) {
@@ -170,11 +175,14 @@ class ranker {
         cur_isrs[0] = isrs[rare_word_idx];
         cur_isrs[1] = isrs[i];
       }
-      count_spans(2, cur_isrs, 1);
+      score += count_spans(2, cur_isrs, 1);
     }
+
+    return score;
   }
 
   double count_triples() {
+    double score(0);
     isr* cur_isrs[3];
     size_t rare_idx = 3;
     for (size_t i = 0; i < sz - 1; ++i) {
@@ -204,9 +212,11 @@ class ranker {
           }
         }
 
-        count_spans(3, cur_isrs, rare_idx);
+        score += count_spans(3, cur_isrs, rare_idx);
       }
     }
+
+    return score;
   }
 
   size_t size() { return sz; }
@@ -326,6 +336,8 @@ class ranker {
 
     // implement url length
     // implement url depth
+
+    return score;
   }
 
  private:
