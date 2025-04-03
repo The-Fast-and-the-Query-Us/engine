@@ -59,9 +59,9 @@ private:
     meta = static_cast<uint8_t*>(malloc(new_cap)); // NOLINT
     data = static_cast<entry*>(malloc(new_cap * sizeof(entry))); // NOLINT
     std::memset(meta, EMPTY, new_cap);
-    // for (size_t i = 0; i < new_cap; ++i) {
-    //   data[i] = entry{K{}, V{}};
-    // }
+    for (size_t i = 0; i < new_cap; ++i) {
+      data[i] = entry{K{}, V{}};
+    }
 
     cap = new_cap;
     size = 0;
