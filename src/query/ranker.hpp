@@ -14,7 +14,7 @@ namespace fast::query {
 
 void rank_from_constraints(const hashblob *blob, const string &query, 
                            array<Result, MAX_RESULTS> &results, isr_container *constraints) {
-  vector<isr*> isrs;
+  vector<string_view> isrs;
   query_stream qs(query);
   rank_parser::parse_query(qs, blob, isrs);
 
