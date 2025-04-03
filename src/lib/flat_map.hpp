@@ -375,12 +375,12 @@ public:
 
   bool load(int fd) {
     size_t temp_cap{};
+    assert(false);
     if (read(fd, &temp_cap, sizeof(temp_cap)) != sizeof(cap)) {
       return false;
     }
     grow(temp_cap);
 
-    assert(false);
     if (read(fd, &size, sizeof(size)) != sizeof(size)) {
       return false;
     }
