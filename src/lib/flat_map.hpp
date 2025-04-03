@@ -57,12 +57,12 @@ private:
     size_t old_cap = cap;
 
     meta = static_cast<uint8_t*>(malloc(new_cap)); // NOLINT
-    // data = static_cast<entry*>(malloc(new_cap * sizeof(entry))); // NOLINT
-    data = new entry[new_cap];
+    data = static_cast<entry*>(malloc(new_cap * sizeof(entry))); // NOLINT
     std::memset(meta, EMPTY, new_cap);
-    // for (size_t i = 0; i < new_cap; ++i) {
-    //   data[i] = entry{K{}, V{}};
-    // }
+    for (size_t i = 0; i < new_cap; ++i) {
+      new(data + i) entry{};
+      // data[i] = new()
+    }
 
     cap = new_cap;
     size = 0;
@@ -78,9 +78,9 @@ private:
     if (old_meta != nullptr) {
       free(old_meta); // NOLINT
     } 
-    // if (old_data != nullptr) {
-      delete[] old_data;
-    // }
+    if (old_data != nullptr) {
+      free(old_data);
+    }
   }
 
   fast::pair<uint64_t, uint8_t> hash_key(const K &key) {
