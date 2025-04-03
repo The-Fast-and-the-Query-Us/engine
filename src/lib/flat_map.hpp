@@ -230,7 +230,7 @@ public:
           ++size;
           return;
         }
-        if (meta[index] == DELETED && !first_deleted) {
+        if (meta[index] == DELETED && first_deleted == nullptr) {
           first_deleted = &data[index];
           first_deleted_meta_index = index;
         }
