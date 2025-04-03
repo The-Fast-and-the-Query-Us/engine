@@ -708,8 +708,8 @@ void test_save_load() {
       continue;
     }
     assert(map.meta[i] == map2.meta[i]);
-    std::cout << "map key at " << i << ": " << map.data[i].key.c_str() << '\n';
-    std::cout << "map2 key at " << i << ": " << map2.data[i].key.c_str() << '\n';
+    std::cout << "map key at " << i << ": " << map.data[i].key.begin() << '\n';
+    std::cout << "map2 key at " << i << ": " << map2.data[i].key.begin() << '\n';
     assert(map.data[i].key == map2.data[i].key);
     std::cout << "map value at " << i << ": " << map.data[i].value << '\n';
     std::cout << "map2 value at " << i << ": " << map2.data[i].value << '\n';
