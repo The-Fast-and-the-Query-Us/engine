@@ -128,7 +128,7 @@ while not queue.empty() and not die:
                 queue.put(link)
                 bf.add(link)
 
-        if pybind.num_tokens() >= 50000:
+        if pybind.num_tokens() >= 500000:
             chunk_id = get_chunk_number()
             logging.info("Writing chunk number ", chunk_id)
             write_chunk_number(chunk_id + 1)
