@@ -1,12 +1,15 @@
 #pragma once
 
 #include <language.hpp>
+#include <string.hpp>
+#include <vector.hpp>
 
 namespace fast {
 class flatten_query {
  public:
   static vector<string> *parse_contraint(query_stream &query,
-                                         const hashblob *blob) {
+                                         const hashblob *blob,
+                                         vector<string> &flattened) {
     auto left = parse_base_contraint(query, blob);
 
     if (!left) return nullptr;

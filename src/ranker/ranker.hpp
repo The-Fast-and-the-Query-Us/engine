@@ -112,6 +112,8 @@ class ranker {
       increment_isrs(num_isrs, cur_isrs, rare_idx, positions, freqs);
     }
 
+    finish_counting(num_isrs, cur_isrs, positions, freqs);
+
     // count frequencies
     for (size_t i = 0; i < num_isrs; ++i) {
       // do something
