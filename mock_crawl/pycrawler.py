@@ -28,6 +28,23 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 bf = BloomFilter(max_elements=1000000, error_rate=0.02, filename="/tmp/bloom.bin")
 queue = Queue("/tmp/queue.bin", autosave=True)
 
+def good_domain_authority(url: str) -> bool:
+    """Simulate domain authority based on domain type."""
+    domain = urlparse(url).netloc
+    if domain.endswith('.gov') or domain.endswith('.edu'):
+        return True
+    elif domain.endswith('.org'):
+        return True
+    elif domain.endswith('.com'):
+        return True
+    else:
+        return False
+
+def url_depth(url: str) -> int:
+    """Calculate depth based on the number of path segments."""
+    path = urlparse(url).path.strip('/')
+    return len(path.split('/')) if path else 0
+
 def get_and_parse(url: str):
 
     try:
@@ -66,6 +83,9 @@ def should_crawl(url: str) -> bool:
         return False
 
     if any(x in parsed.path.lower() for x in ["/logout", "/login", "/signup", "/admin"]):
+        return False
+
+    if not good_domain_authority(url):
         return False
 
     return True
@@ -121,12 +141,17 @@ while not queue.empty() and not die:
 
         pybind.add_url(url)
 
-        links = sorted(links, key=len)
-        for link in links[:10]:
-            if should_crawl(link) and queue.qsize() < 600:
+        links = sorted(links, key=url_depth)
+        count = 0
+
+        for link in links:
+            if queue.qsize() > 1000 or count > 20:
+                break
+            elif should_crawl(link):
                 logging.info("LINK: ", link)
                 queue.put(link)
                 bf.add(link)
+                count += 1
 
         if pybind.num_tokens() >= 500000:
             chunk_id = get_chunk_number()
