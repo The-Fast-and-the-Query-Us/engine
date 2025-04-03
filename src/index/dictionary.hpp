@@ -91,6 +91,7 @@ class dictionary {
         offset += encoded_size(bucket.word.size());
 
         memcpy(buffer->dict() + offset, bucket.word.c_str(), bucket.word.size());
+        offset += bucket.word.size();
       }
     }
 
