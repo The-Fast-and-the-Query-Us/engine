@@ -59,9 +59,12 @@ public:
 
   string &operator=(const string &other) {
     if (this != &other) {
-      grow(other.len_);
-      len_ = other.len_;
-      memcpy(start_, other.start_, other.len_ + 1);
+        free(start_);
+        start_ = nullptr;
+        cap = 0;
+        grow(other.len_);
+        len_ = other.len_;
+        memcpy(start_, other.start_, len_ + 1);
     }
     return *this;
   }
