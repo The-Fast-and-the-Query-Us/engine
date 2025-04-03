@@ -38,13 +38,14 @@ def extract_words_and_links(html: str, base_url: str):
 
 
 MINUTE = 60
-TIME_LIMIT = 10
+TIME_LIMIT = 10 * MINUTE
 
 MAX_QUEUE = 500
 q = queue.Queue()
 bloom = BloomFilter(max_elements=1000000, error_rate=0.01)
 
 start_urls = [
+    "https://www.imdb.com/title/tt1013752/?ref_=nv_sr_srsg_0_tt_7_nm_1_in_0_q_fast%2520a",
     "https://www.nytimes.com",
     "https://en.wikipedia.org/wiki/C%2B%2B"
 ]
@@ -86,7 +87,7 @@ while q.qsize() > 0 and time.time() - start < TIME_LIMIT:
         process.stdin.write("0\n")
         process.stdin.write(url + '\n')
 
-        for link in links[:20]:
+        for link in links[:8]:
             if q.qsize() == MAX_QUEUE:
                 break
             if link not in bloom:
