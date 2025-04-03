@@ -52,7 +52,7 @@ for url in start_urls:
 # init c++ client
 index_path = os.path.abspath("./index")
 blobber_path = "../src/build/mock_crawl/mock"
-process = subprocess.Popen([blobber_path, index_path])
+process = subprocess.Popen([blobber_path, index_path], stdin=subprocess.PIPE)
 
 crawl_count = 0
 start = time.time()
