@@ -61,7 +61,10 @@ blobber_path = "../src/build/mock_crawl/mock"
 process = subprocess.Popen([blobber_path, index_path], stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr, text=True)
 
 def cleanup():
-    process.stdin.close()
+    try:
+        process.stdin.close()
+    except Exception as e:
+        print(e)
 
     try:
         result = process.wait(timeout=3)
