@@ -7,6 +7,8 @@ from bloom_filter import BloomFilter
 import queue
 import time
 import subprocess
+import sys
+import atexit
 
 def get_html(url: str) -> str | None:
     """Fetch HTML content of a URL."""
@@ -35,6 +37,9 @@ def extract_words_and_links(html: str, base_url: str):
     return words, links
 
 
+MINUTE = 60
+TIME_LIMIT = 10
+
 MAX_QUEUE = 500
 q = queue.Queue()
 bloom = BloomFilter(max_elements=1000000, error_rate=0.01)
@@ -52,24 +57,34 @@ for url in start_urls:
 # init c++ client
 index_path = os.path.abspath("./index")
 blobber_path = "../src/build/mock_crawl/mock"
-process = subprocess.Popen([blobber_path, index_path], stdin=subprocess.PIPE)
+process = subprocess.Popen([blobber_path, index_path], stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
 
-crawl_count = 0
+def cleanup():
+    process.stdin.write("q\n")
+    process.stdin.flush()
+
+    result = process.poll()
+    if result is None:
+        print("Blobber still running, terminating")
+        process.terminate()
+    else:
+        print(f"Blobber exited with status {result}")
+
+atexit.register(cleanup)
+
 start = time.time()
-
 # run crawl
-while q.qsize() > 0 and time.time() - start < 30:
+while q.qsize() > 0 and time.time() - start < TIME_LIMIT:
     url = q.get()
     html = get_html(url)
     if html is not None:
         words, links = extract_words_and_links(html, url)
-        crawl_count += 1
 
         for word in words:
-            print("1")
-            print(word)
-        print("0")
-        print(url)
+            process.stdin.write("1\n")
+            process.stdin.write(word + '\n')
+        process.stdin.write("0\n")
+        process.stdin.write(url + '\n')
 
         for link in links:
             if q.qsize() == MAX_QUEUE:
@@ -77,5 +92,3 @@ while q.qsize() > 0 and time.time() - start < 30:
             if link not in bloom:
                 bloom.add(link)
                 q.put(link)
-
-print("q")
