@@ -97,6 +97,21 @@ public:
     }
   }
 
+  void insert(size_t idx, char c) {
+    if (idx > len_) {
+      return;
+    }
+    if (len_ + 1 > cap) {
+      grow((len_ + 1));
+    }
+    if (idx < len_) {
+      memmove(start_ + idx + 1, start_ + idx, len_ - idx);
+    }
+    start_[idx] = c;
+    len_++;
+    start_[len_] = 0;
+  }
+
   bool operator==(const string &s) const {
     if (s.size() != this->size())
       return false;

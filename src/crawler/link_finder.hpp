@@ -4,6 +4,7 @@
 #include "vector.hpp"
 #include "hashtable.hpp"
 #include "mutex.hpp"
+#include "html_file.hpp"
 #include "HtmlParser.h"
 #include <cctype>
 #include <cstdint>
@@ -30,7 +31,6 @@ class link_finder {
 public:
   void parse_url(const char *file) {
     url = file;
-    file_fd = open(url.begin(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (file_fd == -1) {
       throw std::runtime_error("Could not open file in link_finder\n");
     }
@@ -90,19 +90,11 @@ public:
   ~link_finder() { destroy_objects(); }
 
   fast::vector<fast::string> parse_html(fast::hashtable &word_bank, fast::mutex &bank_mtx) {
+    fast::crawler::html_file html{};
+    get_html(html);
+    if (!html.size()) return {};
 
-    // TODO: Currently this function just dumps the html to std::cout.
-    // We need to parse packet by packet and extract the links if there is no
-    // robots.txt If there is, then use that (and cache that info) to crawl
-    // those links
-    // TODO: Blobbify the robots.txt cache
-    //
-    char* html{};
-    size_t html_cap{};
-    get_html(html, html_cap);
-    if (!html) return {};
-
-    HtmlParser parser(html, html_cap);
+    HtmlParser parser(html.html, html.size());
     fast::vector<fast::string> links(parser.links.size());
     for (size_t i = 0; i < links.size(); ++i) {
       links[i] = parser.links[i].URL;
@@ -114,17 +106,20 @@ public:
       lower(word);
       word_bank.add(word);
     }
+    for (fast::string &word : parser.titleWords) {
+      while (!is_alphabet(word[0])) word = word.substr(1, word.size()-1);
+      while (!is_alphabet(word[word.size()-1])) word = word.substr(0, word.size()-1);
+      lower(word);
+      word.insert(0, '#');
+      word_bank.add(word);
+    }
+    word_bank.add_doc(url);
     bank_mtx.unlock();
 
-    free(html);
     destroy_objects();
 
     return links;
   }
-  // We want to name the html file the URL
-  // Find all the links in each packet we receive. If we are still in a link
-  // across a packet we can continue to the next packet write each packet to the
-  // file correctly
   
 private:
   struct addrinfo *address{};
@@ -232,7 +227,7 @@ private:
     }
   }
 
-  void get_html(char* html, size_t html_cap) {
+  void get_html(fast::crawler::html_file &html) {
     char buffer[MAX_PACKET_SIZE];
     ssize_t bytes{};
     bool found_header_end = false;
@@ -249,10 +244,7 @@ private:
             header_match_pos++;
             if (header_match_pos == 4) { // Found \r\n\r\n
               found_header_end = true;
-              
-              realloc(html, html_cap + bytes);
-              std::memcpy(html + html_cap, buffer, bytes);
-              html_cap += bytes;
+              html.add(buffer + i + 1, bytes - i - 1);
               // write(1, buffer + i + 1, bytes - (i + 1));
               break;
             }
@@ -261,10 +253,7 @@ private:
           }
         }
       } else {
-        realloc(html, html_cap + bytes);
-        std::memcpy(html + html_cap, buffer, bytes);
-        html_cap += bytes;
-        // write(1, buffer, bytes);
+        html.add(buffer, bytes);
       }
     }
     if (bytes < 0) {

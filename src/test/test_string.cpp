@@ -20,4 +20,8 @@ int main() {
   assert(s == "cccc");
 
   assert(string("some") == string_view("some"));
+
+  s.insert(0, '#');
+
+  assert(s == "#cccc");
 }
