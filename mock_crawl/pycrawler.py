@@ -24,6 +24,8 @@ import pybind
 IGNORED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".pdf", ".zip", ".mp4", ".mp3"}
 
 logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
 bf = BloomFilter(max_elements=1000000, error_rate=0.02, filename="/tmp/bloom.bin")
 queue = Queue("/tmp/queue.bin", autosave=True)
 
@@ -74,6 +76,36 @@ def sig_int_handle(signal, frame):
 
 signal.signal(signal.SIGINT, sig_int_handle)
 
+index_path = "/tmp/index"
+os.makedirs(index_path, exist_ok=True)
+
+try:
+    with open("/tmp/index_chunk", 'x') as f:
+        f.write(str(0))
+    logger.info("initialize index counter")
+except Exception as _:
+    logger.info("Crawler already init counter")
+
+with open("init.txt") as f:
+    for word in f.read().split():
+        if word not in bf:
+            logger.info("putting word : ", word)
+            bf.add(word)
+            queue.put(word)
+        else:
+            logger.info("skipping init word already in Bloom")
+
+
+def get_chunk_number() -> int:
+    with open("/tmp/index_chunk", 'r') as f:
+        return int(f.read())
+
+def write_chunk_number(num: int):
+    with open("/tmp/index_chunk" 'w') as f:
+        f.write(str(num))
+
+pybind.alloc()
+
 while not queue.empty() and not die:
     url = queue.get()
     queue.task_done()
@@ -86,4 +118,30 @@ while not queue.empty() and not die:
 
         pybind.add_url(url)
 
+        links = sorted(links, key=len)
+        for link in links[:10]:
+            if should_crawl(link) and queue.qsize() < 600:
+                queue.put(link)
+                bf.add(link)
 
+        if pybind.num_tokens() >= 50000:
+            chunk_id = get_chunk_number()
+            logger.info("Writing chunk number ", chunk_id)
+            write_chunk_number(chunk_id + 1)
+            pybind.write_blob(index_path + '/' + str(chunk_id))
+            pybind.erase()
+            pybind.alloc()
+
+            logger.info("finish writing chunk")
+
+
+bf.close()
+
+if pybind.num_tokens() > 0:
+    chunk_id = get_chunk_number()
+    logger.info("Writing chunk number ", chunk_id)
+    write_chunk_number(chunk_id + 1)
+    pybind.write_blob(index_path + '/' + str(chunk_id))
+    pybind.erase()
+
+print("done!")
