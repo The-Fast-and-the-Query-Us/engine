@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <flat_map.hpp>
+#include <unordered_map>
 #include <chrono>
 #include <cassert>
 #include <fcntl.h>
