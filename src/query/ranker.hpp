@@ -8,12 +8,17 @@
 #include <string.hpp>
 #include <vector.hpp>
 #include "isr.hpp"
+#include "language.hpp"
 
 namespace fast::query {
 
 void rank_from_constraints(const hashblob *blob, const string &query, 
                            array<Result, MAX_RESULTS> &results, isr_container *constraints) {
-  // todo
+  vector<isr*> isrs;
+  query_stream qs(query);
+  rank_parser::parse_query(qs, blob, isrs);
+
+  // TODO
 }
 
 constexpr size_t SHORT_SPAN_LENGTH = 10;

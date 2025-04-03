@@ -201,5 +201,12 @@ class contraint_parser {
 
 };
 
+class rank_parser {
+  public:
+
+  // TODO
+  static void parse_query(query_stream &query, const hashblob *blob, vector<isr*> &isrs);
+};
+
 
 }
