@@ -102,15 +102,6 @@ private:
     return result;
   }
 
-// #elif X86_64
-//   uint16_t compare_bytes(const uint8_t* data, uint8_t pattern) {
-//     __m128i vpattern = _mm_set1_epi8(pattern);
-//     __m128i vdata = _mm_loadu_si128((__m128i*)data);
-//     __m128i vcmp = _mm_cmpeq_epi8(vdata, vpattern);
-//
-//     return _mm_movemask_epi8(vcmp);
-//   }
-//
 #else
   uint16_t compare_bytes(const uint8_t* data, uint8_t pattern) {
     uint16_t result = 0;
