@@ -375,17 +375,19 @@ public:
 
   bool load(int fd) {
     size_t temp_cap{};
-    if (read(fd, &temp_cap, sizeof(cap)) != sizeof(cap)) {
+    if (read(fd, &temp_cap, sizeof(temp_cap)) != sizeof(cap)) {
       return false;
     }
     grow(temp_cap);
 
+    assert(false);
     if (read(fd, &size, sizeof(size)) != sizeof(size)) {
       return false;
     }
     if (read(fd, meta, cap) != static_cast<ssize_t>(cap)) {
       return false;
     }
+
 
     for (size_t i = 0; i < cap; ++i) {
       if (meta[i] != EMPTY && meta[i] != DELETED) {
