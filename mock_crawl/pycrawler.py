@@ -23,8 +23,7 @@ import pybind
 
 IGNORED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".pdf", ".zip", ".mp4", ".mp3"}
 
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 bf = BloomFilter(max_elements=1000000, error_rate=0.02, filename="/tmp/bloom.bin")
 queue = Queue("/tmp/queue.bin", autosave=True)
@@ -37,12 +36,12 @@ def get_and_parse(url: str):
         return None, None
 
     if response.status_code != 200:
-        logger.info("Skipping status code: ", response.status_code)
+        logging.info("Skipping status code: ", response.status_code)
         return None, None
 
     content_type = response.headers.get("Content-Type", "")
     if "text/html" not in content_type:
-        logger.info("Skipping non-HTML content:", content_type)
+        logging.info("Skipping non-HTML content:", content_type)
         return None, None
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -86,18 +85,18 @@ os.makedirs(index_path, exist_ok=True)
 try:
     with open("/tmp/index_chunk", 'x') as f:
         f.write(str(0))
-    logger.info("initialize index counter")
+    logging.info("initialize index counter")
 except Exception as _:
-    logger.info("Crawler already init counter")
+    logging.info("Crawler already init counter")
 
 with open("init.txt") as f:
     for word in f.read().split():
         if word not in bf:
-            logger.info("putting word : ", word)
+            logging.info("putting word : ", word)
             bf.add(word)
             queue.put(word)
         else:
-            logger.info("skipping init word already in Bloom")
+            logging.info("skipping init word already in Bloom")
 
 
 def get_chunk_number() -> int:
@@ -125,28 +124,28 @@ while not queue.empty() and not die:
         links = sorted(links, key=len)
         for link in links[:10]:
             if should_crawl(link) and queue.qsize() < 600:
-                print("add link : ", link)
+                logging.info("LINK: ", link)
                 queue.put(link)
                 bf.add(link)
 
         if pybind.num_tokens() >= 50000:
             chunk_id = get_chunk_number()
-            print("Writing chunk number ", chunk_id)
+            logging.info("Writing chunk number ", chunk_id)
             write_chunk_number(chunk_id + 1)
             pybind.write_blob(index_path + '/' + str(chunk_id))
             pybind.erase()
             pybind.alloc()
 
-            logger.info("finish writing chunk")
+            logging.info("finish writing chunk")
 
 
 bf.close()
 
 if pybind.num_tokens() > 0:
+    logging.info("Writing out hashmap with size : ", pybind.num_tokens())
     chunk_id = get_chunk_number()
-    logger.info("Writing chunk number ", chunk_id)
     write_chunk_number(chunk_id + 1)
     pybind.write_blob(index_path + '/' + str(chunk_id))
-    pybind.erase()
 
-print("done!")
+pybind.erase()
+logging.info("returning!")
