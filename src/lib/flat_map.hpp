@@ -398,7 +398,7 @@ public:
           return false;
         }
         data[i].key.len_ = key_size;
-        data[i].key.start_[key_size + 1] = 0;
+        data[i].key.start_[key_size] = 0;
 
         auto value_size = sizeof(V);
         if (read(fd, &data[i].value, value_size) != static_cast<ssize_t>(value_size)) {
