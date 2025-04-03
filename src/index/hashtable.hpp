@@ -10,9 +10,15 @@
 namespace fast {
 
 typedef uint32_t Offset;
-typedef pair<string, Offset> Url;
+constexpr Offset MAX_OFFSET = 0xFFFFFFFF;
 
-const string_view DOC_END = " ";
+struct url_post {
+  Offset doc_len;
+  Offset offset;
+  string url;
+
+  operator Offset() const { return offset; }
+};
 
 class hashtable {
 
@@ -25,15 +31,16 @@ class hashtable {
     : hashval(hashval), word(word) {}
   };
 
-  size_t num_buckets, next_offset, unique_words;
+  size_t num_buckets, next_offset, unique_words, doc_size;
   list<bucket> *buckets;
 
-  list<Url> docs;
+  list<url_post> docs;
 
   friend class dictionary;
   friend class hashblob;
+
 public:
-  hashtable(size_t num_buckets = 2048) : num_buckets(num_buckets), next_offset(0), unique_words(0) {
+  hashtable(size_t num_buckets = 2048) : num_buckets(num_buckets), next_offset(0), unique_words(0), doc_size(0) {
     buckets = new list<bucket>[num_buckets];
   }
 
@@ -48,6 +55,7 @@ public:
   size_t unique() const { return unique_words; }
 
   void add(const string_view &word) {
+    ++doc_size;
     const auto hashval = hash(word);
 
     list<bucket> &l = buckets[hashval % num_buckets];
@@ -63,10 +71,9 @@ public:
     ++unique_words;
   }
 
-  // add a doc end with url
-  void doc(const string_view &url) {
-    docs.emplace_back(url, next_offset);
-    add(DOC_END);
+  void add_doc(const string_view &url) {
+    docs.emplace_back(doc_size, next_offset++, url);
+    doc_size = 0;
   }
 };
 
