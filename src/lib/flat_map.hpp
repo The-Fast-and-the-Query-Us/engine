@@ -1,6 +1,7 @@
 #pragma once
 
 // TODO: NEED TO TEST
+#include <iostream>
 
 #include "pair.hpp"
 #include <cstdint>
@@ -9,6 +10,7 @@
 #include <cstdlib>
 #include "string.hpp"
 #include "common.hpp"
+#include "hash.hpp"
 #include <type_traits>
 
 #include <fcntl.h>
@@ -31,11 +33,12 @@ namespace fast {
 template <typename K, typename V>
 class flat_map {
 private:
-  static constexpr size_t INITIAL_SIZE = 128;
+  static constexpr size_t INITIAL_SIZE = 256;
   static constexpr uint8_t EMPTY = 0x80;
   static constexpr uint8_t DELETED = 0xFE;
   static constexpr uint8_t LAST_SEVEN_BITS = 0x7F;
   static constexpr float LOAD_FACTOR_THRESHOLD = 0.875;
+  static constexpr size_t MAX_URL_LEN = 8092;
 
   struct entry {
     K key;
@@ -48,24 +51,37 @@ private:
   size_t cap{};
 
   void grow(size_t new_cap) {
-    meta = static_cast<uint8_t*>(realloc(meta, new_cap)); // NOLINT cppcoreguidelines-no-malloc
-    data = static_cast<entry*>(realloc(data, new_cap*sizeof(entry)));
-    std::memset(meta + cap, EMPTY, new_cap - cap);
-    for (size_t i = cap; i < new_cap; ++i) {
+    uint8_t *old_meta = meta;
+    entry *old_data = data;
+    size_t old_cap = cap;
+
+    meta = static_cast<uint8_t*>(malloc(new_cap)); // NOLINT
+    data = static_cast<entry*>(malloc(new_cap * sizeof(entry))); // NOLINT
+    std::memset(meta, EMPTY, new_cap);
+    for (size_t i = 0; i < new_cap; ++i) {
       data[i] = entry{};
     }
+
     cap = new_cap;
+    size = 0;
+
+    for (size_t i = 0; i < old_cap; ++i) {
+      if (old_meta[i] != EMPTY && old_meta[i] != DELETED) {
+        // Manages size increment
+        insert(old_data[i].key, old_data[i].value);
+      }
+    }
+
+
+    free(old_meta); // NOLINT
+    free(old_data);
   }
 
-  fast::pair<uint64_t, uint8_t> hash(const K &key) {
-    uint64_t xxh{};
-    if constexpr (std::is_same_v<fast::string, K>) {
-      xxh = XXH64(key.begin(), key.size(), 0);
-    } else {
-      xxh = XXH64(&key, sizeof(key), 0);
-    }
-    uint64_t data_hash = xxh >> 7; // NOLINT (magic num)
-    auto meta_hash = static_cast<uint8_t>(xxh & LAST_SEVEN_BITS);
+  fast::pair<uint64_t, uint8_t> hash_key(const K &key) {
+    uint64_t h{};
+    h = fast::hash(key.begin());
+    uint64_t data_hash = h >> 7; // NOLINT (magic num)
+    auto meta_hash = static_cast<uint8_t>(h & LAST_SEVEN_BITS);
     return {data_hash, meta_hash};
   }
 
@@ -77,7 +93,7 @@ private:
 
     uint16_t result = 0;
     uint8_t* cmp_result = (uint8_t*)&vcmp;
-    for (int i = 0; i < 16; i++) {
+    for (uint8_t i = 0; i < 16; i++) {
       if (cmp_result[i] & 0x80) {
         result |= (1 << i);
       }
@@ -97,7 +113,7 @@ private:
 #else
   uint16_t compare_bytes(const uint8_t* data, uint8_t pattern) {
     uint16_t result = 0;
-    for (int i = 0; i < 16; i++) {
+    for (uint8_t i = 0; i < 16; i++) {
       if (data[i] == pattern) {
         result |= (1 << i);
       }
@@ -161,10 +177,10 @@ public:
 
 
   V* find(const K &key) {
-    fast::pair<uint64_t, uint8_t> h = hash(key);
+    fast::pair<uint64_t, uint8_t> h = hash_key(key);
     size_t chunk_start = fast::min(static_cast<size_t>(h.first) % cap, cap - 16); // NOLINT magic num
     uint32_t cmp_mask = compare_bytes(meta + chunk_start, h.second);
-    for (size_t i = 0; i < cap >> 4; ++i) {
+    for (size_t chunk = 0; chunk < cap >> 4; ++chunk) {
       while (cmp_mask) {
         int pos = __builtin_ctz(cmp_mask);
         if (data[chunk_start + pos].key == key) {
@@ -172,8 +188,9 @@ public:
         }
         cmp_mask &= (cmp_mask - 1);
       }
-      for (uint8_t* i = meta + chunk_start; i < meta + chunk_start + 16; ++i) { // NOLINT magic num
-        if (*i == EMPTY) { return nullptr; }
+      uint8_t *ptr = meta + chunk_start;
+      for (uint8_t addy = 0; addy < 16; ++ptr, ++addy) { // NOLINT magic num
+        if (*ptr == EMPTY) { return &data[chunk_start + addy].value; }
       }
       chunk_start = (chunk_start + 16) % cap; // NOLINT magic num
       cmp_mask = compare_bytes(meta + chunk_start, h.second);
@@ -189,7 +206,7 @@ public:
     if (size >= cap * LOAD_FACTOR_THRESHOLD) {
       grow(cap * 2);
     }
-    fast::pair<uint64_t, uint8_t> h = hash(key);
+    fast::pair<uint64_t, uint8_t> h = hash_key(key);
     size_t chunk_start = fast::min(static_cast<size_t>(h.first) % cap, cap - 16); // NOLINT magic num
     uint32_t cmp_mask = compare_bytes(meta + chunk_start, h.second);
     entry* first_deleted{};
@@ -203,7 +220,7 @@ public:
         }
         cmp_mask &= (cmp_mask - 1);
       }
-      for (size_t i = 0; i < 16; ++i) { // NOLINT magic num
+      for (uint8_t i = 0; i < 16; ++i) { // NOLINT magic num
         size_t index = chunk_start + i;
         if (meta[index] == EMPTY) { 
           data[index].key = key;
@@ -233,7 +250,7 @@ public:
     if (size >= cap * LOAD_FACTOR_THRESHOLD) {
       grow(cap * 2);
     }
-    fast::pair<uint64_t, uint8_t> h = hash(key);
+    fast::pair<uint64_t, uint8_t> h = hash_key(key);
     size_t chunk_start = fast::min(static_cast<size_t>(h.first) % cap, cap - 16); // NOLINT magic num
     uint32_t cmp_mask = compare_bytes(meta + chunk_start, h.second);
     entry* first_deleted{};
@@ -270,15 +287,16 @@ public:
       chunk_start = (chunk_start + 16) % cap; // NOLINT magic num
       cmp_mask = compare_bytes(meta + chunk_start, h.second);
     }
+    return data[0].value;
   }
 
   const V& operator[](const K &key) const {
     auto found = find(key);
-    return found ? *found : V();
+    return found;
   }
 
   void remove(const K &key) {
-    fast::pair<uint64_t, uint8_t> h = hash(key);
+    fast::pair<uint64_t, uint8_t> h = hash_key(key);
     size_t chunk_start = fast::min(static_cast<size_t>(h.first) % cap, cap - 16); // NOLINT magic num
     uint32_t cmp_mask = compare_bytes(meta + chunk_start, h.second);
     for (size_t i = 0; i < cap >> 4; ++i) {
@@ -291,7 +309,7 @@ public:
         }
         cmp_mask &= (cmp_mask - 1);
       }
-      for (size_t i = 0; i < 16; ++i) { // NOLINT magic num
+      for (uint8_t i = 0; i < 16; ++i) { // NOLINT magic num
         size_t index = chunk_start + i;
         if (meta[index] == EMPTY) { 
           return;
@@ -310,41 +328,102 @@ public:
     size = 0;
   }
 
+  bool empty() {
+    return !size;
+  }
+
+  size_t count() {
+    return size;
+  }
+
   bool save(int fd) {
     if (write(fd, &cap, sizeof(cap)) != sizeof(cap)) {
       return false;
     }
-    if (write(fd, &size, sizeof(size)) != sizeof(cap)) {
+    if (write(fd, &size, sizeof(size)) != sizeof(size)) { // Fixed: was sizeof(cap)
       return false;
     }
     if (write(fd, meta, cap) != static_cast<ssize_t>(cap)) {
       return false;
     }
-    if (write(fd, data, cap * sizeof(entry)) != static_cast<ssize_t>(cap * sizeof(entry))) {
-      return false;
+
+    for (size_t i = 0; i < cap; ++i) {
+      if (meta[i] != EMPTY && meta[i] != DELETED) {
+        size_t key_size = strlen(data[i].key.begin()) + 1;
+        if (write(fd, &key_size, sizeof(key_size)) != sizeof(key_size)) {
+          return false;
+        }
+        if (key_size > 0 && 
+          write(fd, data[i].key.begin(), key_size) != static_cast<ssize_t>(key_size)) {
+          return false;
+        }
+
+        size_t value_size = strlen(data[i].value.begin()) + 1;
+        if (write(fd, &value_size, sizeof(value_size)) != sizeof(value_size)) {
+          return false;
+        }
+        if (value_size > 0 && 
+          write(fd, data[i].value.begin(), value_size) != static_cast<ssize_t>(value_size)) {
+          return false;
+        }
+      }
     }
 
     return true;
   }
 
   bool load(int fd) {
-    if (read(fd, &cap, sizeof(cap)) != sizeof(cap)) {
+    size_t temp_cap{};
+    if (read(fd, &temp_cap, sizeof(cap)) != sizeof(cap)) {
       return false;
     }
-    if (read(fd, &size, sizeof(size)) != sizeof(size)) {
+    grow(temp_cap);
+
+    if (read(fd, &size, sizeof(size)) != sizeof(size)) { // Fixed: was sizeof(cap)
       return false;
     }
-
-    grow(cap);
-
     if (read(fd, meta, cap) != static_cast<ssize_t>(cap)) {
       return false;
     }
-    if (read(fd, data, cap * sizeof(entry)) != static_cast<ssize_t>(cap * sizeof(entry))) {
-      return false;
+
+    for (size_t i = 0; i < cap; ++i) {
+      if (meta[i] != EMPTY && meta[i] != DELETED) {
+        size_t kv_size{};
+        char buf[MAX_URL_LEN];
+
+        if (read(fd, &kv_size, sizeof(kv_size)) != sizeof(kv_size)) {
+          return false;
+        }
+        if (kv_size > 0 && 
+          read(fd, &buf, kv_size) != static_cast<ssize_t>(kv_size)) { // We include the null character
+          return false;
+        }
+
+        data[i].key = buf;
+
+        if (read(fd, &kv_size, sizeof(kv_size)) != sizeof(kv_size)) {
+          return false;
+        }
+        if (kv_size > 0 && 
+          read(fd, &buf, kv_size) != static_cast<ssize_t>(kv_size)) {
+          return false;
+        }
+
+        data[i].value = buf;
+      }
     }
 
     return true;
+  }
+
+  void print() {
+    for (size_t i = 0; i < cap; ++i) {
+      if (meta[i] != EMPTY && meta[i] != DELETED) {
+        std::cout << "key: " << data[i].key.begin() << '\n'
+          << "val: " << data[i].value.begin() << '\n'
+          << "meta: " << meta[i] << '\n';
+      }
+    }
   }
 };
 }

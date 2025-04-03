@@ -11,6 +11,7 @@
 static constexpr int THREAD_COUNT = 20;
 static constexpr int LINK_COUNT = 1000000; // ONE MILLION
 static constexpr const char *BLOOM_FILE_PATH = "bloom_filter_dump.dat";
+static constexpr const char *FRONTIER_PATH = "fronter_dump.dat";
 static constexpr size_t BLOOM_FILTER_NUM_OBJ = 1e6;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 
@@ -18,14 +19,14 @@ class crawler {
 public:
   crawler()
       : visited_urls(BLOOM_FILTER_NUM_OBJ, BLOOM_FILTER_FPR, BLOOM_FILE_PATH),
-        crawl_frontier(/*file_path*/) {}
+        crawl_frontier(FRONTIER_PATH) {}
 
   void run() {
     if (pthread_create(
             &blob_thread, nullptr,
-            [](void *arg) -> void * {
-              auto self = static_cast<crawler *>(arg);
-              self->worker();
+            [](void *arg) -> void* {
+              auto self = static_cast<crawler*>(arg);
+              self->blobber(self);
               return nullptr;
             },
             this)) {
@@ -36,13 +37,13 @@ public:
       // Lambda used as worker is not static
       if (pthread_create(
               &t, nullptr,
-              [](void *arg) -> void * {
-                auto self = static_cast<crawler *>(arg);
+              [](void *arg) -> void* {
+                auto self = static_cast<crawler*>(arg);
                 self->worker();
                 return nullptr;
               },
               this)) {
-        throw std::runtime_error("pthread creation failed\n");
+        throw std::runtime_error("worker_thread creation failed\n");
       }
     }
 
@@ -57,7 +58,7 @@ public:
 private:
   volatile sig_atomic_t shutdown_flag = 0;
   // Bloom filter and frontier are thread safe
-  fast::bloom_filter<fast::string> visited_urls;
+  fast::crawler::bloom_filter<fast::string> visited_urls;
   fast::crawler::frontier crawl_frontier;
   fast::hashtable word_bank;
   fast::mutex bank_mtx;
@@ -67,15 +68,16 @@ private:
   // We also need a map for robots.txt stuff
 
   void *blobber(void *arg) {
-    auto self = static_cast<crawler *>(arg);
+    auto self = static_cast<crawler*>(arg);
     struct timespec sleep_time{};
-    sleep_time.tv_sec = 10;
+    // 5 minutes?
+    sleep_time.tv_sec = 300;
     sleep_time.tv_nsec = 0;
 
     while (!self->shutdown_flag) {
       nanosleep(&sleep_time, nullptr);
 
-      if (!self->shutdown_flag) {
+      if (!self->shutdown_flag) { // TODO: Make sure we blob whenever the thing shuts down
         visited_urls.save();
         crawl_frontier.save();
       }

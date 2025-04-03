@@ -14,7 +14,7 @@
 #include <type_traits>
 #include <unistd.h>
 
-namespace fast {
+namespace fast::crawler {
 
 template <typename T>
 concept primitive = std::is_arithmetic_v<T>;

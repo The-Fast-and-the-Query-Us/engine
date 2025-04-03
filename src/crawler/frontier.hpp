@@ -211,8 +211,10 @@ private:
 
   fast::vector<fast::queue<fast::string>> priorities;
 
+  // Need to finish fast::hashmap
   std::unordered_map<fast::string, uint8_t> crawl_cnt;
 
+  // How to initialise this with fast::vector
   std::vector<fast::string> good_tld = {"com", "org", "gov", "net", "edu"};
 
   fast::string extract_hostname(fast::string &url) {
