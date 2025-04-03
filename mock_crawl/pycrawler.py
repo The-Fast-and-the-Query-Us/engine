@@ -30,7 +30,11 @@ bf = BloomFilter(max_elements=1000000, error_rate=0.02, filename="/tmp/bloom.bin
 queue = Queue("/tmp/queue.bin", autosave=True)
 
 def get_and_parse(url: str):
-    response = requests.get(url)
+
+    try:
+        response = requests.get(url)
+    except:
+        return None, None
 
     if response.status_code != 200:
         logger.info("Skipping status code: ", response.status_code)
@@ -101,7 +105,7 @@ def get_chunk_number() -> int:
         return int(f.read())
 
 def write_chunk_number(num: int):
-    with open("/tmp/index_chunk" 'w') as f:
+    with open("/tmp/index_chunk", 'w') as f:
         f.write(str(num))
 
 pybind.alloc()
@@ -121,12 +125,13 @@ while not queue.empty() and not die:
         links = sorted(links, key=len)
         for link in links[:10]:
             if should_crawl(link) and queue.qsize() < 600:
+                print("add link : ", link)
                 queue.put(link)
                 bf.add(link)
 
         if pybind.num_tokens() >= 50000:
             chunk_id = get_chunk_number()
-            logger.info("Writing chunk number ", chunk_id)
+            print("Writing chunk number ", chunk_id)
             write_chunk_number(chunk_id + 1)
             pybind.write_blob(index_path + '/' + str(chunk_id))
             pybind.erase()
