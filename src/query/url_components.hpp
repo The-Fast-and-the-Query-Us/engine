@@ -1,3 +1,5 @@
+#include <math.h>
+
 #include <string.hpp>
 #include <string_view.hpp>
 #include <vector.hpp>
@@ -9,7 +11,7 @@ class url_components {
   string_view domain;
   int depth;
   int length;
-  bool valid;
+  double multiplier;
 
   bool check_valid_protocol(string_view url, const char* protocol_end) {
     if (protocol_end == nullptr) {
@@ -41,21 +43,24 @@ class url_components {
     string_view tld(end + 1, domain.end());
 
     if (tld == "gov" || tld == "edu") {
-      return true;
+      multiplier = 1.5;
+    } else if (tld == "com" || tld == "org") {
+      multiplier = 1.25;
     }
   }
 
  public:
+  double get_multiplier() const { return multiplier; }
+
   url_components(const string_view url) {
     length = url.size();
-    valid = true;
     depth = 0;
 
     // Find protocol separator
     const char* protocol_end = url.find("://");
 
     if (!check_valid_protocol(url, protocol_end)) {
-      valid = false;
+      multiplier = 0;
       return;
     }
 
@@ -76,8 +81,7 @@ class url_components {
     domain = string_view(domain_start, domain_end + 1);
 
     if (!check_valid_tld(domain)) {
-      valid = false;
-      return;
+      multiplier = 1;
     }
 
     // Find path start
@@ -107,6 +111,16 @@ class url_components {
     if (not_empty) {
       ++depth;
     }
+
+    double depth_pen = 1.0 / (1.0 + 0.15 * depth);
+    float length_penalty = exp(-length / 100.0);
+
+    const double TLD_WEIGHT = 0.5f;
+    const double DEPTH_WEIGHT = 0.3f;
+    const double LENGTH_WEIGHT = 0.2f;
+
+    multiplier = pow(multiplier, TLD_WEIGHT) * pow(depth_pen, DEPTH_WEIGHT) *
+                 pow(length_penalty, LENGTH_WEIGHT);
   }
 };
 }  // namespace fast

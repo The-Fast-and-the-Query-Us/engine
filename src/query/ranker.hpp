@@ -6,6 +6,7 @@
 #include <isr.hpp>
 #include <map>
 #include <string.hpp>
+#include <url_components.hpp>
 #include <vector.hpp>
 
 #include "constants.hpp"
@@ -77,7 +78,7 @@ class ranker {
     // title
 
     // url
-    score += url_score();
+    score *= url_score();
 
     // insertion sort into top 10
     if (score < results[fast::query::MAX_RESULTS - 1].first) {
@@ -334,12 +335,9 @@ class ranker {
 
   double url_score() {
     double score(0.0);
-    // implement domain .gov vs .edu vs .com
+    auto url_comp = url_components(cur_doc_url);
 
-    // implement url length
-    // implement url depth
-
-    return score;
+    return url_comp.get_multiplier();
   }
 
  private:
