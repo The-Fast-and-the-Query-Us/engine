@@ -78,7 +78,7 @@ class ranker {
     // title
 
     // url
-    score *= url_score();
+    //score *= url_score();
 
     // insertion sort into top 10
     if (score < results[fast::query::MAX_RESULTS - 1].first) {
