@@ -67,10 +67,9 @@ public:
   void push(const T &e) {
     if (cap == sz) {
       grow();
-      l = 0, r = sz - 1;
     }
-    r = (r + 1) % sz;
     buf[r] = e;
+    r = (r + 1) % cap;
     ++sz;
   }
 
@@ -79,7 +78,7 @@ public:
     --sz;
   }
 
-  inline size_t size() { return sz; }
+  size_t size() { return sz; }
 
   inline bool empty() { return sz == 0; }
 
@@ -93,10 +92,16 @@ private:
 
   void grow() {
     cap = grow_sz(cap);
+
     T *newbuf = new T[cap];
     size_t tmp = sz - l;
+
     std::memcpy(newbuf, buf + l, tmp);
     std::memcpy(newbuf + tmp - 1, buf, l);
+
+    l = 0;
+    if (sz > 0)
+      r = sz - 1;
 
     delete[] buf;
     buf = newbuf;

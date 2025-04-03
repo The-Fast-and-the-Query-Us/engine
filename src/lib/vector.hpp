@@ -19,7 +19,7 @@ public:
   // REQUIRES: Nothing
   // MODIFIES: *this
   // EFFECTS: Constructs an empty vector with capacity 0
-  vector() : elts{nullptr},  size_{0}, cap_{0} {}
+  vector() : elts{nullptr}, size_{0}, cap_{0} {}
 
   ~vector() {
     clear();
@@ -79,6 +79,17 @@ public:
   void reserve(size_t newCapacity) {
     if (newCapacity > cap_)
       grow(newCapacity);
+  }
+
+  void resize(size_t newSize) {
+    if (newSize > size_) {
+      grow(newSize);
+
+      for (size_t i = 0; i < cap_; i++)
+        new (elts + i) T();
+
+      size_ = newSize;
+    }
   }
 
   size_t size() const { return size_; }

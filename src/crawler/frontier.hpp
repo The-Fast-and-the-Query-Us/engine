@@ -8,9 +8,9 @@
 
 #include <cstdint>
 #include <iostream>
+#include <map>
 #include <sys/fcntl.h>
 #include <unistd.h>
-#include <unordered_map>
 #include <vector>
 
 namespace fast {
@@ -24,15 +24,17 @@ class frontier {
 public:
   frontier(const char *_save_path) : save_path(_save_path) {
     num_links = 0;
-    priorities.reserve(4);
+    priorities.resize(4);
   }
 
   void insert(fast::string &url) {
     fast::scoped_lock lock(&mtx);
 
-    fast::string hostname = extract_hostname(url);
+    int pri_level = calc_priority(url);
+    if (pri_level < 0)
+      return;
 
-    priorities[calc_priority(hostname)].push(url);
+    priorities[pri_level].push(url);
 
     ++num_links;
     cv.signal();
@@ -44,7 +46,7 @@ public:
     while (num_links == 0)
       cv.wait(&mtx);
 
-    for (size_t i = 0; i < priorities.size(); ++i) {
+    for (size_t i = priorities.size() - 1; i >= 0; --i) {
       fast::queue<fast::string> &curr_pri = priorities[i];
 
       if (!curr_pri.empty()) {
@@ -79,9 +81,9 @@ public:
   int save() {
     fast::scoped_lock lock(&mtx);
 
-    int fd = open(save_path, O_WRONLY | O_CREAT | O_TRUNC);
+    int fd = open(save_path, O_RDWR | O_CREAT | O_TRUNC, 0777);
     if (fd == -1) {
-      std::cerr << "Failed to open file in frontier save()\n";
+      perror("Failed to open file in frontier save()\n");
       return -1;
     }
 
@@ -178,8 +180,8 @@ public:
         tbr += num_l_len_read;
 
         fast::string l;
-        l.reserve(l_len);
-        ssize_t num_l_read = read(fd, &l[0], l_len);
+        l.resize(l_len);
+        ssize_t num_l_read = read(fd, l.begin(), l_len);
         if (num_l_read == -1) {
           std::cerr << "failed to read an element in frontier load()";
           close(fd);
@@ -192,6 +194,18 @@ public:
 
     close(fd);
     return tbr;
+  }
+
+  static fast::string extract_hostname(fast::string &url) {
+    fast::string hostname;
+    uint8_t slash_cnt = 0;
+    for (size_t i = 0; i < url.size(); ++i) {
+      if (url[i] == '/' && ++slash_cnt == 3) {
+        break;
+      }
+      hostname += url[i];
+    }
+    return hostname;
   }
 
 private:
@@ -212,25 +226,27 @@ private:
   fast::vector<fast::queue<fast::string>> priorities;
 
   // Need to finish fast::hashmap
-  std::unordered_map<fast::string, uint8_t> crawl_cnt;
+  std::map<fast::string, uint8_t> crawl_cnt;
 
   // How to initialise this with fast::vector
   std::vector<fast::string> good_tld = {"com", "org", "gov", "net", "edu"};
+  std::vector<fast::string> blacklist = {"signup", "signin", "login"};
 
-  fast::string extract_hostname(fast::string &url) {
-    fast::string hostname;
-    uint8_t slash_cnt = 0;
-    for (size_t i = 0; i < url.size(); ++i) {
-      if (url[i] == '/' && ++slash_cnt == 3) {
-        break;
-      }
-      hostname += url[i];
-    }
-    return hostname;
-  }
+  int8_t calc_priority(fast::string &url) {
+    fast::string hostname = extract_hostname(url);
 
-  uint8_t calc_priority(fast::string hostname) {
     uint8_t score = 0;
+
+    for (auto kywrd : blacklist) {
+      if (kywrd.size() > url.size())
+        continue;
+
+      for (size_t i = 0; i <= (url.size() - kywrd.size()); ++i) {
+        if (url[i] == kywrd[0] && url.substr(i, kywrd.size()) == kywrd) {
+          return -1;
+        }
+      }
+    }
 
     // +1 point for good length
     score += hostname.size() <= GOOD_LEN;
@@ -240,7 +256,7 @@ private:
     // +1 point for secure protocol
     fast::string protocol;
     while (idx < hostname.size() && hostname[idx] != ':')
-      protocol += hostname[idx];
+      protocol += hostname[idx++];
 
     score += protocol == "https";
 
@@ -250,7 +266,7 @@ private:
     // +1 point for tld
     fast::string tld;
     while (idx > 0 && hostname[idx] != '.')
-      tld += hostname[idx];
+      tld += hostname[idx--];
 
     tld.reverse(0, tld.size() - 1);
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "condition_variable.hpp"
 #include <pthread.h>
 #include <stdexcept>
 
@@ -39,5 +40,7 @@ public:
 
 private:
   pthread_mutex_t m;
+
+  friend class condition_variable;
 };
 } // namespace fast
