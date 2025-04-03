@@ -1,8 +1,8 @@
 #include <cstddef>
 #include <flat_map.hpp>
-#include <unordered_map>
 #include <chrono>
 #include <cassert>
+#include <string>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -671,7 +671,68 @@ void test_flat_map() {
   std::cout << "Total test time: " << duration_cast<milliseconds>(end - start).count() << " ms\n";
 }
 
+void test_save_load() {
+  flat_map<string, int> map;
+
+  const int INSERTIONS = 10;
+  for (int i = 0; i < INSERTIONS; ++i) {
+    map.insert(DICT[i], i);
+  }
+
+  for (int i = 0; i < INSERTIONS; ++i) {
+    int* value = map.find(DICT[i]);
+    assert(value != nullptr);
+    assert(*value == i);
+  }
+
+  const char* filename = "test_save_load.dat";
+
+  int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  assert(fd >= 0);
+  assert(map.save(fd));
+  close(fd);
+
+  flat_map<string, int> map2;
+
+
+  fd = open(filename, O_RDONLY);
+  assert(fd >= 0);
+  map2.load(fd);
+  close(fd);
+
+  for (size_t i = 0; i < map.cap; ++i) {
+    assert(map.meta[i] == map2.meta[i]);
+    std::cout << "map key at " << i << ": " << map.data[i].key.c_str() << '\n';
+    std::cout << "map2 key at " << i << ": " << map2.data[i].key.c_str() << '\n';
+    assert(map.data[i].key == map2.data[i].key);
+    std::cout << "map value at " << i << ": " << map.data[i].value << '\n';
+    std::cout << "map2 value at " << i << ": " << map2.data[i].value << '\n';
+    assert(map.data[i].value == map2.data[i].value);
+  }
+
+  for (int i = 0; i < INSERTIONS; ++i) {
+    int* value = map2.find(DICT[i]);
+    assert(value != nullptr);
+    assert(*value == i);
+  }
+}
+
+void test_basic() {
+  flat_map<string, int> map;
+  const int INSERTIONS = 1000;
+  for (int i = 0; i < INSERTIONS; ++i) {
+    map.insert(DICT[i], i);
+  }
+
+  for (int i = 0; i < INSERTIONS; ++i) {
+    assert(*map.find(DICT[i]) == i);
+  }
+}
+
 int main() {
+  test_basic();
+  test_save_load();
+  test_flat_map();
   test_flat_map();
   return 0;
 }

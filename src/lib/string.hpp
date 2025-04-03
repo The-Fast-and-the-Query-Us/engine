@@ -1,5 +1,6 @@
 #pragma once
 
+#include "flat_map.hpp"
 #include "string_view.hpp"
 #include <compare>
 #include <cstddef>
@@ -11,7 +12,12 @@ namespace fast {
 /*
  *  Add SVO by using pointer to store string?
  */
+
+template <typename K, typename V>
+class flat_map;
+
 class string {
+  friend class flat_map<string, int>;
   char *start_ = nullptr;
   size_t len_;
   size_t cap;
@@ -20,8 +26,8 @@ class string {
     start_ = static_cast<char *>(realloc(start_, need + 1));
     cap = need;
   }
-
 public:
+
   string() {
     grow(8);
     len_ = 0;

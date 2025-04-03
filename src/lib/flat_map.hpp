@@ -1,6 +1,5 @@
 #pragma once
 
-// TODO: NEED TO TEST
 #include <cassert>
 #include <iostream>
 
@@ -46,24 +45,21 @@ private:
     V value;
   };
 
+public:
   uint8_t *meta{};
   entry *data{};
   size_t size{};
   size_t cap{};
+private:
 
   void grow(size_t new_cap) {
     uint8_t *old_meta = meta;
     entry *old_data = data;
     size_t old_cap = cap;
 
-    // meta = static_cast<uint8_t*>(malloc(new_cap)); // NOLINT
     meta = new uint8_t[new_cap];
     memset(meta, EMPTY, new_cap);
-    // data = static_cast<entry*>(malloc(new_cap * sizeof(entry))); // NOLINT
     data = new entry[new_cap];
-    // for (size_t i = 0; i < new_cap; ++i) {
-    //   new (data + i) entry(K(), V());
-    // }
 
     cap = new_cap;
     size = 0;
@@ -72,13 +68,13 @@ private:
       if (old_meta[i] != EMPTY && old_meta[i] != DELETED) {
         // Manages size increment
         insert(old_data[i].key, old_data[i].value);
+      } else {
+        data[i].value = 0;
       }
     }
 
 
-    // free(old_meta);
     delete[] old_meta;
-    // free(old_data);
     delete[] old_data;
   }
 
@@ -176,9 +172,7 @@ public:
   }
 
   ~flat_map() {
-    // free(meta); // NOLINT (RAII)
     delete[] meta;
-    // free(data);
     delete[] data;
   }
 
@@ -197,7 +191,7 @@ public:
       }
       uint8_t *ptr = meta + chunk_start;
       for (uint8_t addy = 0; addy < 16; ++ptr, ++addy) { // NOLINT magic num
-        if (*ptr == EMPTY) { return &data[chunk_start + addy].value; }
+        if (*ptr == EMPTY) { return nullptr; }
       }
       chunk_start = fast::min((chunk_start + 16) % cap, cap - 16); // NOLINT magic num
       cmp_mask = compare_bytes(meta + chunk_start, h.second);
@@ -350,27 +344,24 @@ public:
     if (write(fd, &size, sizeof(size)) != sizeof(size)) { // Fixed: was sizeof(cap)
       return false;
     }
-    if (write(fd, meta, cap) != static_cast<ssize_t>(cap)) {
+    if (write(fd, meta, cap * sizeof(uint8_t)) != static_cast<ssize_t>(cap)) {
       return false;
     }
 
     for (size_t i = 0; i < cap; ++i) {
       if (meta[i] != EMPTY && meta[i] != DELETED) {
-        size_t key_size = strlen(data[i].key.begin()) + 1;
+        size_t key_size = strlen(data[i].key.begin());
         if (write(fd, &key_size, sizeof(key_size)) != sizeof(key_size)) {
           return false;
         }
+
         if (key_size > 0 && 
           write(fd, data[i].key.begin(), key_size) != static_cast<ssize_t>(key_size)) {
           return false;
         }
 
-        auto value_size = sizeof(data[i].value);
-        if (write(fd, &value_size, sizeof(value_size)) != sizeof(value_size)) {
-          return false;
-        }
-        if (value_size > 0 && 
-          write(fd, &data[i].value, value_size) != static_cast<ssize_t>(value_size)) {
+        auto value_size = sizeof(V);
+        if (write(fd, &data[i].value, value_size) != static_cast<ssize_t>(value_size)) {
           return false;
         }
       }
@@ -389,33 +380,29 @@ public:
     if (read(fd, &size, sizeof(size)) != sizeof(size)) {
       return false;
     }
-    if (read(fd, meta, cap) != static_cast<ssize_t>(cap)) {
+
+    if (read(fd, meta, cap * sizeof(uint8_t)) != static_cast<ssize_t>(cap)) {
       return false;
     }
 
-
     for (size_t i = 0; i < cap; ++i) {
       if (meta[i] != EMPTY && meta[i] != DELETED) {
-        size_t kv_size{};
-        char buf[MAX_URL_LEN];
+        size_t key_size{};
+        // char buf[MAX_URL_LEN];
 
-        if (read(fd, &kv_size, sizeof(kv_size)) != sizeof(kv_size)) {
-          return false;
-        }
-        if (kv_size > 0 && 
-          read(fd, &buf, kv_size) != static_cast<ssize_t>(kv_size)) { // We include the null character
+        if (read(fd, &key_size, sizeof(key_size)) != sizeof(key_size)) {
           return false;
         }
 
-        for (size_t idx = 0; idx < kv_size; ++idx) {
-          data[i].key += buf[idx];
-        }
-
-        if (read(fd, &kv_size, sizeof(kv_size)) != sizeof(kv_size)) {
+        data[i].key.grow(key_size);
+        if (key_size > 0 && 
+          read(fd, data[i].key.begin(), key_size) != static_cast<ssize_t>(key_size)) { // We include the null character
           return false;
         }
-        if (kv_size > 0 && 
-          read(fd, &data[i].value, kv_size) != static_cast<ssize_t>(kv_size)) {
+        data[i].key.len_ = key_size;
+
+        auto value_size = sizeof(V);
+        if (read(fd, &data[i].value, value_size) != static_cast<ssize_t>(value_size)) {
           return false;
         }
       }
