@@ -1,4 +1,4 @@
-from bloom_filter.bloom_filter import os
+import os
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -6,6 +6,7 @@ from urllib.parse import urljoin
 from bloom_filter import BloomFilter
 import queue
 import time
+import subprocess
 
 def get_html(url: str) -> str | None:
     """Fetch HTML content of a URL."""
@@ -14,6 +15,7 @@ def get_html(url: str) -> str | None:
         response.raise_for_status()  # Raise error if bad response
         return response.text
     except requests.RequestException as e:
+        print(e)
         return None
 
 def extract_words_and_links(html: str, base_url: str):
@@ -46,6 +48,11 @@ start_urls = [
 for url in start_urls:
     bloom.add(url)
     q.put(url)
+
+# init c++ client
+index_path = os.path.abspath("./index")
+blobber_path = "../src/build/mock_crawl/mock"
+process = subprocess.Popen([blobber_path, index_path])
 
 crawl_count = 0
 start = time.time()
