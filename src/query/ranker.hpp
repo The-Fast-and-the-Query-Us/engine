@@ -51,12 +51,12 @@ class ranker {
       isrs[i] = index_chunk->get(flattened[i])->get_isr();
     }
 
-    rarest_isr = isrs[rare_word_idx];
+    // rarest_isr = isrs[rare_word_idx];
 
     // iterate through doc container
     while (!container->is_end()) {
       cur_doc_offset = container->get_doc_start();
-      cur_doc_end = ;
+      cur_doc_end = container->get_doc_end();
       score_doc();
 
       container->next();
@@ -331,7 +331,7 @@ class ranker {
   Offset cur_doc_end;
 
   size_t rare_word_idx;
-  isr* rarest_isr;
+  // isr* rarest_isr;
   isr** isrs;
 };
 }  // namespace fast::query
