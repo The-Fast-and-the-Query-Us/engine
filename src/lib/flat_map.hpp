@@ -78,9 +78,9 @@ private:
     if (old_meta != nullptr) {
       free(old_meta); // NOLINT
     } 
-    if (old_data != nullptr) {
-      free(old_data);
-    }
+    // if (old_data != nullptr) {
+      delete[] old_data;
+    // }
   }
 
   fast::pair<uint64_t, uint8_t> hash_key(const K &key) {
