@@ -12,9 +12,9 @@
 std::string BASE =  "/tmp/index/";
 const int NUM_CHUNK = 3;
 
-int main() {
+int main(int argc, char **argv) {
   
-  const fast::string_view query = "c++ + programming";
+  const fast::string_view query = argv[1];
   
   fast::array<fast::query::Result, fast::query::MAX_RESULTS> results;
 
