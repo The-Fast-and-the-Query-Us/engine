@@ -14,5 +14,7 @@ execute_process(
 set(pybind11_DIR "${config_dir}")
 find_package(pybind11 REQUIRED)
 
-add_library(pybind MODULE pybind.cpp)
-target_link_libraries(pybind PUBLIC pybind11::module)
+pybind11_add_module(pybind pybind.cpp)
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../src query-us)
+target_link_libraries(pybind PRIVATE lib index)
