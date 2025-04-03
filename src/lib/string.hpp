@@ -18,7 +18,11 @@ class string {
   size_t cap;
 
   void grow(size_t need) {
-    start_ = static_cast<char *>(realloc(start_, (need + 1) * sizeof(char)));
+    // start_ = static_cast<char *>(realloc(start_, (need + 1) * sizeof(char)));
+    // cap = need;
+    char *new_start = static_cast<char *>(realloc(start_, (need + 1) * sizeof(char)));
+    assert(new_start != nullptr);
+    start_ = new_start;
     cap = need;
   }
 
