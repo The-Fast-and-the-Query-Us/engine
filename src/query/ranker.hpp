@@ -14,8 +14,6 @@
 
 namespace fast::query {
 
-
-
 constexpr size_t SHORT_SPAN_LENGTH = 10;
 
 class ranker {
@@ -122,18 +120,20 @@ class ranker {
 
     while (!cur_isrs[rare_idx]->is_end() &&
            cur_isrs[rare_idx]->offset() < cur_doc_end) {
-      int span_length = get_span_length(num_isrs, rare_idx, positions);
+      if (num_isrs != 1) {
+        int span_length = get_span_length(num_isrs, rare_idx, positions);
 
-      // add to score
-      score += num_isrs * (50.0 / span_length);
-
-      if (span_same_order(num_isrs, positions)) {
         // add to score
-        score += num_isrs * 25;
-      }
+        score += num_isrs * (50.0 / span_length);
 
-      if (span_phrase_match(num_isrs, positions)) {
-        score += num_isrs * 100;
+        if (span_same_order(num_isrs, positions)) {
+          // add to score
+          score += num_isrs * 25;
+        }
+
+        if (span_phrase_match(num_isrs, positions)) {
+          score += num_isrs * 100;
+        }
       }
       if (word_to_isrs == nullptr) {
         increment_isrs(num_isrs, cur_isrs, rare_idx, positions, freqs);
@@ -357,9 +357,12 @@ class ranker {
   isr** isrs;
 };
 
-void blob_rank(const fast::hashblob *blob, const fast::string &query, fast::array<fast::query::Result, fast::query::MAX_RESULTS> &results) {
+void blob_rank(
+    const fast::hashblob* blob, const fast::string& query,
+    fast::array<fast::query::Result, fast::query::MAX_RESULTS>& results) {
   auto query_stream = fast::query::query_stream(query);
-  auto constraints = fast::query::contraint_parser::parse_contraint(query_stream, blob);
+  auto constraints =
+      fast::query::contraint_parser::parse_contraint(query_stream, blob);
 
   if (!constraints) return;
 
