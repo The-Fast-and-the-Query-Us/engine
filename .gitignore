@@ -36,3 +36,5 @@ build/
 
 # I FUCKING HATE MAC USERS
 .DS_Store
+
+compile_commands.json

@@ -3,11 +3,55 @@
 #include "compress.hpp"
 #include "list.hpp"
 #include "hashtable.hpp"
+#include <cstring>
 #include <pair.hpp>
+#include <type_traits>
+#include "isr.hpp"
 
 namespace fast {
 
+namespace hidden {
+
+template<class T>
+inline size_t post_size(const T &elt, Offset last);
+
+template<>
+inline size_t post_size(const Offset &elt, Offset last) {
+  return encoded_size(elt - last);
+}
+
+template<>
+inline size_t post_size(const url_post &elt, Offset last) {
+  size_t dyn = 0;
+  dyn += encoded_size(elt - last);
+  dyn += encoded_size(elt.doc_len);
+  dyn += encoded_size(elt.url.size());
+  dyn += elt.url.size();
+  return dyn;
+}
+
+template<class T>
+inline unsigned char *write_post(const T &elt, Offset last, unsigned char *wp);
+
+template<>
+inline unsigned char *write_post(const Offset &elt, Offset last, unsigned char *wp) {
+  return encode(elt - last, wp);
+}
+
+template<>
+inline unsigned char *write_post(const url_post &elt, Offset last, unsigned char *wp) {
+  wp = encode(elt.offset - last, wp);
+  wp = encode(elt.doc_len, wp);
+  wp = encode(elt.url.size(), wp);
+  memcpy(wp, elt.url.begin(), elt.url.size());
+  return wp + elt.url.size();
+}
+
+}
+
 class post_list {
+  bool is_doc;
+  Offset last;
   size_t num_words, sync_len, len;
 
   pair<size_t> *sync() { return reinterpret_cast<pair<size_t>*>(&len + 1); }
@@ -20,28 +64,27 @@ class post_list {
     return reinterpret_cast<const unsigned char*>(sync() + sync_len);
   }
 
-  // open questions :
-  // should we use sqrt?
-  // should we binary search on this (because we can but we only seek forward)
-  // should we go by offset or number of posts (by offset we can jump directly into the table)
-  static size_t get_per_sync(const list<Offset> &posts) {
-    (void) posts; // for compile
-    return 5'000;
+  template<class T>
+  static size_t get_per_sync(const list<T> &posts) {
+    if (posts.size() <= 50) return 5;
+    return fast_sqrt(posts.size());
   }
 
 public:
+  Offset get_last() const { return last; }
 
   size_t words() const { return num_words; }
 
-  static size_t size_needed(const list<Offset> &posts) {
+  template<class T>
+  static size_t size_needed(const list<T> &posts) {
     const auto PER_SYNC = get_per_sync(posts);
 
     size_t dynamic = 0;
     dynamic += posts.size() / PER_SYNC * sizeof(pair<size_t>);
 
     Offset last = 0;
-    for (const auto post : posts) {
-      dynamic += encoded_size(post - last);
+    for (const auto &post : posts) {
+      dynamic += hidden::post_size(post, last);
       last = post;
     }
 
@@ -50,7 +93,8 @@ public:
     return dynamic + sizeof(post_list);
   }
 
-  static unsigned char *write(const list<Offset> &posts, post_list *buffer) {
+  template<class T>
+  static unsigned char *write(const list<T> &posts, post_list *buffer) {
     const auto PER_SYNC = get_per_sync(posts);
 
     buffer->num_words = posts.size();
@@ -61,8 +105,8 @@ public:
     size_t idx = 0;
     Offset last = 0;
 
-    for (const auto post : posts) {
-      wp = encode(post - last, wp);
+    for (const auto &post : posts) {
+      wp = hidden::write_post(post, last, wp);
       ++idx;
       last = post;
 
@@ -70,64 +114,31 @@ public:
         buffer->sync()[idx / PER_SYNC - 1] = {size_t(wp - buffer->posts()), post};
       }
     }
+    
+    wp = encode(0, wp); // zero terminator
 
-    wp = encode(0, wp);
     buffer->len = size_t(wp - buffer->posts());
+    buffer->last = posts.back();
+
+    if constexpr (std::is_same_v<T, url_post>) {
+      buffer->is_doc = true;
+    } else {
+      buffer->is_doc = false;
+    }
+
     return wp;
   }
 
-  class isr {
-    friend class post_list;
-
-    Offset acc;
-    const unsigned char *buff;
-
-    size_t next_sync;
-    const post_list *pl;
-
-    isr(Offset base, const unsigned char *buff, size_t next_sync, const post_list *pl) 
-    : acc(base), buff(buff), next_sync(next_sync), pl(pl) {}
-
-    isr(const unsigned char *buff) : buff(buff) {};
-
-  public:
-
-    Offset operator*() const { return acc; }
-
-    operator Offset() const { return acc; }
-
-    isr& operator++() {
-      uint64_t tmp;
-      buff = decode(tmp, buff);
-      acc += tmp;
-      return *this;
+  isr *get_isr() const {
+    if (is_doc) {
+      return new isr_doc(len, posts(), sync(), sync() + sync_len);
+    } else {
+      return new isr_word(len, posts(), sync(), sync() + sync_len);
     }
-
-    // seek forward to first post >= offset
-    void seek_forward(Offset offset) {
-      for (; next_sync < pl->sync_len; ++next_sync) {
-        const auto sync = pl->sync()[next_sync];
-        if (sync.second > offset) break;
-
-        buff = pl->posts() + sync.first;
-        acc = sync.second;
-      }
-
-      while (*this < offset) ++(*this);
-    }
-
-    bool operator==(const isr &other) const {
-      return buff == other.buff;
-    }
-  };
-
-  isr begin() const {
-    isr ans(0, posts(), 0, this);
-    return ++ans;
   }
 
-  isr end() const {
-    return isr(posts() + len);
+  isr_doc *get_doc_isr() const {
+    return new isr_doc(len, posts(), sync(), sync() + sync_len);
   }
 
 };
