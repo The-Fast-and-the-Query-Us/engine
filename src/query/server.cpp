@@ -40,22 +40,6 @@ static void handle_cleanup(int signal) {
   }
 }
 
-void blob_rank(const fast::hashblob *blob, const fast::string &query, fast::array<fast::query::Result, fast::query::MAX_RESULTS> &results) {
-  auto query_stream = fast::query::query_stream(query);
-  auto constraints = fast::query::contraint_parser::parse_contraint(query_stream, blob);
-
-  if (!constraints) return;
-
-  fast::vector<fast::string_view> flattened;
-
-  auto rank_stream = fast::query::query_stream(query);
-  fast::query::rank_parser::parse_query(rank_stream, &flattened);
-  fast::query::ranker(blob, flattened, constraints, results);
-
-  delete constraints;
-  return;
-}
-
 static void handle_client(const int client_fd) {
   fast::string query;
   fast::recv_all(client_fd, query);  // Check return?
@@ -94,7 +78,7 @@ static void handle_client(const int client_fd) {
 
     auto blob = reinterpret_cast<const fast::hashblob *>(map_ptr);
 
-    blob_rank(blob, query, results);
+    fast::query::blob_rank(blob, query, results);
 
     if (munmap(map_ptr, chunk_size) == -1) [[unlikely]] {
       perror("Fail to unmap chunk");

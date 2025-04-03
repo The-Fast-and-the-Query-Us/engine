@@ -14,6 +14,8 @@
 
 namespace fast::query {
 
+
+
 constexpr size_t SHORT_SPAN_LENGTH = 10;
 
 class ranker {
@@ -354,5 +356,21 @@ class ranker {
   // isr* rarest_isr;
   isr** isrs;
 };
+
+void blob_rank(const fast::hashblob *blob, const fast::string &query, fast::array<fast::query::Result, fast::query::MAX_RESULTS> &results) {
+  auto query_stream = fast::query::query_stream(query);
+  auto constraints = fast::query::contraint_parser::parse_contraint(query_stream, blob);
+
+  if (!constraints) return;
+
+  fast::vector<fast::string_view> flattened;
+
+  auto rank_stream = fast::query::query_stream(query);
+  fast::query::rank_parser::parse_query(rank_stream, &flattened);
+  fast::query::ranker(blob, flattened, constraints, results);
+
+  delete constraints;
+  return;
+}
 
 }  // namespace fast::query
