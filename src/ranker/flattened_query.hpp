@@ -3,18 +3,16 @@
 #include <language.hpp>
 
 namespace fast {
-class flattened_query {
+class flatten_query {
  public:
-  flattened_query(const string &query) {
-    string_view sv(query.c_str());
-    query::query_stream qs(sv);
-    parse_constraint(qs);
-  }
+  static vector<string> *parse_contraint(query_stream &query,
+                                         const hashblob *blob) {
+    auto left = parse_base_contraint(query, blob);
 
-  void parse_constraint(query::query_stream &query) {
-    auto left = parse_base_contraint(query);
+    if (!left) return nullptr;
 
-    if (!left) return;
+    auto ans = new isr_container(blob->docs()->get_doc_isr());
+    ans->add_stream(left);
 
     while (1) {
       bool exclude;
@@ -23,7 +21,8 @@ class flattened_query {
       } else if (query.match('-')) {
         exclude = true;
       } else {
-        return true;
+        ans->seek(0);  // init
+        return ans;
       }
 
       auto right = parse_base_contraint(query, blob);
@@ -37,20 +36,20 @@ class flattened_query {
     }
   }
 
-  bool parse_base_contraint(query::query_stream &query) {
-    auto left = parse_simple_contraint(query);
+  static isr *parse_base_contraint(query_stream &query, const hashblob *blob) {
+    auto left = parse_simple_contraint(query, blob);
 
-    if (!left) return false;
-    if (!query.peek('|')) return true;
+    if (!left) return nullptr;
+    if (!query.peek('|')) return left;
 
     auto ans = new isr_or;
     ans->add_stream(left);
 
     while (query.match('|')) {
-      auto right = parse_simple_contraint(query);
+      auto right = parse_simple_contraint(query, blob);
       if (!right) {
         delete ans;
-        return false;
+        return nullptr;
       }
       ans->add_stream(right);
     }
@@ -58,9 +57,12 @@ class flattened_query {
     return ans;
   }
 
-  static isr *parse_simple_contraint(query::query_stream &query) {
+  static isr *parse_simple_contraint(query_stream &query,
+                                     const hashblob *blob) {
     if (query.match('[')) {
-      auto ans = parse_contraint(query);
+      if (query.match(']')) return new isr_null;  // isr any?
+
+      auto ans = parse_contraint(query, blob);
 
       if (!query.match(']')) {
         delete ans;
@@ -105,8 +107,5 @@ class flattened_query {
     }
     return nullptr;
   }
-
- private:
-  vector<string> flattened;
 };
 }  // namespace fast

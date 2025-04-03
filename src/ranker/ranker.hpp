@@ -40,10 +40,12 @@ class ranker {
     rarest_isr = isrs[rare_word_idx];
 
     // iterate through doc container
-    while () {
-      cur_doc_offset = 0;
-      cur_doc_end = 0;
+    while (!container->is_end()) {
+      cur_doc_offset = container->get_doc_start();
+      cur_doc_end = ;
       score_doc();
+
+      container->next();
     }
   }
 
@@ -84,10 +86,12 @@ class ranker {
 
   double count_spans(size_t num_isrs, isr** cur_isrs, size_t rare_idx) {
     vector<Offset> positions(num_isrs);
+    vector<size_t> freqs(num_isrs);
 
     double score(0.0);
     for (size_t i = 0; i < num_isrs; ++i) {
       cur_isrs[i]->seek(cur_doc_offset);
+      positions[i] = cur_isrs[i]->offset();
     }
 
     while (!cur_isrs[rare_idx]->is_end() &&
@@ -97,17 +101,20 @@ class ranker {
         // add to score
       }
 
-      if (span_same_order(num_isrs, cur_isrs)) {
+      if (span_same_order(num_isrs, cur_isrs, positions)) {
         // add to score
       }
 
-      if (span_phrase_match(num_isrs, cur_isrs)) {
+      if (span_phrase_match(num_isrs, cur_isrs, positions)) {
         // add to score
       }
 
-      // term frequencies
+      increment_isrs(num_isrs, cur_isrs, rare_idx, positions, freqs);
+    }
 
-      increment_isr(num_isrs, cur_isrs, rare_idx, positions);
+    // count frequencies
+    for (size_t i = 0; i < num_isrs; ++i) {
+      // do something
     }
   }
 
@@ -204,20 +211,36 @@ class ranker {
     return true;
   }
 
-  void increment_isr(size_t num_isrs, isr** isrs, size_t rare_idx,
-                     vector<Offset>& positions) {
+  void increment_isrs(size_t num_isrs, isr** isrs, size_t rare_idx,
+                      vector<Offset>& positions, vector<size_t>& freqs) {
     isrs[rare_idx]->next();
     Offset target_pos = isrs[rare_idx]->offset();
+    if (target_pos >= cur_doc_end) {
+      return;
+    }
     for (size_t i = 0; i < num_isrs; ++i) {
-      Offset cur_pos = isrs[i]->offset();
-      if (i == rare_idx || cur_pos >= cur_doc_end) {
+      if (i == rare_idx) {
         continue;
       }
 
-      while (abs(target_pos - cur_pos) < abs(target_pos - positions[i])) {
-        // update isr[i]
+      Offset cur_pos = isrs[i]->offset();
+
+      while (abs(target_pos - cur_pos) < abs(target_pos - positions[i]) &&
+             cur_pos < cur_doc_end) {
         positions[i] = cur_pos;
         isrs[i]->next();
+        ++freqs[i];
+      }
+    }
+  }
+
+  void finish_counting(size_t num_isrs, isr** isrs, vector<Offset>& positions,
+                       vector<size_t>& freqs) {
+    for (size_t i = 0; i < num_isrs; ++i) {
+      while (positions[i] < cur_doc_end) {
+        positions[i] = isrs[i]->offset();
+        isrs[i]->next();
+        ++freqs[i];
       }
     }
   }
