@@ -1,34 +1,37 @@
 #pragma once
 
 #include <array.hpp>
-#include "constants.hpp"
 #include <cstddef>
 #include <hashblob.hpp>
 #include <isr.hpp>
+#include <map>
 #include <string.hpp>
 #include <vector.hpp>
+
+#include "constants.hpp"
 #include "isr.hpp"
 #include "language.hpp"
 
 namespace fast::query {
 
-void rank_from_constraints(const hashblob *blob, const string &query, 
-                           array<Result, MAX_RESULTS> &results, isr_container *constraints) {
-  vector<string_view> isrs;
+void rank_from_constraints(const hashblob* blob, const string& query,
+                           array<Result, MAX_RESULTS>& results,
+                           isr_container* constraints) {
+  vector<string_view> flattened_query;
   query_stream qs(query);
-  rank_parser::parse_query(qs, blob, isrs);
+  rank_parser::parse_query(qs, blob, flattened_query);
 
   // TODO
+  ranker rank(blob, flattened_query, constraints, results);
 }
 
 constexpr size_t SHORT_SPAN_LENGTH = 10;
 
 class ranker {
  public:
-  ranker(const hashblob* index_chunk, const string& raw_query,
-         isr_container* container) {
-    // flatten query into unique words
-    flattened = flatten_query(raw_query);
+  ranker(const hashblob* index_chunk, vector<string_view> sv,
+         isr_container* container, array<Result, MAX_RESULTS>& res)
+      : flattened(sv), results(res) {
     sz = flattened.size();
 
     isrs = (isr**)malloc((sz) * sizeof(isr*));
@@ -95,32 +98,51 @@ class ranker {
     }
   }
 
-  double count_spans(size_t num_isrs, isr** cur_isrs, size_t rare_idx) {
+  double count_spans(size_t num_isrs, isr** cur_isrs, size_t rare_idx,
+                     std::map<string, vector<size_t>>* word_to_isrs = nullptr) {
     vector<Offset> positions(num_isrs);
-    vector<size_t> freqs(num_isrs);
+    vector<size_t> freqs(num_isrs);  // frequency of words in doc
 
     double score(0.0);
     for (size_t i = 0; i < num_isrs; ++i) {
       cur_isrs[i]->seek(cur_doc_offset);
+    }
+
+    if (word_to_isrs) {
+      for (auto& [word, word_isrs] : *word_to_isrs) {
+        for (size_t i = 1; i < word_isrs.size(); ++i) {
+          for (size_t j = 0; j < i; ++j) {
+            cur_isrs[word_isrs[j]]->next();
+            ++freqs[word_isrs[j]];
+          }
+        }
+      }
+    }
+
+    for (size_t i = 0; i < num_isrs; ++i) {
       positions[i] = cur_isrs[i]->offset();
     }
 
     while (!cur_isrs[rare_idx]->is_end() &&
            cur_isrs[rare_idx]->offset() < cur_doc_end) {
-      int span_length = get_span_length(num_isrs, cur_isrs, positions);
+      int span_length = get_span_length(num_isrs, rare_idx, positions);
       if (span_length <= SHORT_SPAN_LENGTH) {
         // add to score
       }
 
-      if (span_same_order(num_isrs, cur_isrs, positions)) {
+      if (span_same_order(num_isrs, positions)) {
         // add to score
       }
 
-      if (span_phrase_match(num_isrs, cur_isrs, positions)) {
+      if (span_phrase_match(num_isrs, positions)) {
         // add to score
       }
-
-      increment_isrs(num_isrs, cur_isrs, rare_idx, positions, freqs);
+      if (word_to_isrs == nullptr) {
+        increment_isrs(num_isrs, cur_isrs, rare_idx, positions, freqs);
+      } else {
+        increment_isrs(num_isrs, cur_isrs, rare_idx, positions, freqs,
+                       word_to_isrs);
+      }
     }
 
     finish_counting(num_isrs, cur_isrs, positions, freqs);
@@ -132,24 +154,26 @@ class ranker {
   }
 
   double count_full() {
+    std::map<string, vector<size_t>> word_to_isrs;
     for (size_t i = 0; i < sz; ++i) {
-      isrs[i]->seek(cur_doc_offset);
+      word_to_isrs[flattened[i]].push_back(i);
     }
-    count_spans(sz, isrs, rare_word_idx);
+    count_spans(sz, isrs, rare_word_idx, &word_to_isrs);
   }
 
   double count_doubles() {
     isr* cur_isrs[2];
     for (size_t i = 0; i < sz; ++i) {
-      if (i < rare_word_idx) {
+      if (flattened[i] == flattened[rare_word_idx]) {
+        continue;
+      } else if (i < rare_word_idx) {
         cur_isrs[0] = isrs[i];
         cur_isrs[1] = isrs[rare_word_idx];
-        count_spans(2, cur_isrs, 1);
-      } else if (i > rare_word_idx) {
+      } else {
         cur_isrs[0] = isrs[rare_word_idx];
         cur_isrs[1] = isrs[i];
-        count_spans(2, cur_isrs, 0);
       }
+      count_spans(2, cur_isrs, 1);
     }
   }
 
@@ -191,21 +215,20 @@ class ranker {
   size_t size() { return sz; }
 
  private:
-  size_t get_span_length(size_t num_isrs, isr** cur_isrs,
+  size_t get_span_length(size_t num_isrs, size_t rare_idx,
                          vector<Offset>& positions) {
-    Offset min_off = rarest_isr->offset();
-    Offset max_off = rarest_isr->offset() + 1;
+    Offset min_off = positions[rare_idx];
+    Offset max_off = positions[rare_idx];
 
     for (size_t i = 0; i < num_isrs; ++i) {
-      min_off = min(min_off, cur_isrs[i]->offset());
-      max_off = max(max_off, cur_isrs[i]->offset());
+      min_off = min(min_off, positions[i]);
+      max_off = max(max_off, positions[i]);
     }
 
     return max_off - min_off;
   }
 
-  bool span_same_order(size_t num_isrs, isr** isrs,
-                       const vector<Offset>& positions) {
+  bool span_same_order(size_t num_isrs, const vector<Offset>& positions) {
     for (size_t i = 0; i < num_isrs - 1; ++i) {
       if (positions[i] >= positions[i + 1]) {
         return false;
@@ -214,8 +237,7 @@ class ranker {
     return true;
   }
 
-  bool span_phrase_match(size_t num_isrs, isr** isrs,
-                         const vector<Offset>& positions) {
+  bool span_phrase_match(size_t num_isrs, const vector<Offset>& positions) {
     for (size_t i = 0; i < num_isrs - 1; ++i) {
       if (positions[i] + 1 != positions[i + 1]) {
         return false;
@@ -224,10 +246,51 @@ class ranker {
     return true;
   }
 
-  void increment_isrs(size_t num_isrs, isr** isrs, size_t rare_idx,
+  void increment_isrs(size_t num_isrs, isr** cur_isrs, size_t rare_idx,
+                      vector<Offset>& positions, vector<size_t>& freqs,
+                      std::map<string, vector<size_t>>* word_to_isrs) {
+    cur_isrs[rare_idx]->next();
+    Offset target_pos = cur_isrs[rare_idx]->offset();
+    if (target_pos >= cur_doc_end) {
+      return;
+    }
+    for (auto& [word, isr_pos] : *word_to_isrs) {
+      if (word == flattened[rare_idx]) {
+        continue;
+      }
+      Offset front = cur_isrs[isr_pos[0]]->offset();
+      Offset back = cur_isrs[isr_pos.back()]->offset();
+
+      Offset cur_span_length = max(target_pos - front, back - target_pos);
+
+      if (target_pos < back && target_pos > front) {
+        cur_span_length = back - front;
+      }
+
+      Offset prev_span_length = UINT32_MAX;
+
+      while (cur_span_length < prev_span_length) {
+        for (auto i : isr_pos) {
+          positions[i] = cur_isrs[i]->offset();
+          cur_isrs[i]->next();
+          ++freqs[i];
+        }
+        front = cur_isrs[isr_pos[0]]->offset();
+        back = cur_isrs[isr_pos.back()]->offset();
+        prev_span_length = cur_span_length;
+        cur_span_length = max(target_pos - front, back - target_pos);
+
+        if (target_pos < back && target_pos > front) {
+          cur_span_length = back - front;
+        }
+      }
+    }
+  }
+
+  void increment_isrs(size_t num_isrs, isr** cur_isrs, size_t rare_idx,
                       vector<Offset>& positions, vector<size_t>& freqs) {
-    isrs[rare_idx]->next();
-    Offset target_pos = isrs[rare_idx]->offset();
+    cur_isrs[rare_idx]->next();
+    Offset target_pos = cur_isrs[rare_idx]->offset();
     if (target_pos >= cur_doc_end) {
       return;
     }
@@ -236,31 +299,33 @@ class ranker {
         continue;
       }
 
-      Offset cur_pos = isrs[i]->offset();
+      Offset cur_pos = cur_isrs[i]->offset();
 
-      while (abs(target_pos - cur_pos) < abs(target_pos - positions[i]) &&
+      while (abs((int64_t)(target_pos) - (int64_t)(cur_pos)) <
+                 abs((int64_t)(target_pos) - (int64_t)(positions[i])) &&
              cur_pos < cur_doc_end) {
         positions[i] = cur_pos;
-        isrs[i]->next();
+        cur_isrs[i]->next();
+        cur_pos = cur_isrs[i]->offset();
         ++freqs[i];
       }
     }
   }
 
-  void finish_counting(size_t num_isrs, isr** isrs, vector<Offset>& positions,
-                       vector<size_t>& freqs) {
+  void finish_counting(size_t num_isrs, isr** cur_isrs,
+                       vector<Offset>& positions, vector<size_t>& freqs) {
     for (size_t i = 0; i < num_isrs; ++i) {
       while (positions[i] < cur_doc_end) {
-        positions[i] = isrs[i]->offset();
-        isrs[i]->next();
+        positions[i] = cur_isrs[i]->offset();
+        cur_isrs[i]->next();
         ++freqs[i];
       }
     }
   }
 
  private:
-  fast::array<fast::query::Result, fast::query::MAX_RESULTS> results;
-  vector<string> flattened;
+  fast::array<fast::query::Result, fast::query::MAX_RESULTS>& results;
+  vector<string_view>& flattened;
   size_t sz;
   Offset cur_doc_offset;
   Offset cur_doc_end;
@@ -269,4 +334,4 @@ class ranker {
   isr* rarest_isr;
   isr** isrs;
 };
-}  // namespace fast
+}  // namespace fast::query
