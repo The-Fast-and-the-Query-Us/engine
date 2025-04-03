@@ -591,7 +591,7 @@ void test_flat_map() {
   
   auto start = high_resolution_clock::now();
   
-  flat_map<string, string> map;
+  flat_map<string, int> map;
   
   int fd = open(filename, O_RDONLY);
   if (fd >= 0) {
@@ -603,14 +603,14 @@ void test_flat_map() {
     size_t verified = 0;
     size_t errors = 0;
     for (size_t i = 0; i < DICT_SIZE; i += 50) {  // Check every 50th entry
-      string* value = map.find(DICT[i]);
-      string expected = (i % 2 == 0) ? "even" : "odd";
+      int* value = map.find(DICT[i]);
+      int expected = (i % 2 == 0);
       if (!value) {
         std::cout << "Error: Missing entry for " << DICT[i].begin() << "\n";
         errors++;
       } else if (*value != expected) {
         std::cout << "Error: Wrong value for " << DICT[i].begin() 
-          << ", got '" << value->begin() << "', expected '" << expected.begin()
+          << ", got '" << *value << "', expected '" << expected
           << "' iter " << i << '\n';
         errors++;
       }
@@ -624,7 +624,12 @@ void test_flat_map() {
     std::cout << "Filling map with dictionary words...\n";
     auto fill_start = high_resolution_clock::now();
     for (size_t i = 0; i < DICT_SIZE; ++i) {
-      map.insert(DICT[i], (i % 2 == 0) ? "even" : "odd");
+      map.insert(DICT[i], i % 2 == 0);
+      if (i % 50 == 0) {
+        std::cout << DICT[i].begin() << ": " << (i % 2 == 0) << '\n';
+        std::cout << *map.find(DICT[i]) << '\n';
+      }
+
     }
     auto fill_end = high_resolution_clock::now();
     std::cout << "Filled with " << map.count() << " entries in " 
@@ -644,9 +649,7 @@ void test_flat_map() {
   std::cout << "Save " << (save_success ? "successful" : "failed") 
             << " in " << duration_cast<microseconds>(save_end - save_start).count() << " μs\n";
   
-  std::cout << "Clearing map and reloading from file...\n";
-  map.erase();
-  std::cout << "Map size after clear: " << map.count() << "\n";
+  //map.print();
   
   // auto load_start = high_resolution_clock::now();
   // fd = open(filename, O_RDONLY);
@@ -667,40 +670,8 @@ void test_flat_map() {
   auto end = high_resolution_clock::now();
   std::cout << "Total test time: " << duration_cast<milliseconds>(end - start).count() << " ms\n";
 }
-// Test std::unordered_map operations
-void test_std_map() {
-  auto start = high_resolution_clock::now();
-  
-  std::unordered_map<std::string, std::string> map;
-  
-  map[std::string(DICT[0].begin())];
-  
-  for (size_t i = 1; i < DICT_SIZE; ++i) {
-    if (i % 2) {
-      map.insert({std::string(DICT[i].begin()), "odd"});
-    } else {
-      map[std::string(DICT[i].begin())] = "even";
-    }
-  }
-  
-  map.erase("random");
-  map[std::string(DICT[0].begin())] = "poop";
-  map.erase("apple");
-  map.erase("banana");
-  
-  for (int i = 0; i < 10000; ++i) {
-    map.find(std::string(DICT[rand() % DICT_SIZE].begin()));
-  }
-
-  auto end = high_resolution_clock::now();
-  auto duration = duration_cast<microseconds>(end - start).count();
-  
-  std::cout << "std::unordered_map time: " << duration << " microseconds\n";
-  std::cout << "std::unordered_map size: " << map.size() << '\n';
-}
 
 int main() {
   test_flat_map();
-  test_std_map();
   return 0;
 }

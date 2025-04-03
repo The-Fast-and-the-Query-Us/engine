@@ -358,12 +358,12 @@ public:
           return false;
         }
 
-        size_t value_size = strlen(data[i].value.begin()) + 1;
+        auto value_size = sizeof(data[i].value);
         if (write(fd, &value_size, sizeof(value_size)) != sizeof(value_size)) {
           return false;
         }
         if (value_size > 0 && 
-          write(fd, data[i].value.begin(), value_size) != static_cast<ssize_t>(value_size)) {
+          write(fd, &data[i].value, value_size) != static_cast<ssize_t>(value_size)) {
           return false;
         }
       }
@@ -379,7 +379,7 @@ public:
     }
     grow(temp_cap);
 
-    if (read(fd, &size, sizeof(size)) != sizeof(size)) { // Fixed: was sizeof(cap)
+    if (read(fd, &size, sizeof(size)) != sizeof(size)) {
       return false;
     }
     if (read(fd, meta, cap) != static_cast<ssize_t>(cap)) {
@@ -399,17 +399,17 @@ public:
           return false;
         }
 
-        data[i].key = buf;
+        for (size_t idx = 0; idx < kv_size; ++idx) {
+          data[i].key += buf[idx];
+        }
 
         if (read(fd, &kv_size, sizeof(kv_size)) != sizeof(kv_size)) {
           return false;
         }
         if (kv_size > 0 && 
-          read(fd, &buf, kv_size) != static_cast<ssize_t>(kv_size)) {
+          read(fd, &data[i].value, kv_size) != static_cast<ssize_t>(kv_size)) {
           return false;
         }
-
-        data[i].value = buf;
       }
     }
 
@@ -420,7 +420,7 @@ public:
     for (size_t i = 0; i < cap; ++i) {
       if (meta[i] != EMPTY && meta[i] != DELETED) {
         std::cout << "key: " << data[i].key.begin() << '\n'
-          << "val: " << data[i].value.begin() << '\n'
+          << "val: " << data[i].value << '\n'
           << "meta: " << meta[i] << '\n';
       }
     }
