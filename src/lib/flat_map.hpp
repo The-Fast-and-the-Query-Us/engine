@@ -1,6 +1,7 @@
 #pragma once
 
 // TODO: NEED TO TEST
+#include <cassert>
 #include <iostream>
 
 #include "pair.hpp"
@@ -214,6 +215,7 @@ public:
     for (size_t i = 0; i < cap >> 4; ++i) {
       while (cmp_mask) {
         int pos = __builtin_ctz(cmp_mask);
+        assert(chunk_start + pos < cap);
         if (data[chunk_start + pos].key == key) {
           data[chunk_start + pos].value = value;
           return;
