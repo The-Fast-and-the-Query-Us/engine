@@ -104,8 +104,8 @@ private:
 
 #elif X86_64
   uint16_t compare_bytes(const uint8_t* data, uint8_t pattern) {
-    assert(false);
     __m128i vpattern = _mm_set1_epi8(pattern);
+    assert(false);
     __m128i vdata = _mm_loadu_si128((__m128i*)data);
     __m128i vcmp = _mm_cmpeq_epi8(vdata, vpattern);
 
