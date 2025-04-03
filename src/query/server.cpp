@@ -21,6 +21,8 @@
 #include "isr.hpp"
 #include "language.hpp"
 #include "ranker.hpp"
+#include "string_view.hpp"
+#include "vector.hpp"
 
 static constexpr int MAX_PATH = 4096;
 static const int PORT = 8080;
@@ -41,7 +43,12 @@ static void handle_cleanup(int signal) {
 void blob_rank(const fast::hashblob *blob, const fast::string &query, fast::array<fast::query::Result, fast::query::MAX_RESULTS> &results) {
   auto query_stream = fast::query::query_stream(query);
   auto constraints = fast::query::contraint_parser::parse_contraint(query_stream, blob);
-  fast::query::rank_from_constraints(blob, query, results, constraints);
+
+  fast::vector<fast::string_view> flattened;
+
+  auto rank_stream = fast::query::query_stream(query);
+  fast::query::rank_parser::parse_query(rank_stream, blob, flattened);
+  fast::query::ranker(blob, flattened, constraints, results);
   delete constraints;
   return;
 }

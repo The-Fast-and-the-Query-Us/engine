@@ -14,24 +14,14 @@
 
 namespace fast::query {
 
-void rank_from_constraints(const hashblob* blob, const string& query,
-                           array<Result, MAX_RESULTS>& results,
-                           isr_container* constraints) {
-  vector<string_view> flattened_query;
-  query_stream qs(query);
-  rank_parser::parse_query(qs, blob, flattened_query);
-
-  // TODO
-  ranker rank(blob, flattened_query, constraints, results);
-}
 
 constexpr size_t SHORT_SPAN_LENGTH = 10;
 
 class ranker {
  public:
-  ranker(const hashblob* index_chunk, vector<string_view> sv,
+  ranker(const hashblob* index_chunk, vector<string_view> &sv,
          isr_container* container, array<Result, MAX_RESULTS>& res)
-      : flattened(sv), results(res) {
+      : results(res), flattened(sv) {
     sz = flattened.size();
 
     isrs = (isr**)malloc((sz) * sizeof(isr*));
@@ -352,4 +342,17 @@ class ranker {
   // isr* rarest_isr;
   isr** isrs;
 };
+
+// deprecate
+void rank_from_constraints(const hashblob* blob, const string& query,
+                           array<Result, MAX_RESULTS>& results,
+                           isr_container* constraints) {
+  vector<string_view> flattened_query;
+  query_stream qs(query);
+  rank_parser::parse_query(qs, blob, flattened_query);
+
+  // TODO
+  ranker(blob, flattened_query, constraints, results);
+}
+
 }  // namespace fast::query
