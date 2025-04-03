@@ -77,6 +77,8 @@ class isr_container : public isr {
 
   Offset get_doc_end() const { return doc_end->offset(); }
 
+  string_view get_doc_url() const { return doc_end->get_url(); }
+
   void add_stream(isr *stream, bool ex = false) {
     if (ex) {
       exclude.push_back(stream);

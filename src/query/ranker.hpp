@@ -57,10 +57,17 @@ class ranker {
     while (!container->is_end()) {
       cur_doc_offset = container->get_doc_start();
       cur_doc_end = container->get_doc_end();
+      cur_doc_url = container->get_doc_url();
       score_doc();
 
       container->next();
     }
+  }
+
+  ~ranker() {
+    for (size_t i = 0; i < sz; ++i) {
+      free(isrs[i]);
+    };
   }
 
   void score_doc() {
@@ -91,7 +98,7 @@ class ranker {
     size_t i = fast::query::MAX_RESULTS - 1;
 
     results[i].first = score;
-    results[i].second = "";
+    results[i].second = cur_doc_url;
     while (i >= 1 && score > results[i - 1].first) {
       swap(results[i], results[i - 1]);
       --i;
@@ -323,12 +330,23 @@ class ranker {
     }
   }
 
+  double url_score() {
+    double score(0.0);
+    // implement domain .gov vs .edu vs .com
+
+    // implement url length
+    // implement url depth
+  }
+
  private:
   fast::array<fast::query::Result, fast::query::MAX_RESULTS>& results;
+
   vector<string_view>& flattened;
   size_t sz;
+
   Offset cur_doc_offset;
   Offset cur_doc_end;
+  string_view cur_doc_url;
 
   size_t rare_word_idx;
   // isr* rarest_isr;
