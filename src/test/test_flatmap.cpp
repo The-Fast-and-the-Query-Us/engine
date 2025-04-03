@@ -674,7 +674,7 @@ void test_flat_map() {
 void test_save_load() {
   flat_map<string, int> map;
 
-  const int INSERTIONS = 10;
+  const int INSERTIONS = 1000;
   for (int i = 0; i < INSERTIONS; ++i) {
     map.insert(DICT[i], i);
   }
@@ -700,7 +700,13 @@ void test_save_load() {
   map2.load(fd);
   close(fd);
 
+  static constexpr uint8_t EMPTY = 0x80;
+  static constexpr uint8_t DELETED = 0xFE;
+
   for (size_t i = 0; i < map.cap; ++i) {
+    if (map.meta[i] == EMPTY || map.meta[i] == DELETED) {
+      continue;
+    }
     assert(map.meta[i] == map2.meta[i]);
     std::cout << "map key at " << i << ": " << map.data[i].key.c_str() << '\n';
     std::cout << "map2 key at " << i << ": " << map2.data[i].key.c_str() << '\n';

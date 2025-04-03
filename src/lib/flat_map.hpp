@@ -68,8 +68,6 @@ private:
       if (old_meta[i] != EMPTY && old_meta[i] != DELETED) {
         // Manages size increment
         insert(old_data[i].key, old_data[i].value);
-      } else {
-        data[i].value = 0;
       }
     }
 
