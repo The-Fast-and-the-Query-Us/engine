@@ -46,9 +46,8 @@ def url_depth(url: str) -> int:
     return len(path.split('/')) if path else 0
 
 def get_and_parse(url: str):
-
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=3)
     except:
         return None, None
 
@@ -62,6 +61,12 @@ def get_and_parse(url: str):
         return None, None
 
     soup = BeautifulSoup(response.text, "html.parser")
+
+    html_tag = soup.find("html")
+    if html_tag and html_tag.has_attr("lang"):
+        if html_tag["lang"] != "en":
+            logging.info("skip non english page")
+            return None, None
 
     for script in soup(["script", "style"]):
         script.extract()
@@ -86,6 +91,19 @@ def should_crawl(url: str) -> bool:
         return False
 
     if not good_domain_authority(url):
+        return False
+
+    if url_depth(url) >= 5:
+        return False
+
+    BLOCKED_DOMAINS = {
+                "api.", "cdn.", "drive.google.com"
+            }
+
+    if any(blocked in parsed.netloc.lower() for blocked in BLOCKED_DOMAINS):
+        return False
+
+    if len(url) > 35:
         return False
 
     return True
@@ -141,7 +159,6 @@ while not queue.empty() and not die:
 
         pybind.add_url(url)
 
-        links = sorted(links, key=url_depth)
         count = 0
 
         for link in links:
