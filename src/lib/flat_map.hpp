@@ -56,12 +56,14 @@ private:
     entry *old_data = data;
     size_t old_cap = cap;
 
-    meta = static_cast<uint8_t*>(malloc(new_cap)); // NOLINT
+    // meta = static_cast<uint8_t*>(malloc(new_cap)); // NOLINT
+    meta = new uint8_t[new_cap];
     memset(meta, EMPTY, new_cap);
-    data = static_cast<entry*>(malloc(new_cap * sizeof(entry))); // NOLINT
-    for (size_t i = 0; i < new_cap; ++i) {
-      new (data + i) entry(K(), V());
-    }
+    // data = static_cast<entry*>(malloc(new_cap * sizeof(entry))); // NOLINT
+    data = new entry[new_cap];
+    // for (size_t i = 0; i < new_cap; ++i) {
+    //   new (data + i) entry(K(), V());
+    // }
 
     cap = new_cap;
     size = 0;
@@ -74,8 +76,10 @@ private:
     }
 
 
-    free(old_meta); // NOLINT
-    free(old_data);
+    // free(old_meta);
+    delete[] old_meta;
+    // free(old_data);
+    delete[] old_data;
   }
 
   fast::pair<uint64_t, uint8_t> hash_key(const K &key) {
@@ -172,8 +176,10 @@ public:
   }
 
   ~flat_map() {
-    free(meta); // NOLINT (RAII)
-    free(data);
+    // free(meta); // NOLINT (RAII)
+    delete[] meta;
+    // free(data);
+    delete[] data;
   }
 
 
@@ -193,7 +199,7 @@ public:
       for (uint8_t addy = 0; addy < 16; ++ptr, ++addy) { // NOLINT magic num
         if (*ptr == EMPTY) { return &data[chunk_start + addy].value; }
       }
-      chunk_start = (chunk_start + 16) % cap; // NOLINT magic num
+      chunk_start = fast::min((chunk_start + 16) % cap, cap - 16); // NOLINT magic num
       cmp_mask = compare_bytes(meta + chunk_start, h.second);
     }
     return nullptr;
@@ -285,7 +291,7 @@ public:
         ++size;
         return first_deleted->value;
       }
-      chunk_start = (chunk_start + 16) % cap; // NOLINT magic num
+      chunk_start = fast::min((chunk_start + 16) % cap, cap - 16); // NOLINT magic num
       cmp_mask = compare_bytes(meta + chunk_start, h.second);
     }
     return data[0].value;
@@ -316,7 +322,7 @@ public:
           return;
         }
       }
-      chunk_start = (chunk_start + 16) % cap; // NOLINT magic num
+      chunk_start = fast::min((chunk_start + 16) % cap, cap - 16); // NOLINT magic num
       cmp_mask = compare_bytes(meta + chunk_start, h.second);
     }
   }
@@ -375,7 +381,6 @@ public:
 
   bool load(int fd) {
     size_t temp_cap{};
-    assert(false);
     if (read(fd, &temp_cap, sizeof(temp_cap)) != sizeof(cap)) {
       return false;
     }
