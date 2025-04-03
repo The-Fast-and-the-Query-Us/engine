@@ -1,6 +1,7 @@
 #pragma once
 
 #include "string_view.hpp"
+#include <cassert>
 #include <compare>
 #include <cstddef>
 #include <cstdlib>
@@ -18,6 +19,7 @@ class string {
 
   void grow(size_t need) {
     start_ = static_cast<char *>(realloc(start_, need + 1));
+    assert(start_ != nullptr);
     cap = need;
   }
 
