@@ -1,21 +1,28 @@
-#include <csignal>
-#include <cstdio>
-#include <cstdlib>
+#include <dirent.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/fcntl.h>
+#include <sys/mman.h>
 #include <sys/signal.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <dirent.h>
-#include <string.hpp>
-#include <network.hpp>
 #include <sys/stat.h>
-#include <sys/mman.h>
-#include <hashblob.hpp>
-#include "constants.hpp"
+#include <unistd.h>
+
 #include <array.hpp>
+#include <csignal>
+#include <cstdio>
+#include <cstdlib>
+#include <hashblob.hpp>
+#include <network.hpp>
+#include <string.hpp>
+
+#include "constants.hpp"
+#include "isr.hpp"
+#include "language.hpp"
+#include "ranker.hpp"
+#include "string_view.hpp"
+#include "vector.hpp"
 
 static constexpr int MAX_PATH = 4096;
 static const int PORT = 8080;
@@ -33,14 +40,9 @@ static void handle_cleanup(int signal) {
   }
 }
 
-// todo
-void blob_rank(const fast::hashblob*, const fast::string&, fast::array<fast::query::Result, fast::query::MAX_RESULTS>) {
-  return;
-}
-
 static void handle_client(const int client_fd) {
   fast::string query;
-  fast::recv_all(client_fd, query); // Check return?
+  fast::recv_all(client_fd, query);  // Check return?
 
   fast::array<fast::query::Result, fast::query::MAX_RESULTS> results;
 
@@ -51,7 +53,7 @@ static void handle_client(const int client_fd) {
     if (fd == -1) [[unlikely]] {
       perror("Fail to open index chunk");
       fprintf(stderr, "Failed to open index chunk : %d\n", chunk_num);
-      exit(1); // should we continue?
+      exit(1);  // should we continue?
     }
 
     struct stat sb;
@@ -63,7 +65,8 @@ static void handle_client(const int client_fd) {
     }
     const size_t chunk_size = sb.st_size;
 
-    const auto map_ptr = mmap(nullptr, chunk_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    const auto map_ptr =
+        mmap(nullptr, chunk_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (map_ptr == MAP_FAILED) [[unlikely]] {
       close(fd);
       perror("Fail to mmap index chunk");
@@ -73,13 +76,13 @@ static void handle_client(const int client_fd) {
 
     close(fd);
 
-    auto blob = reinterpret_cast<const fast::hashblob*>(map_ptr);
-    
-    blob_rank(blob, query, results);
+    auto blob = reinterpret_cast<const fast::hashblob *>(map_ptr);
+
+    fast::query::blob_rank(blob, query, results);
 
     if (munmap(map_ptr, chunk_size) == -1) [[unlikely]] {
       perror("Fail to unmap chunk");
-      exit(1); // maybe shouldnt exit here?
+      exit(1);  // maybe shouldnt exit here?
     }
   }
 
@@ -135,7 +138,7 @@ int main(int argc, char **argv) {
   addr.sin_addr.s_addr = INADDR_ANY;
   addr.sin_port = htons(PORT);
 
-  if (bind(FD, (sockaddr*) &addr, sizeof(addr)) < 0) {
+  if (bind(FD, (sockaddr *)&addr, sizeof(addr)) < 0) {
     close(FD);
     perror("bind(...)");
     exit(1);
@@ -164,8 +167,7 @@ int main(int argc, char **argv) {
 
     // use fork to prevent sharing address space
     if (fork() == 0) {
-
-      close(FD); // both parent and child must close
+      close(FD);  // both parent and child must close
       handle_client(client);
       close(client);
       return 0;
