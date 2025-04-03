@@ -252,13 +252,12 @@ public:
         continue;
       }
 
-      char key_buffer[MAX_URL_LEN + 1];
-      memset(key_buffer, 0, sizeof(key_buffer));
+      K key{};
+      key.resize(key_size);
       if (key_size > 0 && 
-        read(fd, key_buffer, key_size) != static_cast<ssize_t>(key_size)) {
+        read(fd, key.begin(), key_size) != static_cast<ssize_t>(key_size)) {
         return false;
       }
-      K key(key_buffer, key_size);
 
       V val{};
       if (value_size > 0 && 
