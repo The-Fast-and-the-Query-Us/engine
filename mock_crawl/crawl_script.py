@@ -57,22 +57,22 @@ for url in start_urls:
 # init c++ client
 index_path = os.path.abspath("./index")
 blobber_path = "../src/build/mock_crawl/mock"
-process = subprocess.Popen([blobber_path, index_path], stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
+process = subprocess.Popen([blobber_path, index_path], stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr, text=True)
 
 def cleanup():
-    process.stdin.write("q\n")
-    process.stdin.flush()
+    process.stdin.close()
 
-    result = process.poll()
-    if result is None:
-        print("Blobber still running, terminating")
+    try:
+        result = process.wait(timeout=3)
+        print(f"blobber exited with code : {result}")
+    except:
         process.terminate()
-    else:
-        print(f"Blobber exited with status {result}")
+        print("terminating process")
 
 atexit.register(cleanup)
 
 start = time.time()
+
 # run crawl
 while q.qsize() > 0 and time.time() - start < TIME_LIMIT:
     url = q.get()
