@@ -1,31 +1,8 @@
 #include <string.hpp>
+#include <string_view.hpp>
 #include <vector.hpp>
 
 namespace fast {
-
-const char* find(const char* word, const char* to_find) {
-  if (!*to_find) return word;
-
-  size_t needle_len = 0;
-  while (to_find[needle_len]) needle_len++;
-
-  for (size_t i = 0; word[i]; i++) {
-    bool match = true;
-
-    for (size_t j = 0; j < needle_len; j++) {
-      if (!word[i + j] || word[i + j] != to_find[j]) {
-        match = false;
-        break;
-      }
-    }
-
-    if (match) {
-      return &word[i];  // found match
-    }
-  }
-
-  return nullptr;  // no match found
-}
 
 class url_components {
  private:
@@ -34,11 +11,11 @@ class url_components {
   int length;
   bool valid;
 
-  bool check_valid_protocol(const char* url_str, const char* protocol_end) {
+  bool check_valid_protocol(string_view url, const char* protocol_end) {
     if (protocol_end == nullptr) {
       return false;
     }
-    string_view protocol(url_str, protocol_end);
+    string_view protocol(url.begin(), protocol_end);
 
     if (protocol == "http" || protocol == "https" || protocol == "ftp") {
       return true;
@@ -48,33 +25,55 @@ class url_components {
 
   bool check_valid_tld(string_view domain) {
     // TODO
+    size_t i = domain.size() - 1;
+    const char* end = domain.end() - 1;
+
+    for (; i >= 0; --i) {
+      if (*end == '.') {
+        break;
+      }
+      --end;
+    }
+    if (i == -1) {
+      return false;
+    }
+
+    string_view tld(end + 1, domain.end());
+
+    if (tld == "gov" || tld == "edu") {
+      return true;
+    }
   }
 
  public:
-  url_components(const string_view& url) {
+  url_components(const string_view url) {
     length = url.size();
     valid = true;
     depth = 0;
 
     // Find protocol separator
-    const char* url_str = url.c_str();
-    const char* protocol_end = find(url_str, "://");
+    const char* protocol_end = url.find("://");
 
-    if (!check_valid_protocol(url_str, protocol_end)) {
+    if (!check_valid_protocol(url, protocol_end)) {
       valid = false;
       return;
     }
 
-    const char* domain_start = protocol_end ? protocol_end + 3 : url_str;
+    const char* domain_start = protocol_end + 3;
+    size_t url_len = url.size();
+    const char* domain_end = domain_start;
+
+    size_t i = domain_end - url.begin();
 
     // Find domain end
-    const char* domain_end = domain_start;
-    while (*domain_end && *domain_end != '/' && *domain_end != '?' &&
-           *domain_end != '#') {
-      domain_end++;
+    for (; i < url_len; ++i) {
+      if (*domain_end == '/' || *domain_end == '?' || *domain_end == '#') {
+        break;
+      }
+      ++domain_end;
     }
 
-    domain = string_view(domain_start, domain_end - domain_start);
+    domain = string_view(domain_start, domain_end + 1);
 
     if (!check_valid_tld(domain)) {
       valid = false;
@@ -83,12 +82,15 @@ class url_components {
 
     // Find path start
     const char* path_start = domain_end;
-    if (*path_start == '/') path_start++;
+    if (i != url_len && *path_start == '/') {
+      ++path_start;
+      ++i;
+    }
 
     // Count path depth
     bool not_empty = false;
 
-    while (*path_start && *path_start != '?' && *path_start != '#') {
+    while (i < url_len && *path_start != '?' && *path_start != '#') {
       if (*path_start == '/') {
         if (not_empty) {
           ++depth;
@@ -97,7 +99,8 @@ class url_components {
       } else {
         not_empty = true;
       }
-      path_start++;
+      ++path_start;
+      ++i;
     }
 
     // Add last segment

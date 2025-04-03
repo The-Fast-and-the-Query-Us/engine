@@ -31,7 +31,29 @@ class string_view {
   const char *begin() const { return start; }
   const char *end() const { return start + len; }
 
-  const char *c_str() const { return start; }
+  const char *find(const char *to_find) const {
+    if (!*to_find) return start;
+
+    size_t find_len = 0;
+    while (to_find[find_len]) ++find_len;
+
+    for (size_t i = 0; i < len; ++i) {
+      bool match = true;
+
+      for (size_t j = 0; j < find_len; j++) {
+        if (i + j >= len || start[i + j] != to_find[j]) {
+          match = false;
+          break;
+        }
+      }
+
+      if (match) {
+        return &start[i];  // found match
+      }
+    }
+
+    return nullptr;  // no match found
+  }
 
   bool operator==(const string_view &other) const {
     return (len == other.len && memcmp(start, other.start, len) == 0);
