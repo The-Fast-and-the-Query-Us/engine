@@ -5,6 +5,7 @@
 #include <hashtable.hpp>
 #include <hash.hpp>
 #include <iostream>
+#include <compress.hpp>
 
 namespace fast {
 
@@ -20,12 +21,32 @@ class dictionary {
   size_t *buckets() { return &dict_size + 1; }
   const size_t *buckets() const { return &dict_size + 1; }
 
-  unsigned char *dict() {
-    return reinterpret_cast<unsigned char*>(buckets() + num_buckets);
+  char *dict() {
+    return reinterpret_cast<char*>(buckets() + num_buckets);
   }
 
-  const unsigned char *dict() const {
-    return reinterpret_cast<const unsigned char*>(buckets() + num_buckets);
+  const char *dict() const {
+    return reinterpret_cast<const char*>(buckets() + num_buckets);
+  }
+
+  static void init_buckets(const hashtable &ht, dictionary *buffer) {
+    for (auto i = 0u; i < buffer->num_buckets; ++i) {
+      buffer->buckets()[i] = 0; // zero init bucket offsets
+    }
+
+    for (auto i = 0u; i < ht.num_buckets; ++i) {
+      for (const auto &bucket : ht.buckets[i]) {
+        buffer->buckets()[bucket.hashval % buffer->num_buckets] += 
+          sizeof(size_t) + bucket.word.size() + encoded_size(bucket.word.size());
+      }
+    }
+
+    size_t accumulator = 0;
+    for (auto i = 0u; i < buffer->num_buckets; ++i) {
+      accumulator += buffer->buckets()[i];
+      buffer->buckets()[i] = accumulator - buffer->buckets()[i];
+    }
+    buffer->dict_size = accumulator;
   }
 
   public:
@@ -39,7 +60,7 @@ class dictionary {
     
     for (auto i = 0u; i < ht.num_buckets; ++i) {
       for (const auto &bucket : ht.buckets[i]) {
-        dynamic += sizeof(size_t) + bucket.word.size() + 1;
+        dynamic += sizeof(size_t) + bucket.word.size() + encoded_size(bucket.word.size());
       }
     }
 
@@ -57,82 +78,50 @@ class dictionary {
     buffer->num_buckets = ht.unique_words * LOAD;
     buffer->num_words = ht.next_offset;
 
-    for (auto i = 0u; i < ht.num_buckets; ++i) {
-      for (const auto &bucket : ht.buckets[i]) {
-        buffer->buckets()[bucket.hashval % buffer->num_buckets] += sizeof(size_t) + bucket.word.size() + 1;
-      }
-    }
-
-    size_t accumulator = 0;
-    for (auto i = 0u; i < buffer->num_buckets; ++i) {
-      accumulator += buffer->buckets()[i];
-      buffer->buckets()[i] = accumulator - buffer->buckets()[i];
-    }
-    buffer->dict_size = accumulator;
+    init_buckets(ht, buffer);
 
     for (auto i = 0u; i < ht.num_buckets; ++i) {
       for (const auto &bucket : ht.buckets[i]) {
         const auto hashval = hash(bucket.word.c_str());
 
-        auto write_pos = buffer->dict() + buffer->buckets()[hashval % buffer->num_buckets];
+        auto &offset = buffer->buckets()[hashval % buffer->num_buckets];
+        offset += sizeof(size_t);
 
-        while (read_unaligned<size_t>(write_pos) != 0) {
-          write_pos += sizeof(size_t);
-          while (*(write_pos++));
-        }
+        encode(bucket.word.size(), (unsigned char*) buffer->dict() + offset);
+        offset += encoded_size(bucket.word.size());
 
-        write_unaligned(1, write_pos);
-        memcpy(write_pos + sizeof(size_t), bucket.word.c_str(), bucket.word.size() + 1);
+        memcpy(buffer->dict() + offset, bucket.word.c_str(), bucket.word.size());
       }
     }
 
-    return buffer->dict() + buffer->dict_size;
+    init_buckets(ht, buffer);
+    return (unsigned char *) buffer->dict() + buffer->dict_size;
   }
 
-  const unsigned char *find_entry(const string_view &word) const {
+  const char *find_entry(const string_view &word) const {
     const auto hash_val = hash(word);
-    auto pos = (const char*) (buckets()[hash_val % num_buckets] + dict());
-    const auto end = (const char *)(dict() + (((hash_val + 1) % num_buckets) ?
-                     buckets()[(hash_val + 1) % num_buckets] : dict_size));
+    auto pos = buckets()[hash_val % num_buckets] + dict();
+    const auto end = dict() + (((hash_val + 1) % num_buckets) ?
+                     buckets()[(hash_val + 1) % num_buckets] : dict_size);
 
     while (pos < end) {
       auto key = pos + sizeof(size_t);
-      size_t len;
 
-      size_t j;
-      for (j = 0; key[j]; ++j);
-      std::cout << "Looking at : " << key << " with size : " << j << std::endl;
-      std::cout << "Raw values" << std::endl;
-      for (size_t i = 0; i < j; ++i) {
-        std::cout << int(key[i]) << std::endl;
+      uint64_t key_len;
+      key = (const char*) decode(key_len, (const unsigned char*) key);
+
+      if (string_view(key, key_len) == word) {
+        return pos;
       }
 
-      std::cout << "for key : " << word.begin() << " with size : " << word.size() << std::endl;
-      std::cout << "Raw values" << std::endl;
-      for (size_t i = 0; i < word.size(); ++i) {
-        std::cout << int(word[i]) << std::endl;
-      }
-
-      for (len = 0; len < word.size() && word[len] == *key; ++len, ++key);
-
-      if (len == word.size() && *key == 0) 
-              return (const unsigned char*) pos;
-
-      std::cout << "No match! difference at : " << len << std::endl; 
-      if (len < word.size())
-        std::cout << "word[i] : " << int(word[len]) << std::endl;
-      if (len < j)
-        std::cout << "key[i] : " << int(*key) << std::endl;
-      
-      pos = key + len;
-      while (*(pos++));
+      pos = key + key_len;
     }
 
     return nullptr;
   }
 
-  unsigned char *find_entry(const string_view &word) {
-    return const_cast<unsigned char*>(static_cast<const dictionary*>(this)->find_entry(word));
+  char *find_entry(const string_view &word) {
+    return const_cast<char*>(static_cast<const dictionary*>(this)->find_entry(word));
   }
 
   // requires that word is in the dict
