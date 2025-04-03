@@ -29,7 +29,7 @@ BNF:
 */
 
 class query_stream {
-  const string &query;
+  const string query;
   size_t pos;
 
   bool important(char c) {
