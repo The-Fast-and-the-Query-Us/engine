@@ -1,7 +1,6 @@
 #pragma once
 
 #include "string_view.hpp"
-#include <cassert>
 #include <compare>
 #include <cstddef>
 #include <cstdlib>
@@ -18,7 +17,7 @@ class string {
   size_t cap;
 
   void grow(size_t need) {
-    start_ = static_cast<char *>(realloc(start_, (need + 1) * sizeof(char)));
+    start_ = static_cast<char *>(realloc(start_, need + 1));
     cap = need;
   }
 
@@ -59,12 +58,9 @@ public:
 
   string &operator=(const string &other) {
     if (this != &other) {
-        free(start_);
-        start_ = nullptr;
-        cap = 0;
-        grow(other.len_);
-        len_ = other.len_;
-        memcpy(start_, other.start_, len_ + 1);
+      grow(other.len_);
+      len_ = other.len_;
+      memcpy(start_, other.start_, other.len_ + 1);
     }
     return *this;
   }
