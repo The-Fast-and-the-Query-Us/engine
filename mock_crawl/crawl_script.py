@@ -28,13 +28,13 @@ def extract_words_and_links(html: str, base_url: str):
     for script in soup(["script", "style"]):
         script.decompose()  # Remove them
 
-    text = soup.get_text(separator=" ")
-    words = re.findall(r'\b\w+\b', text)  # Extract words
+    text = soup.get_text(separator=" ").lower()
+    text = re.sub(r'[^\w\s]', '', text)
 
     # Extract all links
     links = {urljoin(base_url, a['href']) for a in soup.find_all("a", href=True)}
 
-    return words, links
+    return text.split(), list(links)
 
 
 MINUTE = 60
@@ -86,7 +86,7 @@ while q.qsize() > 0 and time.time() - start < TIME_LIMIT:
         process.stdin.write("0\n")
         process.stdin.write(url + '\n')
 
-        for link in links:
+        for link in links[:20]:
             if q.qsize() == MAX_QUEUE:
                 break
             if link not in bloom:
