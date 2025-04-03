@@ -53,12 +53,12 @@ def get_and_parse(url: str):
         return None, None
 
     if response.status_code != 200:
-        logging.info("Skipping status code: ", response.status_code)
+        logging.info("Skipping status code: %d", response.status_code)
         return None, None
 
     content_type = response.headers.get("Content-Type", "")
     if "text/html" not in content_type:
-        logging.info("Skipping non-HTML content:", content_type)
+        logging.info("Skipping non-HTML content: %s", content_type)
         return None, None
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -112,7 +112,7 @@ except Exception as _:
 with open("init.txt") as f:
     for word in f.read().split():
         if word not in bf:
-            logging.info("putting word : ", word)
+            logging.info("putting word : %s", word)
             bf.add(word)
             queue.put(word)
         else:
@@ -148,14 +148,14 @@ while not queue.empty() and not die:
             if queue.qsize() > 1000 or count > 20:
                 break
             elif should_crawl(link):
-                logging.info("LINK: ", link)
+                logging.info("LINK: %s", link)
                 queue.put(link)
                 bf.add(link)
                 count += 1
 
         if pybind.num_tokens() >= 500000:
             chunk_id = get_chunk_number()
-            logging.info("Writing chunk number ", chunk_id)
+            logging.info("Writing chunk number %d", chunk_id)
             write_chunk_number(chunk_id + 1)
             pybind.write_blob(index_path + '/' + str(chunk_id))
             pybind.erase()
@@ -167,7 +167,7 @@ while not queue.empty() and not die:
 bf.close()
 
 if pybind.num_tokens() > 0:
-    logging.info("Writing out hashmap with size : ", pybind.num_tokens())
+    logging.info("Writing out hashmap with size : %d", pybind.num_tokens())
     chunk_id = get_chunk_number()
     write_chunk_number(chunk_id + 1)
     pybind.write_blob(index_path + '/' + str(chunk_id))
