@@ -16,7 +16,7 @@ char path[5000];
 char *path_end;
 
 // max hashtable size
-constexpr int MAX_SZ = 50'000;
+constexpr int MAX_SZ = 500'000;
 
 void write(const fast::hashtable *ht) {
   std::cout << "Writing map" << std::endl;
