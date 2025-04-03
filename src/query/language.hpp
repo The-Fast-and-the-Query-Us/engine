@@ -29,7 +29,7 @@ BNF:
 */
 
 class query_stream {
-  const string query;
+  const string &query;
   size_t pos;
 
   bool important(char c) {
@@ -65,7 +65,7 @@ class query_stream {
 
   public:
 
-  query_stream(const string_view &query) : query(query), pos(0) {};
+  query_stream(const string &query) : query(query), pos(0) {};
 
   bool is_end() const { return pos == query.size(); }
 

@@ -18,6 +18,9 @@
 #include <string.hpp>
 
 #include "constants.hpp"
+#include "isr.hpp"
+#include "language.hpp"
+#include "ranker.hpp"
 
 static constexpr int MAX_PATH = 4096;
 static const int PORT = 8080;
@@ -35,9 +38,11 @@ static void handle_cleanup(int signal) {
   }
 }
 
-// todo
-void blob_rank(const fast::hashblob *, const fast::string &,
-               fast::array<fast::query::Result, fast::query::MAX_RESULTS>) {
+void blob_rank(const fast::hashblob *blob, const fast::string &query, fast::array<fast::query::Result, fast::query::MAX_RESULTS> &results) {
+  auto query_stream = fast::query::query_stream(query);
+  auto constraints = fast::query::contraint_parser::parse_contraint(query_stream, blob);
+  fast::query::rank_from_constraints(blob, query, results, constraints);
+  delete constraints;
   return;
 }
 

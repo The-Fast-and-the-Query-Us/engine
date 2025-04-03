@@ -1,14 +1,18 @@
 #pragma once
 
 #include <array.hpp>
-#include <constants.hpp>
+#include "constants.hpp"
 #include <cstddef>
 #include <hashblob.hpp>
 #include <isr.hpp>
 #include <string.hpp>
 #include <vector.hpp>
+#include "isr.hpp"
 
-namespace fast {
+namespace fast::query {
+
+void rank_from_constraints(const hashblob *blob, const string &query, 
+                           array<Result, MAX_RESULTS> &results, isr_container *constraints);
 
 constexpr size_t SHORT_SPAN_LENGTH = 10;
 
