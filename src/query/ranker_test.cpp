@@ -10,7 +10,7 @@
 #include <string.hpp>
 
 std::string BASE =  "/tmp/index/";
-const int NUM_CHUNK = 3;
+const int NUM_CHUNK = 5;
 
 int main(int argc, char **argv) {
   
