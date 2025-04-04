@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <iostream>
 #include <map>
+#include <queue>
 #include <sys/fcntl.h>
 #include <unistd.h>
 #include <vector>
@@ -46,11 +47,10 @@ public:
     while (num_links == 0)
       cv.wait(&mtx);
 
-    for (size_t i = priorities.size() - 1; i >= 0; --i) {
-      fast::queue<fast::string> &curr_pri = priorities[i];
+    for (int64_t i = priorities.size() - 1; i >= 0; --i) {
+      std::queue<fast::string> &curr_pri = priorities[i];
 
       if (!curr_pri.empty()) {
-
         const size_t n = curr_pri.size();
         for (size_t j = 0; j < n; ++j) {
 
@@ -109,7 +109,7 @@ public:
       }
 
       total_priority_bytes += pri_sz_written;
-      fast::queue<fast::string> t_q = priorities[i];
+      std::queue<fast::string> t_q = priorities[i];
 
       for (size_t j = 0; j < pri_sz; ++j) {
         fast::string f = t_q.front();
@@ -223,7 +223,7 @@ private:
 
   const char *save_path;
 
-  fast::vector<fast::queue<fast::string>> priorities;
+  fast::vector<std::queue<fast::string>> priorities;
 
   // Need to finish fast::hashmap
   std::map<fast::string, uint8_t> crawl_cnt;
@@ -251,11 +251,11 @@ private:
     // +1 point for good length
     score += hostname.size() <= GOOD_LEN;
 
-    size_t idx = 0;
+    ssize_t idx = 0;
 
     // +1 point for secure protocol
     fast::string protocol;
-    while (idx < hostname.size() && hostname[idx] != ':')
+    while (static_cast<size_t>(idx) < hostname.size() && hostname[idx] != ':')
       protocol += hostname[idx++];
 
     score += protocol == "https";

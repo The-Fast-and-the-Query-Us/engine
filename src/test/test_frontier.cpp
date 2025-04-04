@@ -17,7 +17,9 @@ int main() {
   f.save();
 
   frontier f_loaded(SAVE_PATH);
-  f.load();
+  f_loaded.load();
   assert(f_loaded.next() == frontier::extract_hostname(amazon));
+
+  std::cout << "PASSED" << std::endl;
   return 0;
 }
