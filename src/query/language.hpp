@@ -65,7 +65,7 @@ class query_stream {
 
   public:
 
-  query_stream(const string_view &query) : query(query), pos(0) {};
+  query_stream(const string &query) : query(query), pos(0) {};
 
   bool is_end() const { return pos == query.size(); }
 
@@ -199,6 +199,55 @@ class contraint_parser {
     return nullptr;
   }
 
+};
+
+class rank_parser {
+  public:
+
+  static void parse_query(query_stream &query, vector<string_view> *words, const hashblob *blob) {
+    parse_base_query(query, words, blob);
+
+    while (1) {
+      if (query.match('+')) {
+        parse_base_query(query, words, blob);
+      } else if (query.match('-')) {
+        parse_base_query(query, nullptr, blob);
+      } else {
+        return;
+      }
+    }
+  }
+
+  static void parse_base_query(query_stream &query, vector<string_view> *words, const hashblob *blob) {
+    parse_simple_query(query, words, blob);
+
+    while (query.match('|')) {
+      parse_simple_query(query, words, blob);
+    }
+  }
+
+  static void parse_simple_query(query_stream &query, vector<string_view> *words, const hashblob *blob) {
+    if (query.match('[')) {
+      parse_query(query, words, blob);
+    } else if (query.match('"')) {
+      while (!query.match('"')) {
+        if (query.is_end()) return;
+        auto word = query.get_word();
+        if (words) {
+          if (blob->get(word)) {
+            words->push_back(word);
+          }
+        };
+      }
+    } else {
+      auto word = query.get_word();
+      if (words) {
+        if (blob->get(word)) {
+          words->push_back(word);
+        }
+      }
+    }
+  }
 };
 
 

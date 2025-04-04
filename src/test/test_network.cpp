@@ -4,7 +4,7 @@
 #include <string.hpp>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <pthread.h>
+#include <thread>
 
 using namespace fast;
 
@@ -13,7 +13,7 @@ string words[] = {"abc", "smth else", "s", "long mf string adkjfbsdkfj", "", "me
 
 constexpr int NUM_WORDS = sizeof(words) / sizeof(string);
 
-void *test(void*) {
+void test(void) {
   int sock = 0;
   struct sockaddr_in serv_addr;
 
@@ -32,7 +32,6 @@ void *test(void*) {
   }
 
   close(sock);
-  return nullptr;
 }
 
 int main() {
@@ -46,8 +45,7 @@ int main() {
   bind(server, (sockaddr*) &addr, sizeof(addr));
   listen(server, 3);
 
-  pthread_t client_thread;
-  pthread_create(&client_thread, nullptr, test, nullptr);
+  std::thread t(test);
 
   const auto client = accept(server, NULL, NULL);
 
@@ -56,7 +54,7 @@ int main() {
   }
 
 
-  pthread_join(client_thread, NULL);
+  t.join();
   close(client);
   close(server);
 }

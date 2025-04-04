@@ -2,28 +2,25 @@
 
 #include <cstdio>
 #include <hashtable.hpp>
-#include <post_list.hpp>
 #include <isr.hpp>
+#include <post_list.hpp>
 #include <vector.hpp>
 
 namespace fast::query {
 
 /*
-* Isr should implement
-* void next()
-* void seek(Offset)
-* Offset offset()
-* bool is_end()
-*/
+ * Isr should implement
+ * void next()
+ * void seek(Offset)
+ * Offset offset()
+ * bool is_end()
+ */
 
 class isr_or : public isr {
+  vector<isr *> streams;
 
-  vector<isr*> streams;
-  public:
-
-  void add_stream(isr *stream) {
-    streams.push_back(stream);
-  }
+ public:
+  void add_stream(isr *stream) { streams.push_back(stream); }
 
   void next() override {
     Offset small = MAX_OFFSET;
@@ -55,7 +52,7 @@ class isr_or : public isr {
     }
     return ans;
   }
-  
+
   bool is_end() override {
     for (auto s : streams) {
       if (!s->is_end()) return false;
@@ -70,18 +67,17 @@ class isr_or : public isr {
 
 // use this for AND and NOT (seek 0 to init)
 class isr_container : public isr {
-  vector<isr*> include, exclude;
+  vector<isr *> include, exclude;
   isr_doc *doc_end;
 
-  public:
-
+ public:
   isr_container(isr_doc *doc_end) : doc_end(doc_end) {}
 
-  Offset get_doc_start() const {
-    return (
-      doc_end->offset() - doc_end->len()
-    );
-  }
+  Offset get_doc_start() const { return (doc_end->offset() - doc_end->len()); }
+
+  Offset get_doc_end() const { return doc_end->offset(); }
+
+  string_view get_doc_url() const { return doc_end->get_url(); }
 
   void add_stream(isr *stream, bool ex = false) {
     if (ex) {
@@ -92,12 +88,11 @@ class isr_container : public isr {
   }
 
   // jumps to next document
-  void next() override { // maybe wrong
-    seek(doc_end->offset()); 
+  void next() override {  // maybe wrong
+    seek(doc_end->offset());
   }
 
   void seek(Offset offset) override {
-        
     // 1. Seek all the included ISRs to the first occurrence beginning at
     // the target location.
     for (auto &stream : include) {
@@ -106,7 +101,6 @@ class isr_container : public isr {
     }
 
     while (1) {
-
       // 2. Move the document end ISR to just past the furthest
       // contained ISR, then calculate the document begin location.
       Offset farthest = 0;
@@ -150,7 +144,8 @@ class isr_container : public isr {
     }
   }
 
-  Offset offset() override { // can return bascially any offset in the doc, maybe this is wrong
+  Offset offset() override {  // can return bascially any offset in the doc,
+                              // maybe this is wrong
     return include[0]->offset();
   }
 
@@ -170,16 +165,12 @@ class isr_container : public isr {
 
 // call seek 0 to init
 class isr_phrase : public isr {
-  vector<isr*> streams;
-  public:
+  vector<isr *> streams;
 
-  void add_stream(isr *stream) {
-    streams.push_back(stream);
-  }
+ public:
+  void add_stream(isr *stream) { streams.push_back(stream); }
 
-  void next() override {
-    seek(offset() + 1);
-  }
+  void next() override { seek(offset() + 1); }
 
   void seek(Offset offset) override {
     streams[0]->seek(offset);
@@ -190,14 +181,12 @@ class isr_phrase : public isr {
 
     while (i < streams.size()) {
       if (i == 0) {
-
-        streams[0]->next(); 
+        streams[0]->next();
         if (streams[0]->is_end()) return;
         goal = streams[0]->offset();
         i = 1;
 
       } else {
-
         streams[i]->seek(i + goal);
         if (streams[i]->is_end()) {
           return;
@@ -210,9 +199,7 @@ class isr_phrase : public isr {
     }
   }
 
-  Offset offset() override {
-    return streams[0]->offset();
-  }
+  Offset offset() override { return streams[0]->offset(); }
 
   bool is_end() override {
     for (auto stream : streams) {
@@ -228,13 +215,13 @@ class isr_phrase : public isr {
 
 // special isr for word not in index
 class isr_null : public isr {
-  public:
+ public:
   void next() override {}
   void seek(Offset offset) override {
-    (void) offset; // for compile
+    (void)offset;  // for compile
   }
   Offset offset() override { return 0; }
   bool is_end() override { return true; }
 };
 
-}
+}  // namespace fast::query

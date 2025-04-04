@@ -24,3 +24,6 @@ foreach(TEST_SOURCE ${TEST_SOURCES})
 
   add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})  # Register as a test
 endforeach()
+
+find_package(Threads REQUIRED) # for thread
+target_link_libraries(test_network Threads::Threads)

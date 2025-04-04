@@ -1,23 +1,24 @@
 #pragma once
 
-#include "common.hpp"
 #include <compare>
 #include <cstddef>
 #include <cstring>
+
+#include "common.hpp"
 
 namespace fast {
 
 class string_view {
   const char *start;
   size_t len;
-  public:
 
+ public:
   string_view() : start(nullptr), len(0) {}
 
   string_view(const char *start, size_t len) : start(start), len(len) {}
 
-  string_view(const char *start, const char *end) : 
-    start(start), len(end - start) {}
+  string_view(const char *start, const char *end)
+      : start(start), len(end - start) {}
 
   string_view(const char *cstr) : start(cstr), len(0) {
     for (auto it = start; *it; ++it, ++len);
@@ -28,13 +29,34 @@ class string_view {
   char operator[](size_t i) const { return start[i]; }
 
   const char *begin() const { return start; }
-  const char *end()   const { return start + len; }
+  const char *end() const { return start + len; }
+
+  const char *find(const char *to_find) const {
+    if (!*to_find) return start;
+
+    size_t find_len = 0;
+    while (to_find[find_len]) ++find_len;
+
+    for (size_t i = 0; i < len; ++i) {
+      bool match = true;
+
+      for (size_t j = 0; j < find_len; j++) {
+        if (i + j >= len || start[i + j] != to_find[j]) {
+          match = false;
+          break;
+        }
+      }
+
+      if (match) {
+        return &start[i];  // found match
+      }
+    }
+
+    return nullptr;  // no match found
+  }
 
   bool operator==(const string_view &other) const {
-    return (
-      len == other.len &&
-      memcmp(start, other.start, len) == 0
-    );
+    return (len == other.len && memcmp(start, other.start, len) == 0);
   }
 
   std::strong_ordering operator<=>(const string_view &other) const {
@@ -43,12 +65,12 @@ class string_view {
     if (cmp < 0)
       return std::strong_ordering::less;
     else if (cmp > 0)
-        return std::strong_ordering::greater;
+      return std::strong_ordering::greater;
     else
       return len <=> other.len;
   }
 
-  bool operator==(const char *cstr) const { // do we allow null to be in view?
+  bool operator==(const char *cstr) const {  // do we allow null to be in view?
     for (size_t i = 0; i < len; ++i) {
       if (start[i] != cstr[i]) return false;
     }
@@ -57,16 +79,16 @@ class string_view {
 
   std::strong_ordering operator<=>(const char *cstr) const {
     for (size_t i = 0; i < len; ++i) {
-      if (start[i] < cstr[i]) 
+      if (start[i] < cstr[i])
         return std::strong_ordering::less;
       else if (start[i] > cstr[i])
         return std::strong_ordering::greater;
     }
 
-    if (cstr[len]) 
+    if (cstr[len])
       return std::strong_ordering::less;
-    else 
+    else
       return std::strong_ordering::equal;
   }
 };
-}
+}  // namespace fast
