@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include <stdexcept>
 #include <sys/mman.h>
+#include <csignal>
 
 static constexpr int THREAD_COUNT = 20;
 static constexpr int LINK_COUNT = 1000000; // ONE MILLION
