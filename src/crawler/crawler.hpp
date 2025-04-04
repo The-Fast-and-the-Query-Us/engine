@@ -46,7 +46,7 @@ public:
 
     visited_urls.save();
     crawl_frontier.save();
-    write_blob("", word_bank, bank_mtx);
+    write_blob(itos(chunk_count) + ".txt", word_bank, bank_mtx);
     delete word_bank;
   }
 
@@ -55,13 +55,25 @@ public:
 private:
   volatile sig_atomic_t shutdown_flag = 0;
   // Bloom filter and frontier are thread safe
+  
   fast::crawler::bloom_filter<fast::string> visited_urls;
   fast::crawler::frontier crawl_frontier;
   fast::hashtable *word_bank;
   fast::mutex bank_mtx;
+  int chunk_count{}; // TODO: search dir for next chunk count
   /*std::unordered_map<fast::string, std::unordered_set<fast::string>>*/
   pthread_t thread_pool[THREAD_COUNT]{};
   // We also need a map for robots.txt stuff
+  
+  static fast::string itos(int x) {
+    fast::string s;
+    while (x > 0) {
+      int d = x % 10; // NOLINT
+      x /= 10; // NOLINT
+      s.insert(0, static_cast<char>('0' + d));
+    } 
+    return s;
+  }
 
   void *worker() {
     link_finder html_scraper;
@@ -81,7 +93,7 @@ private:
       }
       crawl_frontier.notify_crawled(url);
       if (word_bank->tokens() > BLOB_THRESHOLD) {
-        write_blob("", word_bank, bank_mtx);
+        write_blob(itos(chunk_count) + ".txt", word_bank, bank_mtx);
       }
     }
     return nullptr;
@@ -118,6 +130,7 @@ private:
 
     munmap(mptr, space);
     close(fd);
+    ++chunk_count;
     bank_mtx.unlock();
   }
 

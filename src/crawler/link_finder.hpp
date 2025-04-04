@@ -279,6 +279,7 @@ private:
     }
   }
 
+  // TODO: strip punctuation, read header to better prune shit
   void destroy_objects() {
     if (path_buffer) {
       delete[] path_buffer;
