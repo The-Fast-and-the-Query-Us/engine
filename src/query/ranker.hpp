@@ -16,6 +16,10 @@
 namespace fast::query {
 
 constexpr size_t SHORT_SPAN_LENGTH = 10;
+constexpr double BASE_PROXIMITY = 25.0;
+constexpr double DECAY_RATE = 1.5;
+constexpr double POSITION_BOOST_MAX = 2.0;
+constexpr double POSITION_BOOST_MIN = 0.6;
 
 enum class meta_stream { TITLE, BODY };
 
@@ -61,6 +65,7 @@ class ranker {
       cur_doc_offset = container->get_doc_start();
       cur_doc_end = container->get_doc_end();
       cur_doc_url = container->get_doc_url();
+      cur_doc_length = cur_doc_end - cur_doc_offset;
       score_doc();
 
       container->next();
@@ -75,25 +80,25 @@ class ranker {
   }
 
   void score_doc() {
-    double score(0.0);
+    cur_doc_score = 0;
 
     // loop for all metastreams
     for (auto& [metastream, multiplier] : meta_stream_mult) {
       if (sz == 1) {
         // do not look for spans
-        score += multiplier * count_single(metastream);
+        cur_doc_score += multiplier * count_single(metastream);
       } else {
         // look for complete spans
-        score += multiplier * count_full(metastream);
+        cur_doc_score += multiplier * count_full(metastream);
 
         // loop for spans of size 2
         if (sz > 2) {
-          score += multiplier * count_doubles(metastream);
+          cur_doc_score += multiplier * count_doubles(metastream);
         }
 
         // look for spans for size 3
         if (sz > 3) {
-          score += multiplier * count_triples(metastream);
+          cur_doc_score += multiplier * count_triples(metastream);
         }
       }
     }
@@ -103,17 +108,17 @@ class ranker {
     // title
 
     // url
-    score *= url_score();
+    cur_doc_score *= url_score();
 
     // insertion sort into top 10
-    if (score < results[fast::query::MAX_RESULTS - 1].first) {
+    if (cur_doc_score < results[fast::query::MAX_RESULTS - 1].first) {
       return;
     }
     size_t i = fast::query::MAX_RESULTS - 1;
 
-    results[i].first = score;
+    results[i].first = cur_doc_score;
     results[i].second = cur_doc_url;
-    while (i >= 1 && score > results[i - 1].first) {
+    while (i >= 1 && cur_doc_score > results[i - 1].first) {
       swap(results[i], results[i - 1]);
       --i;
     }
@@ -121,17 +126,17 @@ class ranker {
 
   double count_single(meta_stream ms) {
     // only one word queries
-    isr** cur_isrs = (ms == meta_stream::BODY) ? isrs : title_isrs;
+    isr** use_isrs = (ms == meta_stream::BODY) ? isrs : title_isrs;
     double score(0.0);
-    cur_isrs[0]->seek(cur_doc_offset);
+    vector<Offset> positions(1);
+    vector<size_t> freqs(1);
+    use_isrs[0]->seek(cur_doc_offset);
 
-    // count frequency of query word
-    size_t count = 0;
-    while (!cur_isrs[0]->is_end() && cur_isrs[0]->offset() < cur_doc_end) {
-      ++count;
-      cur_isrs[0]->next();
-    }
-    score += 1000 * ((double)count) / ((double)cur_doc_end - cur_doc_offset);
+    isr* cur_isrs[1];
+    cur_isrs[0] = use_isrs[0];
+    positions[0] = use_isrs[0]->offset();
+
+    score += count_single_scores(1, cur_isrs, positions, freqs);
 
     return score;
   }
@@ -168,18 +173,22 @@ class ranker {
     }
 
     while (all_in_doc(positions)) {
-      int span_length = get_span_length(num_isrs, rare_idx, positions);
+      double normalized_pos = (positions[0] - cur_doc_offset) / cur_doc_length;
+      double pos_mult =
+          POSITION_BOOST_MAX -
+          (normalized_pos * (POSITION_BOOST_MAX - POSITION_BOOST_MIN));
 
-      // add to score
-      score += num_isrs * (25.0 / span_length);
+      size_t span_length = get_span_length(num_isrs, rare_idx, positions);
+      float proximity_score = BASE_PROXIMITY / log(DECAY_RATE + span_length);
+      score += num_isrs * proximity_score * pos_mult;
 
       if (span_same_order(num_isrs, positions)) {
         // add to score
-        score += num_isrs * 10.0;
+        score += num_isrs * 10.0 * pos_mult;
       }
 
       if (span_phrase_match(num_isrs, positions)) {
-        score += num_isrs * 25.0;
+        score += num_isrs * 25.0 * pos_mult;
       }
 
       if (!word_to_isrs) {
@@ -192,16 +201,7 @@ class ranker {
 
     // finish counting frequencies only once
     if (word_to_isrs) {
-      finish_counting(num_isrs, cur_isrs, positions, freqs);
-
-      size_t total_counts = 0;
-      // count frequencies
-      for (size_t i = 0; i < num_isrs; ++i) {
-        // do something
-        total_counts += freqs[i];
-      }
-      score += 1000 * ((double)total_counts) /
-               ((double)cur_doc_end - cur_doc_offset);
+      score += count_single_scores(num_isrs, cur_isrs, positions, freqs);
     }
 
     return score;
@@ -360,6 +360,14 @@ class ranker {
       while (cur_span_length < prev_span_length) {
         // increment all of group
         for (auto i : isr_pos) {
+          double normalized_pos =
+              (positions[i] - cur_doc_offset) / cur_doc_length;
+          double pos_mult =
+              POSITION_BOOST_MAX -
+              (normalized_pos * (POSITION_BOOST_MAX - POSITION_BOOST_MIN));
+
+          cur_doc_score += 2 * pos_mult;
+
           positions[i] = cur_isrs[i]->offset();
           cur_isrs[i]->next();
           ++freqs[i];
@@ -405,11 +413,18 @@ class ranker {
     }
   }
 
-  void finish_counting(size_t num_isrs, isr** cur_isrs,
-                       vector<Offset>& positions, vector<size_t>& freqs) {
-    // finish counting freqs of all words
+  double count_single_scores(size_t num_isrs, isr** cur_isrs,
+                             vector<Offset>& positions, vector<size_t>& freqs) {
+    double score(0.0);
+    // finish counting all words
     for (size_t i = 0; i < num_isrs; ++i) {
       while (positions[i] < cur_doc_end) {
+        double normalized_pos =
+            (positions[i] - cur_doc_offset) / cur_doc_length;
+        double pos_mult =
+            POSITION_BOOST_MAX -
+            (normalized_pos * (POSITION_BOOST_MAX - POSITION_BOOST_MIN));
+        score += 2 * pos_mult;
         positions[i] = cur_isrs[i]->offset();
         cur_isrs[i]->next();
         ++freqs[i];
@@ -431,8 +446,11 @@ class ranker {
   vector<string_view>& flattened;
   size_t sz;
 
+  double cur_doc_score;
+
   Offset cur_doc_offset;
   Offset cur_doc_end;
+  size_t cur_doc_length;
   string_view cur_doc_url;
 
   size_t rare_word_idx;
