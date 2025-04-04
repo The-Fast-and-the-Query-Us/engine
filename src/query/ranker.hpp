@@ -34,6 +34,7 @@ class ranker {
     sz = flattened.size();
 
     isrs = (isr**)malloc((sz) * sizeof(isr*));
+    title_isrs = (isr**)malloc((sz) *sizeof(isr*));
 
     // get rarest word
     rare_word_idx = 0;
@@ -77,6 +78,11 @@ class ranker {
       free(isrs[i]);
     };
     free(isrs);
+
+    for (auto i = 0; i < sz; ++i) {
+      free(title_isrs[i]);
+    }
+    free(title_isrs);
   }
 
   void score_doc() {
