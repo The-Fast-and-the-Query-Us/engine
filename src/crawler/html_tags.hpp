@@ -1,10 +1,8 @@
-#include <cstring>
+#include "html_tags.h"
 #include <cassert>
-#include "HtmlTags.h"
+#include <cstring>
 
-static char lower(char c) {
-  return ('A' <= c && c <= 'Z') ? c + 32 : c;
-}
+static char lower(char c) { return ('A' <= c && c <= 'Z') ? c + 32 : c; }
 
 // -1 => name < tag
 // 0 => name == tag
@@ -12,8 +10,10 @@ static char lower(char c) {
 static int cmp(const char *name, const char *end, size_t idx) {
   auto tp = TagsRecognized[idx].Tag;
   while (name != end) {
-    if (lower(*name) < *tp) return -1;
-    else if (lower(*name) > *tp) return 1;
+    if (lower(*name) < *tp)
+      return -1;
+    else if (lower(*name) > *tp)
+      return 1;
     ++name;
     ++tp;
   }
@@ -28,15 +28,18 @@ static int cmp(const char *name, const char *end, size_t idx) {
 // the corresponding action.
 // If the name is not found, return OrdinaryText.
 
-DesiredAction LookupPossibleTag( const char *name, const char *nameEnd ) {
+DesiredAction LookupPossibleTag(const char *name, const char *nameEnd) {
   size_t l = 0;
   size_t r = NumberOfTags;
   while (l < r) {
     const auto m = (l + r) >> 1;
     const auto c = cmp(name, nameEnd, m);
-    if (c < 0) r = m;
-    else if (c > 0) l = m + 1;
-    else return TagsRecognized[m].Action;
+    if (c < 0)
+      r = m;
+    else if (c > 0)
+      l = m + 1;
+    else
+      return TagsRecognized[m].Action;
   }
   return DesiredAction::OrdinaryText;
 }

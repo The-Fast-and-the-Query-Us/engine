@@ -26,8 +26,8 @@ class string {
     start_ = static_cast<char *>(realloc(start_, need + 1));
     cap = need;
   }
-public:
 
+public:
   string() {
     grow(8);
     len_ = 0;
@@ -90,10 +90,12 @@ public:
   }
 
   void reverse(size_t l, size_t r) {
-    for (; l < (l + r) / 2; ++l) {
+    while (l < r) {
       char temp = *(start_ + l);
       *(start_ + l) = *(start_ + r);
-      *(start_ + r--) = temp;
+      *(start_ + r) = temp;
+      l++;
+      r--;
     }
   }
 
@@ -167,19 +169,17 @@ public:
 
   string_view view() const { return this->operator string_view(); }
 
-  template<class T>
+  template <class T>
   bool operator==(const T &other) const {
     return this->view() == static_cast<string_view>(other);
   }
 
-  template<class T>
+  template <class T>
   std::strong_ordering operator<=>(const T &other) const {
     return this->view() <=> static_cast<string_view>(other);
   }
 
-  bool operator==(const char *cstr) const {
-    return this->view() == cstr;
-  }
+  bool operator==(const char *cstr) const { return this->view() == cstr; }
 
   std::strong_ordering operator<=>(const char *cstr) const {
     return this->view() <=> cstr;

@@ -10,6 +10,8 @@
 #include <iostream>
 #include <map>
 #include <sys/fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
 
@@ -21,8 +23,12 @@ namespace fast::crawler {
 //  - redirects
 class frontier {
 public:
-  frontier(const char *_save_path) : save_path(_save_path) {
+  frontier(const char *_save_path, const char *seed_list = nullptr)
+      : save_path(_save_path) {
     priorities.resize(4);
+    if (seed_list) {
+      load_seed_list(seed_list);
+    }
   }
 
   void insert(fast::string &url) {
@@ -75,6 +81,46 @@ public:
     }
 
     return "";
+  }
+
+  void load_seed_list(const char *fp) {
+    mtx.lock();
+    int fd = open(fp, O_RDONLY);
+    if (fd == -1) {
+      perror("failed to open seedlist");
+      return;
+    }
+
+    struct stat sb;
+    if (fstat(fd, &sb) == -1) {
+      perror("fstat");
+      close(fd);
+      exit(EXIT_FAILURE);
+    }
+    size_t length = sb.st_size;
+
+    char *file =
+        static_cast<char *>(mmap(NULL, length, PROT_READ, MAP_PRIVATE, fd, 0));
+    if (file == MAP_FAILED) {
+      perror("mmap");
+      return;
+    }
+    close(fd);
+
+    char *end = file + length;
+    while (file < end) {
+      fast::string url{};
+      while (file < end && *file != '\n') {
+        url += *file++;
+      }
+      file++;
+
+      mtx.unlock();
+      insert(url);
+      mtx.lock();
+    }
+    mtx.unlock();
+    munmap(file, length);
   }
 
   void notify_crawled(fast::string &url) {
@@ -276,6 +322,9 @@ private:
     while (idx > 0 && hostname[idx] != '.')
       tld += hostname[idx--];
 
+    if (tld.size() == 0) {
+      return score;
+    }
     tld.reverse(0, tld.size() - 1);
 
     for (auto d : good_tld) {

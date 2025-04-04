@@ -3,17 +3,17 @@
 #include "bloom_filter.hpp"
 #include "frontier.hpp"
 #include "link_finder.hpp"
-#include <hashtable.hpp>
 #include <hashblob.hpp>
+#include <hashtable.hpp>
 #include <pthread.h>
 #include <stdexcept>
 #include <sys/mman.h>
-#include <unordered_map>
 
 static constexpr int THREAD_COUNT = 20;
 static constexpr int LINK_COUNT = 1000000; // ONE MILLION
 static constexpr const char *BLOOM_FILE_PATH = "bloom_filter_dump.dat";
 static constexpr const char *FRONTIER_PATH = "fronter_dump.dat";
+static constexpr const char *SEED_LIST = "./seed_list.txt";
 static constexpr size_t BLOOM_FILTER_NUM_OBJ = 1e6;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 500'000;
@@ -22,7 +22,7 @@ class crawler {
 public:
   crawler()
       : visited_urls(BLOOM_FILTER_NUM_OBJ, BLOOM_FILTER_FPR, BLOOM_FILE_PATH),
-        crawl_frontier(FRONTIER_PATH),
+        crawl_frontier(FRONTIER_PATH, SEED_LIST),
         word_bank(new fast::hashtable) {}
 
   void run() {
@@ -30,8 +30,8 @@ public:
       // Lambda used as worker is not static
       if (pthread_create(
               &t, nullptr,
-              [](void *arg) -> void* {
-                auto self = static_cast<crawler*>(arg);
+              [](void *arg) -> void * {
+                auto self = static_cast<crawler *>(arg);
                 self->worker();
                 return nullptr;
               },
@@ -55,7 +55,7 @@ public:
 private:
   volatile sig_atomic_t shutdown_flag = 0;
   // Bloom filter and frontier are thread safe
-  
+
   fast::crawler::bloom_filter<fast::string> visited_urls;
   fast::crawler::frontier crawl_frontier;
   fast::hashtable *word_bank;
@@ -64,14 +64,14 @@ private:
   /*std::unordered_map<fast::string, std::unordered_set<fast::string>>*/
   pthread_t thread_pool[THREAD_COUNT]{};
   // We also need a map for robots.txt stuff
-  
+
   static fast::string itos(int x) {
     fast::string s;
     while (x > 0) {
       int d = x % 10; // NOLINT
-      x /= 10; // NOLINT
+      x /= 10;        // NOLINT
       s.insert(0, static_cast<char>('0' + d));
-    } 
+    }
     return s;
   }
 
@@ -85,7 +85,8 @@ private:
       }
       visited_urls.insert(url);
       html_scraper.parse_url(url.begin());
-      fast::vector<fast::string> extracted_links = html_scraper.parse_html(*word_bank, bank_mtx);
+      fast::vector<fast::string> extracted_links =
+          html_scraper.parse_html(*word_bank, bank_mtx);
       for (auto &link : extracted_links) {
         if (!visited_urls.contains(link)) {
           crawl_frontier.insert(link);
@@ -99,7 +100,8 @@ private:
     return nullptr;
   }
 
-  void write_blob(const fast::string &path, fast::hashtable *word_bank, fast::mutex &bank_mtx) {
+  void write_blob(const fast::string &path, fast::hashtable *word_bank,
+                  fast::mutex &bank_mtx) {
     bank_mtx.lock();
     const auto fd = open(path.c_str(), O_CREAT | O_RDWR, 0777);
 
@@ -122,7 +124,7 @@ private:
       exit(1);
     }
 
-    auto blob = static_cast<fast::hashblob*>(mptr);
+    auto blob = static_cast<fast::hashblob *>(mptr);
     fast::hashblob::write(*word_bank, blob);
 
     delete word_bank;
@@ -133,5 +135,4 @@ private:
     ++chunk_count;
     bank_mtx.unlock();
   }
-
 };

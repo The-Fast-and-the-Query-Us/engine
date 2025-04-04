@@ -1,11 +1,11 @@
 #pragma once
 
+#include "hashtable.hpp"
+#include "html_file.hpp"
+#include "html_parser.hpp"
+#include "mutex.hpp"
 #include "string.hpp"
 #include "vector.hpp"
-#include "hashtable.hpp"
-#include "mutex.hpp"
-#include "html_file.hpp"
-#include "HtmlParser.h"
 #include <cctype>
 #include <cstdint>
 #include <cstring>
@@ -89,10 +89,12 @@ public:
 
   ~link_finder() { destroy_objects(); }
 
-  fast::vector<fast::string> parse_html(fast::hashtable &word_bank, fast::mutex &bank_mtx) {
+  fast::vector<fast::string> parse_html(fast::hashtable &word_bank,
+                                        fast::mutex &bank_mtx) {
     fast::crawler::html_file html{};
     get_html(html);
-    if (!html.size()) return {};
+    if (!html.size())
+      return {};
 
     HtmlParser parser(html.html, html.size());
     fast::vector<fast::string> links(parser.links.size());
@@ -101,14 +103,18 @@ public:
     }
     bank_mtx.lock();
     for (fast::string &word : parser.words) {
-      while (!is_alphabet(word[0])) word = word.substr(1, word.size()-1);
-      while (!is_alphabet(word[word.size()-1])) word = word.substr(0, word.size()-1);
+      while (!is_alphabet(word[0]))
+        word = word.substr(1, word.size() - 1);
+      while (!is_alphabet(word[word.size() - 1]))
+        word = word.substr(0, word.size() - 1);
       lower(word);
       word_bank.add(word);
     }
     for (fast::string &word : parser.titleWords) {
-      while (!is_alphabet(word[0])) word = word.substr(1, word.size()-1);
-      while (!is_alphabet(word[word.size()-1])) word = word.substr(0, word.size()-1);
+      while (!is_alphabet(word[0]))
+        word = word.substr(1, word.size() - 1);
+      while (!is_alphabet(word[word.size() - 1]))
+        word = word.substr(0, word.size() - 1);
       lower(word);
       word.insert(0, '#');
       word_bank.add(word);
@@ -120,7 +126,7 @@ public:
 
     return links;
   }
-  
+
 private:
   struct addrinfo *address{};
   struct addrinfo hints{};

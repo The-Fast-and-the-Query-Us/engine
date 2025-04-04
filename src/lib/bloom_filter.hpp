@@ -17,18 +17,6 @@
 namespace fast::crawler {
 
 template <typename T>
-concept primitive = std::is_arithmetic_v<T>;
-
-template <typename T>
-concept container = requires(T v) {
-  { v.data() } -> std::convertible_to<const void *>;
-  { v.size() } -> std::convertible_to<size_t>;
-};
-
-template <typename T>
-concept hashable = primitive<T> || container<T>;
-
-template <typename T>
 class bloom_filter {
 public:
   bloom_filter(size_t _n, double _fpr, const char *_save_path)
@@ -168,14 +156,7 @@ private:
   }
 
   pair<const unsigned char *, size_t> serialize(const T &datum) {
-    if constexpr (container<T>)
-      return pair{reinterpret_cast<const unsigned char *>(datum.data()),
-                  datum.size()};
-    else if constexpr (primitive<T>)
-      return pair{reinterpret_cast<const unsigned char *>(&datum),
-                  sizeof(datum)};
-    else
-      throw std::runtime_error("The type provided cannot be hashed.");
+    return pair{reinterpret_cast<const unsigned char *>(&datum), datum.size()};
   }
 
   size_t double_hash(uint64_t h1, uint64_t h2, uint32_t i) {
@@ -192,4 +173,4 @@ private:
   }
 };
 
-} // namespace fast
+} // namespace fast::crawler
