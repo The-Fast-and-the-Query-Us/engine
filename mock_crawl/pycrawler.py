@@ -38,7 +38,9 @@ logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-BASE_PATH = "/var"
+BASE_PATH = "~/.local/share/crawler"
+
+os.makedirs(BASE_PATH, exist_ok=True)
 
 def good_domain_authority(url: str) -> bool:
     """Simulate domain authority based on domain type."""
