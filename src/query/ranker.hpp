@@ -11,6 +11,7 @@
 #include "constants.hpp"
 #include "isr.hpp"
 #include "language.hpp"
+#include "url_components.hpp"
 
 namespace fast::query {
 
@@ -57,19 +58,24 @@ class ranker {
     for (size_t i = 0; i < sz; ++i) {
       free(isrs[i]);
     };
+    free(isrs);
   }
 
   void score_doc() {
     double score(0.0);
 
-    score += count_full();
+    if (sz == 1) {
+      score += count_single();
+    } else {
+      score += count_full();
 
-    if (sz > 2) {
-      score += count_doubles();
-    }
+      if (sz > 2) {
+        score += count_doubles();
+      }
 
-    if (sz > 3) {
-      score += count_triples();
+      if (sz > 3) {
+        score += count_triples();
+      }
     }
 
     // static ranks
@@ -77,7 +83,7 @@ class ranker {
     // title
 
     // url
-    score += url_score();
+    // score *= url_score();
 
     // insertion sort into top 10
     if (score < results[fast::query::MAX_RESULTS - 1].first) {
@@ -91,6 +97,19 @@ class ranker {
       swap(results[i], results[i - 1]);
       --i;
     }
+  }
+
+  double count_single() {
+    double score(0.0);
+    isrs[0]->seek(cur_doc_offset);
+    size_t count = 0;
+    while (!isrs[0]->is_end() && isrs[0]->offset() < cur_doc_end) {
+      ++count;
+      isrs[0]->next();
+    }
+    score += 1000 * ((double)count) / ((double)cur_doc_end - cur_doc_offset);
+
+    return score;
   }
 
   double count_spans(size_t num_isrs, isr** cur_isrs, size_t rare_idx,
@@ -120,38 +139,40 @@ class ranker {
 
     while (!cur_isrs[rare_idx]->is_end() &&
            cur_isrs[rare_idx]->offset() < cur_doc_end) {
-      if (num_isrs != 1) {
-        int span_length = get_span_length(num_isrs, rare_idx, positions);
+      int span_length = get_span_length(num_isrs, rare_idx, positions);
 
+      // add to score
+      score += num_isrs * (25.0 / span_length);
+
+      if (span_same_order(num_isrs, positions)) {
         // add to score
-        score += num_isrs * (50.0 / span_length);
-
-        if (span_same_order(num_isrs, positions)) {
-          // add to score
-          score += num_isrs * 25;
-        }
-
-        if (span_phrase_match(num_isrs, positions)) {
-          score += num_isrs * 100;
-        }
+        score += num_isrs * 10.0;
       }
-      if (word_to_isrs == nullptr) {
-        increment_isrs(num_isrs, cur_isrs, rare_idx, positions, freqs);
+
+      if (span_phrase_match(num_isrs, positions)) {
+        score += num_isrs * 25.0;
+      }
+
+      if (!word_to_isrs) {
+        increment_isrs(num_isrs, cur_isrs, rare_idx, positions);
       } else {
         increment_isrs(num_isrs, cur_isrs, rare_idx, positions, freqs,
                        word_to_isrs);
       }
     }
 
-    finish_counting(num_isrs, cur_isrs, positions, freqs);
+    if (word_to_isrs) {
+      finish_counting(num_isrs, cur_isrs, positions, freqs);
 
-    size_t total_counts = 0;
-    // count frequencies
-    for (size_t i = 0; i < num_isrs; ++i) {
-      // do something
-      total_counts += freqs[i];
+      size_t total_counts = 0;
+      // count frequencies
+      for (size_t i = 0; i < num_isrs; ++i) {
+        // do something
+        total_counts += freqs[i];
+      }
+      score += 1000 * ((double)total_counts) /
+               ((double)cur_doc_end - cur_doc_offset);
     }
-    score += total_counts / sz;
 
     return score;
   }
@@ -297,7 +318,7 @@ class ranker {
   }
 
   void increment_isrs(size_t num_isrs, isr** cur_isrs, size_t rare_idx,
-                      vector<Offset>& positions, vector<size_t>& freqs) {
+                      vector<Offset>& positions) {
     cur_isrs[rare_idx]->next();
     Offset target_pos = cur_isrs[rare_idx]->offset();
     if (target_pos >= cur_doc_end) {
@@ -316,7 +337,6 @@ class ranker {
         positions[i] = cur_pos;
         cur_isrs[i]->next();
         cur_pos = cur_isrs[i]->offset();
-        ++freqs[i];
       }
     }
   }
@@ -334,12 +354,9 @@ class ranker {
 
   double url_score() {
     double score(0.0);
-    // implement domain .gov vs .edu vs .com
+    auto url_comp = url_components(cur_doc_url);
 
-    // implement url length
-    // implement url depth
-
-    return score;
+    return url_comp.get_multiplier();
   }
 
  private:
