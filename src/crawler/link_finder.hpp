@@ -113,7 +113,7 @@ public:
       while (!is_alphabet(word[word.size() - 1]))
         word = word.substr(0, word.size() - 1);
       lower(word);
-      word.insert(0, '#');
+      word += '#';
       word_bank.add(word);
     }
     word_bank.add_doc(url);

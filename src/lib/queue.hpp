@@ -16,7 +16,8 @@ public:
   queue(const queue &other)
       : sz(other.sz), cap(other.cap), l(other.l), r(other.r),
         buf(new T[other.cap]) {
-    std::memcpy(buf, other.buf, sz);
+    for (size_t i = l; i < r; i = (i + 1) % cap)
+      buf[i] = other.buf[i];
   }
 
   queue(queue &&other)
@@ -33,7 +34,8 @@ public:
       r = other.r;
       delete[] buf;
       buf = new T[cap];
-      std::memcpy(buf, other.buf, sz);
+      for (size_t i = l; i < r; i = (i + 1) % cap)
+        buf[i] = other.buf[i];
     }
     return *this;
   }

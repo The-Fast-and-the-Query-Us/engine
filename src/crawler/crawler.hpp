@@ -55,8 +55,6 @@ public:
 
 private:
   volatile sig_atomic_t shutdown_flag = 0;
-  // Bloom filter and frontier are thread safe
-
   fast::crawler::bloom_filter<fast::string> visited_urls;
   fast::crawler::frontier crawl_frontier;
   fast::hashtable *word_bank;
