@@ -38,11 +38,7 @@ logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-bf = BloomFilter(
-    max_elements=1000000, error_rate=0.02, filename="/tmp/bloom.bin"
-)
-queue = Queue("/tmp/queue.bin", autosave=True)
-
+BASE_PATH = "/var"
 
 def good_domain_authority(url: str) -> bool:
     """Simulate domain authority based on domain type."""
@@ -102,9 +98,6 @@ def get_and_parse(url: str):
 
 
 def should_crawl(url: str) -> bool:
-    if url in bf:
-        return False
-
     parsed = urlparse(url)
 
     if any(parsed.path.lower().endswith(ext) for ext in IGNORED_EXTENSIONS):
@@ -127,50 +120,25 @@ def should_crawl(url: str) -> bool:
     if any(blocked in parsed.netloc.lower() for blocked in BLOCKED_DOMAINS):
         return False
 
-    if len(url) > 35:
-        return False
-
     return True
 
+CHUNK_NUM_PATH = BASE_PATH + "/index_chunk"
 
-die = False
+INDEX_PATH = BASE_PATH + "/index"
 
-
-def sig_int_handle(signal, frame):
-    print("sigint recved setting flag")
-    global die
-    die = True
-
-
-signal.signal(signal.SIGINT, sig_int_handle)
-
-index_path = "/tmp/index"
-os.makedirs(index_path, exist_ok=True)
-
-try:
-    with open("/tmp/index_chunk", "x") as f:
-        f.write(str(0))
-    logging.info("initialize index counter")
-except Exception as _:
-    logging.info("Crawler already init counter")
-
-with open("init.txt") as f:
-    for word in f.read().split():
-        if word not in bf:
-            logging.info("putting word : %s", word)
-            bf.add(word)
-            queue.put(word)
-        else:
-            logging.info("skipping init word already in Bloom")
-
+def maybe_init_chunk():
+    try:
+        with open(CHUNK_NUM_PATH, "x") as f:
+            f.write(str(0))
+    except:
+        logging.info("Skipping chunk init")
 
 def get_chunk_number() -> int:
-    with open("/tmp/index_chunk", "r") as f:
+    with open(CHUNK_NUM_PATH, "r") as f:
         return int(f.read())
 
-
 def write_chunk_number(num: int):
-    with open("/tmp/index_chunk", "w") as f:
+    with open(CHUNK_NUM_PATH, "w") as f:
         f.write(str(num))
 
 
@@ -179,57 +147,72 @@ def same_domain(url1, url2):
     domain2 = urlparse(url2).netloc.lower()
     return domain1 == domain2
 
+def main():
+    bf = BloomFilter(max_elements=1000000, error_rate=0.01, filename=BASE_PATH + "/bloom.bin")
+    queue = Queue(BASE_PATH + "/queue.bin", autosave=True)
 
-pybind.alloc()
+    os.makedirs(INDEX_PATH, exist_ok=True)
 
-while not queue.empty() and not die:
-    url = queue.get()
-    queue.task_done()
+    die = False
+    def sig_int_handle(signal, frame):
+        print("sigint recved setting flag")
+        nonlocal die
+        die = True
+    signal.signal(signal.SIGINT, sig_int_handle)
 
-    words, links = get_and_parse(url)
+    maybe_init_chunk()
 
-    if words is not None:
-        for word in words:
-            pybind.add_word(word)
+    with open("init.txt", "r") as seeds:
+        for seed in seeds:
+            stripped = seed.strip()
+            if stripped not in bf:
+                queue.put(stripped)
+                bf.add(stripped)
 
-        pybind.add_url(url)
+    pybind.alloc()
 
-        same_domain_count = 0
+    while not die and not queue.empty():
+        url = queue.get()
+        queue.task_done()
 
-        for link in links:
-            if queue.qsize() > 1000:
-                break
+        words, links = get_and_parse(url)
+        if words is not None and links is not None:
+            for word in words:
+                pybind.add_word(word)
 
-            if same_domain(url, link):
-                if same_domain_count < 3 and should_crawl(link):
-                    logging.info("SAME DOMAIN LINK: %s", link)
-                    same_domain_count += 1
-                    queue.put(link)
+            pybind.add_url(url)
+
+            if pybind.num_tokens() > 1000000:
+                chunk_id = get_chunk_number()
+                pybind.write_blob(INDEX_PATH + '/' + str(chunk_id))
+                write_chunk_number(chunk_id + 1)
+
+            link_count = 0
+            same_count = 0
+            for link in links:
+                if queue.qsize() > 2000 or link_count > 7:
+                    break
+
+                if link in bf:
+                    continue
+
+                if should_crawl(link):
+                    if same_domain(link, url) and same_count > 2:
+                        continue
+                    if same_domain(link, url):
+                        same_count += 1
+                    link_count += 1
                     bf.add(link)
+                    queue.put(link)
 
-            elif should_crawl(link):
-                logging.info("LINK: %s", link)
-                queue.put(link)
-                bf.add(link)
+    if pybind.num_tokens() > 0:
+        chunk_id = get_chunk_number()
+        pybind.write_blob(INDEX_PATH + '/' + str(chunk_id))
+        write_chunk_number(chunk_id + 1)
 
-        if pybind.num_tokens() >= 500000:
-            chunk_id = get_chunk_number()
-            logging.info("Writing chunk number %d", chunk_id)
-            write_chunk_number(chunk_id + 1)
-            pybind.write_blob(index_path + "/" + str(chunk_id))
-            pybind.erase()
-            pybind.alloc()
-
-            logging.info("finish writing chunk")
+    pybind.erase()
 
 
-# exiting
-bf.close()
-if pybind.num_tokens() > 0:
-    logging.info("Writing out hashmap with size : %d", pybind.num_tokens())
-    chunk_id = get_chunk_number()
-    write_chunk_number(chunk_id + 1)
-    pybind.write_blob(index_path + "/" + str(chunk_id))
+if __name__ == '__main__':
+    main()
 
-pybind.erase()
-logging.info("returning!")
