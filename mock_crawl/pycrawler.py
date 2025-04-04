@@ -151,8 +151,8 @@ def same_domain(url1, url2):
     return domain1 == domain2
 
 def main():
-    bf = BloomFilter(max_elements=1000000, error_rate=0.01, filename=BASE_PATH + "/bloom.bin")
-    queue = Queue(BASE_PATH + "/queue.bin", autosave=True)
+    bf = BloomFilter(max_elements=1000000, error_rate=0.01, filename=str(BASE_PATH / "bloom.bin"))
+    queue = Queue(str(BASE_PATH / "queue.bin"), autosave=True)
 
     os.makedirs(INDEX_PATH, exist_ok=True)
 
@@ -187,7 +187,7 @@ def main():
 
             if pybind.num_tokens() > 1000000:
                 chunk_id = get_chunk_number()
-                pybind.write_blob(INDEX_PATH + '/' + str(chunk_id))
+                pybind.write_blob(str(INDEX_PATH / str(chunk_id)))
                 write_chunk_number(chunk_id + 1)
 
                 pybind.erase()
@@ -213,7 +213,7 @@ def main():
 
     if pybind.num_tokens() > 0:
         chunk_id = get_chunk_number()
-        pybind.write_blob(INDEX_PATH + '/' + str(chunk_id))
+        pybind.write_blob(str(INDEX_PATH / str(chunk_id)))
         write_chunk_number(chunk_id + 1)
 
     pybind.erase()
