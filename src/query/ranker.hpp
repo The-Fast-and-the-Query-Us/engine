@@ -83,7 +83,7 @@ class ranker {
     // title
 
     // url
-    // score *= url_score();
+    score *= url_score();
 
     // insertion sort into top 10
     if (score < results[fast::query::MAX_RESULTS - 1].first) {
@@ -120,6 +120,7 @@ class ranker {
     double score(0.0);
     for (size_t i = 0; i < num_isrs; ++i) {
       cur_isrs[i]->seek(cur_doc_offset);
+      positions[i] = cur_isrs[i]->offset();
     }
 
     if (word_to_isrs) {
@@ -137,8 +138,7 @@ class ranker {
       positions[i] = cur_isrs[i]->offset();
     }
 
-    while (!cur_isrs[rare_idx]->is_end() &&
-           cur_isrs[rare_idx]->offset() < cur_doc_end) {
+    while (all_in_doc(positions)) {
       int span_length = get_span_length(num_isrs, rare_idx, positions);
 
       // add to score
@@ -157,7 +157,7 @@ class ranker {
         increment_isrs(num_isrs, cur_isrs, rare_idx, positions);
       } else {
         increment_isrs(num_isrs, cur_isrs, rare_idx, positions, freqs,
-                       word_to_isrs);
+                       *word_to_isrs);
       }
     }
 
@@ -245,6 +245,15 @@ class ranker {
   size_t size() { return sz; }
 
  private:
+  bool all_in_doc(vector<Offset>& positions) {
+    for (size_t i = 0; i < positions.size(); ++i) {
+      if (positions[i] >= cur_doc_end) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   size_t get_span_length(size_t num_isrs, size_t rare_idx,
                          vector<Offset>& positions) {
     Offset min_off = positions[rare_idx];
@@ -278,24 +287,25 @@ class ranker {
 
   void increment_isrs(size_t num_isrs, isr** cur_isrs, size_t rare_idx,
                       vector<Offset>& positions, vector<size_t>& freqs,
-                      std::map<string, vector<size_t>>* word_to_isrs) {
-    cur_isrs[rare_idx]->next();
-    Offset target_pos = cur_isrs[rare_idx]->offset();
-    if (target_pos >= cur_doc_end) {
+                      std::map<string, vector<size_t>>& word_to_isrs) {
+    for (auto& isr_pos : word_to_isrs[flattened[rare_idx]]) {
+      positions[isr_pos] = cur_isrs[isr_pos]->offset();
+      cur_isrs[isr_pos]->next();
+      ++freqs[isr_pos];
+    }
+    Offset span_front = word_to_isrs[flattened[rare_idx]][0];
+    Offset span_back = word_to_isrs[flattened[rare_idx]].back();
+    if (span_back >= cur_doc_end) {  // what does is_end return?
       return;
     }
-    for (auto& [word, isr_pos] : *word_to_isrs) {
+    for (auto& [word, isr_pos] : word_to_isrs) {
       if (word == flattened[rare_idx]) {
         continue;
       }
-      Offset front = cur_isrs[isr_pos[0]]->offset();
+      Offset front = cur_isrs[isr_pos.front()]->offset();
       Offset back = cur_isrs[isr_pos.back()]->offset();
 
-      Offset cur_span_length = max(target_pos - front, back - target_pos);
-
-      if (target_pos < back && target_pos > front) {
-        cur_span_length = back - front;
-      }
+      Offset cur_span_length = max(back, span_back) - min(front, span_front);
 
       Offset prev_span_length = UINT32_MAX;
 
@@ -305,14 +315,10 @@ class ranker {
           cur_isrs[i]->next();
           ++freqs[i];
         }
-        front = cur_isrs[isr_pos[0]]->offset();
+        front = cur_isrs[isr_pos.front()]->offset();
         back = cur_isrs[isr_pos.back()]->offset();
         prev_span_length = cur_span_length;
-        cur_span_length = max(target_pos - front, back - target_pos);
-
-        if (target_pos < back && target_pos > front) {
-          cur_span_length = back - front;
-        }
+        cur_span_length = max(back, span_back) - min(front, span_front);
       }
     }
   }

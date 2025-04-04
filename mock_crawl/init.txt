@@ -1,4 +1,3 @@
-https://www.wikipedia.org
 https://www.nytimes.com
 https://www.food.com
 https://www.osu.edu
@@ -30,3 +29,9 @@ https://dblp.org/
 https://www.fanduel.com/
 https://www.linkedin.com/
 https://www.espn.com/
+https://nicolehamilton.com
+https://en.wikipedia.org/wiki/LeBron_James
+https://stackoverflow.com/
+https://www.cnn.com/
+https://www.amazon.com/
+https://curlie.org/en
