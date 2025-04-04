@@ -145,6 +145,11 @@ def write_chunk_number(num: int):
     with open("/tmp/index_chunk", 'w') as f:
         f.write(str(num))
 
+def same_domain(url1, url2):
+    domain1 = urlparse(url1).netloc.lower()
+    domain2 = urlparse(url2).netloc.lower()
+    return domain1 == domain2
+
 pybind.alloc()
 
 while not queue.empty() and not die:
@@ -152,23 +157,30 @@ while not queue.empty() and not die:
     queue.task_done()
 
     words, links = get_and_parse(url)
-    if words is not None:
 
+    if words is not None:
         for word in words:
             pybind.add_word(word)
 
         pybind.add_url(url)
 
-        count = 0
+        same_domain_count = 0
 
         for link in links:
-            if queue.qsize() > 1000 or count > 20:
+            if queue.qsize() > 1000:
                 break
+
+            if same_domain(url, link):
+                if same_domain_count < 3:
+                    logging.info("SAME DOMAIN LINK: %s", link)
+                    same_domain_count += 1
+                    queue.put(link)
+                    bf.add(link)
+
             elif should_crawl(link):
                 logging.info("LINK: %s", link)
                 queue.put(link)
                 bf.add(link)
-                count += 1
 
         if pybind.num_tokens() >= 500000:
             chunk_id = get_chunk_number()
@@ -181,8 +193,8 @@ while not queue.empty() and not die:
             logging.info("finish writing chunk")
 
 
+# exiting
 bf.close()
-
 if pybind.num_tokens() > 0:
     logging.info("Writing out hashmap with size : %d", pybind.num_tokens())
     chunk_id = get_chunk_number()
