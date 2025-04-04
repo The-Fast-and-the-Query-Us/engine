@@ -1,21 +1,19 @@
 #pragma once
 
-#include "../lib/condition_variable.hpp"
-#include "../lib/queue.hpp"
-#include "../lib/scoped_lock.hpp"
-#include "../lib/string.hpp"
-#include "../lib/vector.hpp"
+#include "condition_variable.hpp"
+#include "queue.hpp"
+#include "scoped_lock.hpp"
+#include "string.hpp"
+#include "vector.hpp"
 
 #include <cstdint>
 #include <iostream>
 #include <map>
-#include <queue>
 #include <sys/fcntl.h>
 #include <unistd.h>
 #include <vector>
 
-namespace fast {
-namespace crawler {
+namespace fast::crawler {
 
 // TODO:
 //  - Add blacklist?
@@ -24,12 +22,12 @@ namespace crawler {
 class frontier {
 public:
   frontier(const char *_save_path) : save_path(_save_path) {
-    num_links = 0;
     priorities.resize(4);
   }
 
   void insert(fast::string &url) {
     fast::scoped_lock lock(&mtx);
+    std::cout << "lock acquired\n";
 
     int pri_level = calc_priority(url);
     if (pri_level < 0)
@@ -38,17 +36,23 @@ public:
     priorities[pri_level].push(url);
 
     ++num_links;
+    std::cout << "there are now " << num_links << " links\n";
     cv.signal();
   }
 
   fast::string next() {
     fast::scoped_lock lock(&mtx);
+    std::cout << "next()\n";
 
-    while (num_links == 0)
+    std::cout << "num_links: " << num_links << '\n';
+    while (num_links == 0) {
+      std::cout << "going to sleep\n";
       cv.wait(&mtx);
+    }
+    std::cout << "waking up\n";
 
     for (int64_t i = priorities.size() - 1; i >= 0; --i) {
-      std::queue<fast::string> &curr_pri = priorities[i];
+      fast::queue<fast::string> &curr_pri = priorities[i];
 
       if (!curr_pri.empty()) {
         const size_t n = curr_pri.size();
@@ -61,6 +65,7 @@ public:
           if (crawl_cnt[curr_hostname] <= CRAWL_LIM) {
             ++crawl_cnt[curr_hostname];
             --num_links;
+            std::cout << "there are now " << num_links << " links\n";
             return curr_hostname;
           }
 
@@ -109,13 +114,14 @@ public:
       }
 
       total_priority_bytes += pri_sz_written;
-      std::queue<fast::string> t_q = priorities[i];
+      fast::queue<fast::string> t_q = priorities[i];
 
       for (size_t j = 0; j < pri_sz; ++j) {
         fast::string f = t_q.front();
         t_q.pop();
         size_t f_len = f.size();
 
+        std::cout << "writing f_len: " << f_len << '\n';
         ssize_t link_len_written = write(fd, &f_len, sizeof(f_len));
         if (link_len_written == -1) {
           std::cerr << "Failed writing string length in frontier save(): "
@@ -125,7 +131,8 @@ public:
         }
         total_priority_bytes += link_len_written;
 
-        ssize_t link_written = write(fd, f.c_str(), f.size());
+        std::cout << "writing f.c_str(): " << f.c_str() << '\n';
+        ssize_t link_written = write(fd, f.c_str(), f_len);
 
         if (link_written == -1) {
           std::cerr << "Failed writing an element of priority queue in "
@@ -152,6 +159,7 @@ public:
     }
 
     ssize_t num_links_read = read(fd, &num_links, sizeof(uint64_t));
+    std::cout << "read num_links: " << num_links << '\n';
     if (num_links_read == -1) {
       std::cerr << "failed reading num_links in frontier load()";
       close(fd);
@@ -219,11 +227,11 @@ private:
 
   fast::condition_variable cv;
 
-  uint64_t num_links;
+  uint64_t num_links{0};
 
   const char *save_path;
 
-  fast::vector<std::queue<fast::string>> priorities;
+  fast::vector<fast::queue<fast::string>> priorities;
 
   // Need to finish fast::hashmap
   std::map<fast::string, uint8_t> crawl_cnt;
@@ -281,5 +289,4 @@ private:
   }
 };
 
-} // namespace crawler
-} // namespace fast
+} // namespace fast::crawler

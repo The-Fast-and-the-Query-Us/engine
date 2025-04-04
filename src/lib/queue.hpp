@@ -1,32 +1,35 @@
 // Templated queue
 #pragma once
-#include "exception.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
+#include "exception.hpp"
 
 namespace fast {
 
 template <typename T>
 class queue {
-public:
+ public:
   queue() : sz(0), cap(0), l(0), r(0), buf(nullptr) {}
 
-  queue(const queue &other)
-      : sz(other.sz), cap(other.cap), l(other.l), r(other.r),
+  queue(const queue& other)
+      : sz(other.sz),
+        cap(other.cap),
+        l(other.l),
+        r(other.r),
         buf(new T[other.cap]) {
     std::memcpy(buf, other.buf, sz);
   }
 
-  queue(queue &&other)
+  queue(queue&& other)
       : sz(other.sz), cap(other.cap), l(other.l), r(other.r), buf(other.buf) {
     other.buf = nullptr;
     other.sz = other.cap = other.l = other.r = 0;
   }
 
-  queue &operator=(const queue &other) {
-    if (!other.buf == buf) {
+  queue& operator=(const queue& other) {
+    if (other.buf != buf) {
       sz = other.sz;
       cap = other.cap;
       l = other.l;
@@ -38,7 +41,7 @@ public:
     return *this;
   }
 
-  queue &operator=(queue &&other) {
+  queue& operator=(queue&& other) {
     sz = other.sz;
     cap = other.cap;
     l = other.l;
@@ -52,19 +55,19 @@ public:
 
   ~queue() { delete[] buf; }
 
-  T &front() {
+  T& front() {
     if (!sz)
       throw(fast::exception("Front on empty queue\n"));
     return buf[l];
   }
 
-  T &back() {
+  T& back() {
     if (!sz)
       throw(fast::exception("Front on empty queue\n"));
-    return buf[r];
+    return buf[(r + cap - 1) % cap];
   }
 
-  void push(const T &e) {
+  void push(const T& e) {
     if (cap == sz) {
       grow();
     }
@@ -74,7 +77,7 @@ public:
   }
 
   void pop() {
-    r = (r - 1 + sz) % sz;
+    l = (l + 1) % cap;
     --sz;
   }
 
@@ -82,29 +85,45 @@ public:
 
   inline bool empty() { return sz == 0; }
 
-private:
+  void print() {
+    std::cout << "index:\t";
+    for (size_t i = 0; i < cap; ++i) {
+      std::cout << i << "\t";
+    }
+    std::cout << '\n';
+    std::cout << "value:\t";
+    for (size_t i = 0; i < cap; ++i) {
+      std::cout << buf[i] << "\t";
+    }
+    std::cout << '\n';
+    std::cout << "l/r: \t";
+    for (size_t i = 0; i < cap; ++i) {
+      std::cout << (i == l ? 'l' : (i == r ? 'r' : ' ')) << "\t";
+    }
+    std::cout << '\n';
+  }
+
+ private:
   size_t sz, cap, l, r;
-  T *buf;
+  T* buf;
 
   static inline size_t grow_sz(size_t old) {
     return std::max(old << 1, size_t(2));
   }
 
   void grow() {
+    size_t l_to_end = cap - l;
     cap = grow_sz(cap);
 
-    T *newbuf = new T[cap];
-    size_t tmp = sz - l;
-
-    std::memcpy(newbuf, buf + l, tmp);
-    std::memcpy(newbuf + tmp - 1, buf, l);
+    T* newbuf = new T[cap];
+    memcpy(newbuf, buf + l, l_to_end * sizeof(T));
+    memcpy(newbuf + l_to_end, buf, l * sizeof(T));
 
     l = 0;
-    if (sz > 0)
-      r = sz - 1;
+    r = sz;
 
     delete[] buf;
     buf = newbuf;
   }
 };
-} // namespace fast
+}  // namespace fast
