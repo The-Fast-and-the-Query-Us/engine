@@ -3,6 +3,7 @@ import bs4
 import click
 import logging
 import os
+from pathlib import Path
 import signal
 import string
 import sys
@@ -21,8 +22,9 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 
-INDEX_PATH = "/tmp/training-index"
-CHUNK_COUNT_PATH = "/tmp/training-chunk-count"
+BASE_PATH = Path.home() / ".local" / "share" / "crawler" / "training"
+INDEX_PATH = BASE_PATH / "index"
+CHUNK_NUM_PATH = BASE_PATH / "index_chunk"
 
 die = False
 
@@ -42,24 +44,24 @@ signal.signal(signal.SIGINT, sig_int_handle)
 
 def initialize_chunk_count():
     try:
-        with open(CHUNK_COUNT_PATH, "x") as chunk_file:
+        with open(CHUNK_NUM_PATH, "x") as chunk_file:
             chunk_file.write(str(0))
-        logging.info(f"Initialized {CHUNK_COUNT_PATH} to 0")
+        logging.info(f"Initialized {CHUNK_NUM_PATH} to 0")
     except FileExistsError as _:
-        with open(CHUNK_COUNT_PATH, "r") as chunk_file:
+        with open(CHUNK_NUM_PATH, "r") as chunk_file:
             logging.info(
-                f"{CHUNK_COUNT_PATH} already initialized to "
+                f"{CHUNK_NUM_PATH} already initialized to "
                 f"{chunk_file.readline().strip()}"
             )
 
 
 def get_chunk_number() -> int:
-    with open(CHUNK_COUNT_PATH, "r") as f:
+    with open(CHUNK_NUM_PATH, "r") as f:
         return int(f.read())
 
 
 def write_chunk_number(num: int):
-    with open(CHUNK_COUNT_PATH, "w") as f:
+    with open(CHUNK_NUM_PATH, "w") as f:
         f.write(str(num))
 
 
@@ -111,7 +113,7 @@ def write_chunk():
     chunk_id = get_chunk_number()
     logging.info("Writing chunk number %d", chunk_id)
     write_chunk_number(chunk_id + 1)
-    pybind.write_blob(INDEX_PATH + "/" + str(chunk_id))
+    pybind.write_blob(str(INDEX_PATH / str(chunk_id)))
     pybind.erase()
     pybind.alloc()
 
@@ -164,7 +166,7 @@ def main(filename):
         logging.info("Writing out hashmap with size : %d", pybind.num_tokens())
         chunk_id = get_chunk_number()
         write_chunk_number(chunk_id + 1)
-        pybind.write_blob(INDEX_PATH + "/" + str(chunk_id))
+        pybind.write_blob(str(INDEX_PATH / str(chunk_id)))
     pybind.erase()
 
 
