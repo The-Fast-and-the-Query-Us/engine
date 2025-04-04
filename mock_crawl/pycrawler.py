@@ -71,10 +71,14 @@ def get_and_parse(url: str):
     for script in soup(["script", "style"]):
         script.extract()
 
-    text = soup.get_text()
-    text = re.sub(r'\s+', ' ', text)
+    text = soup.get_text(separator=" ", strip=True)
 
+    # Remove punctuation efficiently
+    text = text.translate(str.maketrans("", "", string.punctuation))
+
+    # Convert to lowercase and split into words
     words = text.lower().split()
+
     links = {urljoin(url, a['href']) for a in soup.find_all('a', href=True)}
     return words, links
 
@@ -171,7 +175,7 @@ while not queue.empty() and not die:
                 break
 
             if same_domain(url, link):
-                if same_domain_count < 3:
+                if same_domain_count < 3 and should_crawl(link):
                     logging.info("SAME DOMAIN LINK: %s", link)
                     same_domain_count += 1
                     queue.put(link)
