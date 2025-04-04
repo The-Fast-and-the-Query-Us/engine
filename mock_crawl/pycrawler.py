@@ -125,9 +125,9 @@ def should_crawl(url: str) -> bool:
 
     return True
 
-CHUNK_NUM_PATH = BASE_PATH + "/index_chunk"
+CHUNK_NUM_PATH = BASE_PATH / "index_chunk"
 
-INDEX_PATH = BASE_PATH + "/index"
+INDEX_PATH = BASE_PATH / "index"
 
 def maybe_init_chunk():
     try:
