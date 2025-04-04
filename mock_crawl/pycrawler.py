@@ -8,42 +8,60 @@ import logging
 from bs4 import BeautifulSoup
 from bloom_filter2 import BloomFilter
 from persistqueue import Queue
+import string
 
 build_dir = os.path.abspath("./build")
-sys.path.append(build_dir) # to include non-working directory library
+sys.path.append(build_dir)  # to include non-working directory library
 
 import pybind
+
 # PYBIND INTERFACE (LSP sucks)
-#m.def("alloc", &alloc, "Allocate new hashtable");
-#m.def("erase", &erase, "delete hashtable");
-#m.def("add_word", &add_word);
-#m.def("add_url", &add_url);
-#m.def("num_tokens", &get_word_count);
-#m.def("write_blob", &write_blob);
+# m.def("alloc", &alloc, "Allocate new hashtable");
+# m.def("erase", &erase, "delete hashtable");
+# m.def("add_word", &add_word);
+# m.def("add_url", &add_url);
+# m.def("num_tokens", &get_word_count);
+# m.def("write_blob", &write_blob);
 
-IGNORED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".pdf", ".zip", ".mp4", ".mp3"}
+IGNORED_EXTENSIONS = {
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".pdf",
+    ".zip",
+    ".mp4",
+    ".mp3",
+}
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
-bf = BloomFilter(max_elements=1000000, error_rate=0.02, filename="/tmp/bloom.bin")
+bf = BloomFilter(
+    max_elements=1000000, error_rate=0.02, filename="/tmp/bloom.bin"
+)
 queue = Queue("/tmp/queue.bin", autosave=True)
+
 
 def good_domain_authority(url: str) -> bool:
     """Simulate domain authority based on domain type."""
     domain = urlparse(url).netloc
-    if domain.endswith('.gov') or domain.endswith('.edu'):
+    if domain.endswith(".gov") or domain.endswith(".edu"):
         return True
-    elif domain.endswith('.org'):
+    elif domain.endswith(".org"):
         return True
-    elif domain.endswith('.com'):
+    elif domain.endswith(".com"):
         return True
     else:
         return False
 
+
 def url_depth(url: str) -> int:
     """Calculate depth based on the number of path segments."""
-    path = urlparse(url).path.strip('/')
-    return len(path.split('/')) if path else 0
+    path = urlparse(url).path.strip("/")
+    return len(path.split("/")) if path else 0
+
 
 def get_and_parse(url: str):
     try:
@@ -79,8 +97,9 @@ def get_and_parse(url: str):
     # Convert to lowercase and split into words
     words = text.lower().split()
 
-    links = {urljoin(url, a['href']) for a in soup.find_all('a', href=True)}
+    links = {urljoin(url, a["href"]) for a in soup.find_all("a", href=True)}
     return words, links
+
 
 def should_crawl(url: str) -> bool:
     if url in bf:
@@ -91,7 +110,10 @@ def should_crawl(url: str) -> bool:
     if any(parsed.path.lower().endswith(ext) for ext in IGNORED_EXTENSIONS):
         return False
 
-    if any(x in parsed.path.lower() for x in ["/logout", "/login", "/signup", "/admin"]):
+    if any(
+        x in parsed.path.lower()
+        for x in ["/logout", "/login", "/signup", "/admin"]
+    ):
         return False
 
     if not good_domain_authority(url):
@@ -100,9 +122,7 @@ def should_crawl(url: str) -> bool:
     if url_depth(url) >= 5:
         return False
 
-    BLOCKED_DOMAINS = {
-                "api.", "cdn.", "drive.google.com"
-            }
+    BLOCKED_DOMAINS = {"api.", "cdn.", "drive.google.com"}
 
     if any(blocked in parsed.netloc.lower() for blocked in BLOCKED_DOMAINS):
         return False
@@ -112,12 +132,15 @@ def should_crawl(url: str) -> bool:
 
     return True
 
+
 die = False
+
 
 def sig_int_handle(signal, frame):
     print("sigint recved setting flag")
     global die
     die = True
+
 
 signal.signal(signal.SIGINT, sig_int_handle)
 
@@ -125,7 +148,7 @@ index_path = "/tmp/index"
 os.makedirs(index_path, exist_ok=True)
 
 try:
-    with open("/tmp/index_chunk", 'x') as f:
+    with open("/tmp/index_chunk", "x") as f:
         f.write(str(0))
     logging.info("initialize index counter")
 except Exception as _:
@@ -142,17 +165,20 @@ with open("init.txt") as f:
 
 
 def get_chunk_number() -> int:
-    with open("/tmp/index_chunk", 'r') as f:
+    with open("/tmp/index_chunk", "r") as f:
         return int(f.read())
 
+
 def write_chunk_number(num: int):
-    with open("/tmp/index_chunk", 'w') as f:
+    with open("/tmp/index_chunk", "w") as f:
         f.write(str(num))
+
 
 def same_domain(url1, url2):
     domain1 = urlparse(url1).netloc.lower()
     domain2 = urlparse(url2).netloc.lower()
     return domain1 == domain2
+
 
 pybind.alloc()
 
@@ -190,7 +216,7 @@ while not queue.empty() and not die:
             chunk_id = get_chunk_number()
             logging.info("Writing chunk number %d", chunk_id)
             write_chunk_number(chunk_id + 1)
-            pybind.write_blob(index_path + '/' + str(chunk_id))
+            pybind.write_blob(index_path + "/" + str(chunk_id))
             pybind.erase()
             pybind.alloc()
 
@@ -203,7 +229,7 @@ if pybind.num_tokens() > 0:
     logging.info("Writing out hashmap with size : %d", pybind.num_tokens())
     chunk_id = get_chunk_number()
     write_chunk_number(chunk_id + 1)
-    pybind.write_blob(index_path + '/' + str(chunk_id))
+    pybind.write_blob(index_path + "/" + str(chunk_id))
 
 pybind.erase()
 logging.info("returning!")
