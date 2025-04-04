@@ -27,13 +27,38 @@ public:
         word_bank(new fast::hashtable) {}
 
   void run() {
+    OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS | 
+                     OPENSSL_INIT_LOAD_CRYPTO_STRINGS, nullptr);
+    g_ssl_ctx = SSL_CTX_new(TLS_client_method());
+    if (!g_ssl_ctx) {
+      throw std::runtime_error("Failed to create SSL context");
+    }
+    // Set appropriate security level (if using OpenSSL 1.1.0+)
+    SSL_CTX_set_security_level(g_ssl_ctx, 2);  // Reasonable security level
+
+    // Set a broad cipher list that includes secure ciphers
+    if (SSL_CTX_set_cipher_list(g_ssl_ctx, "HIGH:!aNULL:!kRSA:!PSK:!SRP:!MD5:!RC4") != 1) {
+      SSL_CTX_free(g_ssl_ctx);
+      throw std::runtime_error("Failed to set cipher list");
+    }
+
+    // Enable TLSv1.2 and TLSv1.3 if available
+    SSL_CTX_set_min_proto_version(g_ssl_ctx, TLS1_2_VERSION);
+    // Optional: set max version if needed
+    SSL_CTX_set_max_proto_version(g_ssl_ctx, TLS1_3_VERSION);
+
+    // For TLS 1.3 specific ciphers (if using OpenSSL 1.1.1+)
+#if defined(TLS1_3_VERSION)
+    SSL_CTX_set_ciphersuites(g_ssl_ctx, "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256");
+#endif
+
     for (auto &t : thread_pool) {
       // Lambda used as worker is not static
       if (pthread_create(
               &t, nullptr,
               [](void *arg) -> void * {
                 auto self = static_cast<crawler *>(arg);
-                self->worker();
+                self->worker(self->g_ssl_ctx);
                 return nullptr;
               },
               this)) {
@@ -49,6 +74,7 @@ public:
     crawl_frontier.save();
     write_blob(itos(chunk_count) + ".txt", word_bank, bank_mtx);
     delete word_bank;
+    SSL_CTX_free(g_ssl_ctx);
   }
 
   void shutdown() { shutdown_flag = 1; }
@@ -59,7 +85,8 @@ private:
   fast::crawler::frontier crawl_frontier;
   fast::hashtable *word_bank;
   fast::mutex bank_mtx;
-  int chunk_count{}; // TODO: search dir for next chunk count
+  SSL_CTX *g_ssl_ctx;
+  int chunk_count{}; // TODO: search dir for next chunk count to continue crawling
   /*std::unordered_map<fast::string, std::unordered_set<fast::string>>*/
   pthread_t thread_pool[THREAD_COUNT]{};
   // We also need a map for robots.txt stuff
@@ -74,8 +101,10 @@ private:
     return s;
   }
 
-  void *worker() {
-    link_finder html_scraper;
+  void *worker(void *arg) {
+    auto *ctx = static_cast<SSL_CTX*>(arg);
+    
+    link_finder html_scraper(ctx);
     while (!shutdown_flag) {
       fast::string url = "";
       // TODO: How do we get our start list to the right computers?
@@ -96,6 +125,7 @@ private:
         write_blob(itos(chunk_count) + ".txt", word_bank, bank_mtx);
       }
     }
+    std::cout << "Worker returning\n";
     return nullptr;
   }
 

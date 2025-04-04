@@ -155,7 +155,7 @@ public:
     start_[len_] = 0;
   }
 
-  string substr(size_t i, size_t len) { return string(start_ + i, len); }
+  string substr(size_t i, size_t len) { return string{start_ + i, len}; }
 
   char &operator[](size_t idx) const { return start_[idx]; }
 

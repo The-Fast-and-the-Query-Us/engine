@@ -133,9 +133,9 @@ public:
   // presumed HTML.  It will parse the buffer, stripping out
   // all the HTML tags and producing the list of words in body,
   // words in title, and links found on the page.
-  fast::vector<fast::string> words, titleWords;
-  fast::vector<Link> links;
-  fast::string base;
+  fast::vector<fast::string> words{}, titleWords{};
+  fast::vector<Link> links{};
+  fast::string base{};
 
   HtmlParser(const char *buffer, size_t length) {
     const char *start = buffer;
@@ -254,7 +254,8 @@ public:
                 auto ep = buffer + 5;
                 while (*ep != '\"')
                   ++ep;
-                links.emplace_back(fast::string(buffer + 5, ep));
+                fast::string link = fast::string(buffer + 5, ep);
+                links.push_back(Link(link));
                 buffer = ep;
                 break;
               }
@@ -276,7 +277,8 @@ public:
                 auto ep = buffer + 6;
                 while (*ep != '\"')
                   ++ep;
-                links.emplace_back(fast::string(buffer + 6, ep));
+                fast::string link = fast::string(buffer + 6, ep);
+                links.push_back(Link(link));
                 buffer = ep;
                 break;
               }

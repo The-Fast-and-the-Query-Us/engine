@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <openssl/ssl.h>
+#include <openssl/err.h>
 #include <stdexcept>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -29,55 +30,43 @@ static constexpr char SLASH = '/';
 
 class link_finder {
 public:
+  link_finder(SSL_CTX *c) : ctx(c) {}
+
   void parse_url(const char *file) {
     url = file;
-
     path_buffer = new char[url.size() + 1];
 
     const char *f{};
     char *t{};
     for (t = path_buffer, f = url.begin(); (*t++ = *f++);) {
     }
-
     service = path_buffer;
-
     char *p{};
     for (p = path_buffer; *p && *p != COLON; p++) {
     }
-
     if (*p) {
       // Mark the end of the Service.
       *p++ = 0;
-
-      if (*p == SLASH) {
+      if (*p == SLASH) 
         ++p;
-      }
-      if (*p == SLASH) {
+      if (*p == SLASH)
         ++p;
-      }
 
       host = p;
-
-      for (; *p && *p != SLASH && *p != COLON; p++) {
-      }
+      for (; *p && *p != SLASH && *p != COLON; p++) {}
 
       if (*p == COLON) {
-        // port specified.  Skip over the COLON and
-        // the port number.
         *p++ = 0;
         port = +p;
-        for (; *p && *p != SLASH; p++) {
-        }
+        for (; *p && *p != SLASH; p++) {}
       } else {
         port = p;
       }
 
       if (*p) {
-        // Mark the end of the host and port.
         *p++ = 0;
       }
 
-      // Whatever remains is the path.
       path = p;
     } else {
       host = path = p;
@@ -98,8 +87,12 @@ public:
     for (size_t i = 0; i < links.size(); ++i) {
       links[i] = parser.links[i].URL;
     }
+
     bank_mtx.lock();
     for (fast::string &word : parser.words) {
+      if (word.size() == 0) {
+        continue;
+      }
       while (!is_alphabet(word[0]))
         word = word.substr(1, word.size() - 1);
       while (!is_alphabet(word[word.size() - 1]))
@@ -108,6 +101,8 @@ public:
       word_bank.add(word);
     }
     for (fast::string &word : parser.titleWords) {
+      if (word.size() == 0)
+        continue;
       while (!is_alphabet(word[0]))
         word = word.substr(1, word.size() - 1);
       while (!is_alphabet(word[word.size() - 1]))
@@ -131,7 +126,7 @@ private:
   fast::string url;
   SSL_CTX *ctx{};
   SSL *ssl{};
-  char *path_buffer{}, *service, *host, *port, *path;
+  char *path_buffer{}, *service{}, *host{}, *port{}, *path{};
 
   void setup_connection() {
     memset(&hints, 0, sizeof(hints));
@@ -145,38 +140,36 @@ private:
     sock_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     if (connect(sock_fd, address->ai_addr, address->ai_addrlen) < 0) {
+      perror("brev");
       throw std::runtime_error("Connection to host failed.\n");
-    }
-
-    if (SSL_library_init() < 0) {
-      throw std::runtime_error("Failed to initialize SSL library.\n");
-    }
-
-    ctx = SSL_CTX_new(SSLv23_client_method());
-    if (!ctx) {
-      close(sock_fd);
-      throw std::runtime_error("Failed to create SSL context.\n");
     }
 
     ssl = SSL_new(ctx);
     if (!ssl) {
-      SSL_CTX_free(ctx);
       close(sock_fd);
+      perror("SSL_new failed.");
       throw std::runtime_error("Failed to create SSL connection.\n");
     }
 
     if (SSL_set_fd(ssl, sock_fd) != 1) {
       SSL_free(ssl);
-      SSL_CTX_free(ctx);
       close(sock_fd);
+      perror("SSL_set_fd failed.\n");
       throw std::runtime_error("Failed to bind SSL to socket.\n");
+    }
+    
+    if (!SSL_set_tlsext_host_name(ssl, host)) {
+      SSL_free(ssl);
+      close(sock_fd);
+      throw std::runtime_error("Failed to set SSL hostname: ");
     }
 
     if (SSL_connect(ssl) != 1) {
       SSL_free(ssl);
-      SSL_CTX_free(ctx);
       close(sock_fd);
-      throw std::runtime_error("SSL connection failed with error.\n");
+      perror("SSL connection failed with error.\n");
+      ERR_print_errors_fp(stderr);
+      throw std::runtime_error("SSL_connect returned -1");
     }
   }
 
@@ -261,8 +254,7 @@ private:
       }
     }
     if (bytes < 0) {
-      destroy_objects();
-      throw std::runtime_error("SSL read failed with error.\n");
+      return;
     }
 
     if (SSL_shutdown(ssl) < 0) {
@@ -300,10 +292,6 @@ private:
     if (address) {
       freeaddrinfo(address);
       address = nullptr;
-    }
-    if (ctx) {
-      SSL_CTX_free(ctx);
-      ctx = nullptr;
     }
   }
 };
