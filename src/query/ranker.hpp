@@ -17,6 +17,8 @@ namespace fast::query {
 
 constexpr size_t SHORT_SPAN_LENGTH = 10;
 
+enum class MetaStream { TITLE, BODY };
+
 class ranker {
  public:
   ranker(const hashblob* index_chunk, vector<string_view>& sv,
@@ -37,8 +39,14 @@ class ranker {
       }
     }
 
+    // intialize isrs
     for (size_t i = 0; i < sz; ++i) {
       isrs[i] = index_chunk->get(flattened[i])->get_isr();
+    }
+
+    for (size_t i = 0; i < sz; ++i) {
+      string title_string = "";
+      title_isrs[i] = index_chunk->get(flattened[i])->get_isr();
     }
 
     // rarest_isr = isrs[rare_word_idx];
@@ -64,19 +72,25 @@ class ranker {
   void score_doc() {
     double score(0.0);
 
+    // for (auto& [metastream, multiplier] : metastreams) {
     if (sz == 1) {
+      // do not look for spans
       score += count_single();
     } else {
+      // look for complete spans
       score += count_full();
 
+      // loop for spans of size 2
       if (sz > 2) {
         score += count_doubles();
       }
 
+      // look for spans for size 3
       if (sz > 3) {
         score += count_triples();
       }
     }
+    //}
 
     // static ranks
 
@@ -293,11 +307,15 @@ class ranker {
       cur_isrs[isr_pos]->next();
       ++freqs[isr_pos];
     }
-    Offset span_front = word_to_isrs[flattened[rare_idx]][0];
-    Offset span_back = word_to_isrs[flattened[rare_idx]].back();
+
+    Offset span_front =
+        isrs[word_to_isrs[flattened[rare_idx]].front()]->offset();
+    Offset span_back = isrs[word_to_isrs[flattened[rare_idx]].back()]->offset();
+
     if (span_back >= cur_doc_end) {  // what does is_end return?
       return;
     }
+
     for (auto& [word, isr_pos] : word_to_isrs) {
       if (word == flattened[rare_idx]) {
         continue;
@@ -317,6 +335,9 @@ class ranker {
         }
         front = cur_isrs[isr_pos.front()]->offset();
         back = cur_isrs[isr_pos.back()]->offset();
+        if (back >= cur_doc_end) {
+          break;
+        }
         prev_span_length = cur_span_length;
         cur_span_length = max(back, span_back) - min(front, span_front);
       }
@@ -378,6 +399,7 @@ class ranker {
   size_t rare_word_idx;
   // isr* rarest_isr;
   isr** isrs;
+  isr** title_isrs;
 };
 
 void blob_rank(
