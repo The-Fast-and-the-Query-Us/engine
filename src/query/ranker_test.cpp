@@ -1,5 +1,7 @@
 #include "constants.hpp"
 #include "ranker.hpp"
+#include <cstdlib>
+#include <filesystem>
 #include <string>
 #include <string_view.hpp>
 #include <array.hpp>
@@ -9,8 +11,9 @@
 #include <sys/mman.h>
 #include <string.hpp>
 
-std::string BASE =  "/tmp/index/";
-const int NUM_CHUNK = 5;
+std::filesystem::path BASE =  std::filesystem::path(std::getenv("HOME")) 
+  / ".local" / "share" / "crawler" / "index";
+const int NUM_CHUNK = 1;
 
 int main(int argc, char **argv) {
   
@@ -19,7 +22,7 @@ int main(int argc, char **argv) {
   fast::array<fast::query::Result, fast::query::MAX_RESULTS> results;
 
   for (int i = 0; i < NUM_CHUNK;++i) {
-    const auto path = BASE + std::to_string(i);
+    const auto path = BASE / std::to_string(i);
 
     const auto fd = open(path.c_str(), O_RDONLY);
 
