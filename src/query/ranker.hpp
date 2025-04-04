@@ -72,25 +72,25 @@ class ranker {
   void score_doc() {
     double score(0.0);
 
-    for (auto& [metastream, multiplier] : metastreams) {
-      if (sz == 1) {
-        // do not look for spans
-        score += count_single();
-      } else {
-        // look for complete spans
-        score += count_full();
+    // for (auto& [metastream, multiplier] : metastreams) {
+    if (sz == 1) {
+      // do not look for spans
+      score += count_single();
+    } else {
+      // look for complete spans
+      score += count_full();
 
-        // loop for spans of size 2
-        if (sz > 2) {
-          score += count_doubles();
-        }
+      // loop for spans of size 2
+      if (sz > 2) {
+        score += count_doubles();
+      }
 
-        // look for spans for size 3
-        if (sz > 3) {
-          score += count_triples();
-        }
+      // look for spans for size 3
+      if (sz > 3) {
+        score += count_triples();
       }
     }
+    //}
 
     // static ranks
 
