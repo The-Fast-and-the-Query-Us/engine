@@ -17,7 +17,10 @@ namespace fast::query {
 
 constexpr size_t SHORT_SPAN_LENGTH = 10;
 
-enum class MetaStream { TITLE, BODY };
+enum class meta_stream { TITLE, BODY };
+
+std::map<meta_stream, double> meta_stream_mult = {{meta_stream::TITLE, 1.5},
+                                                  {meta_stream::BODY, 1}};
 
 class ranker {
  public:
@@ -39,14 +42,16 @@ class ranker {
       }
     }
 
-    // intialize isrs
+    // intialize isrs for body
     for (size_t i = 0; i < sz; ++i) {
       isrs[i] = index_chunk->get(flattened[i])->get_isr();
     }
 
+    // initialize isrs for title
     for (size_t i = 0; i < sz; ++i) {
-      string title_string = "";
-      title_isrs[i] = index_chunk->get(flattened[i])->get_isr();
+      string title_string(flattened[i].begin(), flattened[i].size());
+      title_string += "#";
+      title_isrs[i] = index_chunk->get(title_string)->get_isr();
     }
 
     // rarest_isr = isrs[rare_word_idx];
@@ -72,25 +77,26 @@ class ranker {
   void score_doc() {
     double score(0.0);
 
-    // for (auto& [metastream, multiplier] : metastreams) {
-    if (sz == 1) {
-      // do not look for spans
-      score += count_single();
-    } else {
-      // look for complete spans
-      score += count_full();
+    // loop for all metastreams
+    for (auto& [metastream, multiplier] : meta_stream_mult) {
+      if (sz == 1) {
+        // do not look for spans
+        score += multiplier * count_single(metastream);
+      } else {
+        // look for complete spans
+        score += multiplier * count_full(metastream);
 
-      // loop for spans of size 2
-      if (sz > 2) {
-        score += count_doubles();
-      }
+        // loop for spans of size 2
+        if (sz > 2) {
+          score += multiplier * count_doubles(metastream);
+        }
 
-      // look for spans for size 3
-      if (sz > 3) {
-        score += count_triples();
+        // look for spans for size 3
+        if (sz > 3) {
+          score += multiplier * count_triples(metastream);
+        }
       }
     }
-    //}
 
     // static ranks
 
@@ -113,13 +119,17 @@ class ranker {
     }
   }
 
-  double count_single() {
+  double count_single(meta_stream ms) {
+    // only one word queries
+    isr** cur_isrs = (ms == meta_stream::BODY) ? isrs : title_isrs;
     double score(0.0);
-    isrs[0]->seek(cur_doc_offset);
+    cur_isrs[0]->seek(cur_doc_offset);
+
+    // count frequency of query word
     size_t count = 0;
-    while (!isrs[0]->is_end() && isrs[0]->offset() < cur_doc_end) {
+    while (!cur_isrs[0]->is_end() && cur_isrs[0]->offset() < cur_doc_end) {
       ++count;
-      isrs[0]->next();
+      cur_isrs[0]->next();
     }
     score += 1000 * ((double)count) / ((double)cur_doc_end - cur_doc_offset);
 
@@ -128,15 +138,19 @@ class ranker {
 
   double count_spans(size_t num_isrs, isr** cur_isrs, size_t rare_idx,
                      std::map<string, vector<size_t>>* word_to_isrs = nullptr) {
+    // current position of each isr
     vector<Offset> positions(num_isrs);
-    vector<size_t> freqs(num_isrs);  // frequency of words in doc
+    // frequency of words in doc
+    vector<size_t> freqs(num_isrs);
 
     double score(0.0);
+
+    // seek all to front
     for (size_t i = 0; i < num_isrs; ++i) {
       cur_isrs[i]->seek(cur_doc_offset);
-      positions[i] = cur_isrs[i]->offset();
     }
 
+    // if duplicate words, seek each into continuous span
     if (word_to_isrs) {
       for (auto& [word, word_isrs] : *word_to_isrs) {
         for (size_t i = 1; i < word_isrs.size(); ++i) {
@@ -148,6 +162,7 @@ class ranker {
       }
     }
 
+    // update positions
     for (size_t i = 0; i < num_isrs; ++i) {
       positions[i] = cur_isrs[i]->offset();
     }
@@ -175,6 +190,7 @@ class ranker {
       }
     }
 
+    // finish counting frequencies only once
     if (word_to_isrs) {
       finish_counting(num_isrs, cur_isrs, positions, freqs);
 
@@ -191,26 +207,31 @@ class ranker {
     return score;
   }
 
-  double count_full() {
+  double count_full(meta_stream ms) {
+    // count complete query spans
+    isr** cur_isrs = (ms == meta_stream::BODY) ? isrs : title_isrs;
     std::map<string, vector<size_t>> word_to_isrs;
     for (size_t i = 0; i < sz; ++i) {
       word_to_isrs[flattened[i]].push_back(i);
     }
-    return count_spans(sz, isrs, rare_word_idx, &word_to_isrs);
+    return count_spans(sz, cur_isrs, rare_word_idx, &word_to_isrs);
   }
 
-  double count_doubles() {
+  double count_doubles(meta_stream ms) {
+    // only two words of query
+    isr** use_isrs = (ms == meta_stream::BODY) ? isrs : title_isrs;
+
     double score(0);
     isr* cur_isrs[2];
     for (size_t i = 0; i < sz; ++i) {
       if (flattened[i] == flattened[rare_word_idx]) {
         continue;
       } else if (i < rare_word_idx) {
-        cur_isrs[0] = isrs[i];
-        cur_isrs[1] = isrs[rare_word_idx];
+        cur_isrs[0] = use_isrs[i];
+        cur_isrs[1] = use_isrs[rare_word_idx];
       } else {
-        cur_isrs[0] = isrs[rare_word_idx];
-        cur_isrs[1] = isrs[i];
+        cur_isrs[0] = use_isrs[rare_word_idx];
+        cur_isrs[1] = use_isrs[i];
       }
       score += count_spans(2, cur_isrs, 1);
     }
@@ -218,7 +239,10 @@ class ranker {
     return score;
   }
 
-  double count_triples() {
+  double count_triples(meta_stream ms) {
+    // three word spans
+    isr** use_isrs = (ms == meta_stream::BODY) ? isrs : title_isrs;
+
     double score(0);
     isr* cur_isrs[3];
     size_t rare_idx = 3;
@@ -226,26 +250,26 @@ class ranker {
       if (i == rare_word_idx) {
         continue;
       } else if (i < rare_word_idx) {
-        cur_isrs[0] = isrs[i];
+        cur_isrs[0] = use_isrs[i];
       } else {
-        cur_isrs[0] = isrs[rare_word_idx];
-        cur_isrs[1] = isrs[i];
+        cur_isrs[0] = use_isrs[rare_word_idx];
+        cur_isrs[1] = use_isrs[i];
         rare_idx = 0;
       }
       for (size_t j = i + 1; j < sz; ++j) {
         if (j == rare_word_idx) {
           continue;
         } else if (j < rare_word_idx) {
-          cur_isrs[1] = isrs[j];
-          cur_isrs[2] = isrs[rare_word_idx];
+          cur_isrs[1] = use_isrs[j];
+          cur_isrs[2] = use_isrs[rare_word_idx];
           rare_idx = 2;
         } else {
           if (rare_idx == 3) {
-            cur_isrs[1] = isrs[rare_word_idx];
-            cur_isrs[2] = isrs[j];
+            cur_isrs[1] = use_isrs[rare_word_idx];
+            cur_isrs[2] = use_isrs[j];
             rare_idx = 1;
           } else {
-            cur_isrs[2] = isrs[j];
+            cur_isrs[2] = use_isrs[j];
           }
         }
 
@@ -302,12 +326,14 @@ class ranker {
   void increment_isrs(size_t num_isrs, isr** cur_isrs, size_t rare_idx,
                       vector<Offset>& positions, vector<size_t>& freqs,
                       std::map<string, vector<size_t>>& word_to_isrs) {
+    // increment rare group
     for (auto& isr_pos : word_to_isrs[flattened[rare_idx]]) {
       positions[isr_pos] = cur_isrs[isr_pos]->offset();
       cur_isrs[isr_pos]->next();
       ++freqs[isr_pos];
     }
 
+    // rare_idx front and back
     Offset span_front =
         isrs[word_to_isrs[flattened[rare_idx]].front()]->offset();
     Offset span_back = isrs[word_to_isrs[flattened[rare_idx]].back()]->offset();
@@ -316,10 +342,13 @@ class ranker {
       return;
     }
 
+    // increment each word group
     for (auto& [word, isr_pos] : word_to_isrs) {
       if (word == flattened[rare_idx]) {
         continue;
       }
+
+      // calculate current span length
       Offset front = cur_isrs[isr_pos.front()]->offset();
       Offset back = cur_isrs[isr_pos.back()]->offset();
 
@@ -327,12 +356,16 @@ class ranker {
 
       Offset prev_span_length = UINT32_MAX;
 
+      // while span can get smaller
       while (cur_span_length < prev_span_length) {
+        // increment all of group
         for (auto i : isr_pos) {
           positions[i] = cur_isrs[i]->offset();
           cur_isrs[i]->next();
           ++freqs[i];
         }
+
+        // new span length
         front = cur_isrs[isr_pos.front()]->offset();
         back = cur_isrs[isr_pos.back()]->offset();
         if (back >= cur_doc_end) {
@@ -346,11 +379,14 @@ class ranker {
 
   void increment_isrs(size_t num_isrs, isr** cur_isrs, size_t rare_idx,
                       vector<Offset>& positions) {
+    // increment rare
     cur_isrs[rare_idx]->next();
     Offset target_pos = cur_isrs[rare_idx]->offset();
     if (target_pos >= cur_doc_end) {
       return;
     }
+
+    // increment each isr to closest pos
     for (size_t i = 0; i < num_isrs; ++i) {
       if (i == rare_idx) {
         continue;
@@ -358,6 +394,7 @@ class ranker {
 
       Offset cur_pos = cur_isrs[i]->offset();
 
+      // while not closer, increment
       while (abs((int64_t)(target_pos) - (int64_t)(cur_pos)) <
                  abs((int64_t)(target_pos) - (int64_t)(positions[i])) &&
              cur_pos < cur_doc_end) {
@@ -370,6 +407,7 @@ class ranker {
 
   void finish_counting(size_t num_isrs, isr** cur_isrs,
                        vector<Offset>& positions, vector<size_t>& freqs) {
+    // finish counting freqs of all words
     for (size_t i = 0; i < num_isrs; ++i) {
       while (positions[i] < cur_doc_end) {
         positions[i] = cur_isrs[i]->offset();
@@ -380,6 +418,7 @@ class ranker {
   }
 
   double url_score() {
+    // static url score
     double score(0.0);
     auto url_comp = url_components(cur_doc_url);
 
