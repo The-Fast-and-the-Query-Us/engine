@@ -11,11 +11,11 @@
 #include <sys/mman.h>
 #include <string.hpp>
 
-std::filesystem::path BASE =  std::filesystem::path(std::getenv("HOME")) 
-  / ".local" / "share" / "crawler" / "index";
-const int NUM_CHUNK = 1;
+std::filesystem::path BASE =  std::filesystem::path(std::getenv("HOME")) / ".local" / "share" / "crawler" / "index";
+const int NUM_CHUNK = 2;
 
 int main(int argc, char **argv) {
+  std::cout << BASE.string() << std::endl;
   
   const fast::string_view query = argv[1];
   
