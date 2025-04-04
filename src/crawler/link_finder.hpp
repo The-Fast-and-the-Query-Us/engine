@@ -182,6 +182,7 @@ private:
 
   void send_get_request() {
     char get_request[MAX_MESSAGE_SIZE];
+    get_request[0] = '\0';
     char *p = get_request;
     char *limit = get_request + MAX_MESSAGE_SIZE;
     const char *agent_email = "shivgov@umich.edu";
