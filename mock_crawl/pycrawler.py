@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from bloom_filter2 import BloomFilter
 from persistqueue import Queue
 import string
+from pathlib import Path
 
 build_dir = os.path.abspath("./build")
 sys.path.append(build_dir)  # to include non-working directory library
@@ -38,7 +39,7 @@ logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-BASE_PATH = "~/.local/share/crawler"
+BASE_PATH = Path.home() / ".local" / "share" / "crawler"
 
 os.makedirs(BASE_PATH, exist_ok=True)
 
@@ -188,6 +189,9 @@ def main():
                 chunk_id = get_chunk_number()
                 pybind.write_blob(INDEX_PATH + '/' + str(chunk_id))
                 write_chunk_number(chunk_id + 1)
+
+                pybind.erase()
+                pybind.alloc()
 
             link_count = 0
             same_count = 0
