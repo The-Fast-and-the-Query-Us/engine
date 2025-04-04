@@ -1,14 +1,15 @@
 #pragma once
 
 #include <cstdio>
+#include <hashblob.hpp>
 #include <isr.hpp>
 #include <string.hpp>
+
 #include "isr.hpp"
-#include <hashblob.hpp>
 
 namespace fast::query {
 
-/* 
+/*
 BNF:
 
   Requirements
@@ -25,7 +26,8 @@ BNF:
   <Phrase> ::= '"' { <SearchWord> } '"'
   <NestedConstraint> ::= '[' <Constraint> ']'
 
-  example: wikipedia | wikihow + minecraft - programming + [ creeper | zombie ] + " steve jobs "
+  example: wikipedia | wikihow + minecraft - programming + [ creeper | zombie ]
++ " steve jobs "
 */
 
 class query_stream {
@@ -34,15 +36,15 @@ class query_stream {
 
   bool important(char c) {
     switch (c) {
-     case '+' :
-     case '-':
-     case '|':
-     case '"':
-     case '[':
-     case ']':
-      return true;
-     default:
-      return false;
+      case '+':
+      case '-':
+      case '|':
+      case '"':
+      case '[':
+      case ']':
+        return true;
+      default:
+        return false;
     }
   }
 
@@ -63,18 +65,14 @@ class query_stream {
     while (pos < query.size() && query[pos] == ' ') ++pos;
   }
 
-  public:
-
+ public:
   query_stream(const string &query) : query(query), pos(0) {};
 
   bool is_end() const { return pos == query.size(); }
 
   bool peek(char c) {
     skip_ws();
-    return (
-      pos < query.size() &&
-      c == query[pos]
-    );
+    return (pos < query.size() && c == query[pos]);
   }
 
   // enforce ws?
@@ -95,9 +93,9 @@ class query_stream {
 };
 
 class contraint_parser {
-  public:
-
-  static isr_container *parse_contraint(query_stream &query, const hashblob *blob) {
+ public:
+  static isr_container *parse_contraint(query_stream &query,
+                                        const hashblob *blob) {
     auto left = parse_base_contraint(query, blob);
 
     if (!left) return nullptr;
@@ -112,7 +110,7 @@ class contraint_parser {
       } else if (query.match('-')) {
         exclude = true;
       } else {
-        ans->seek(0); // init
+        ans->seek(0);  // init
         return ans;
       }
 
@@ -148,10 +146,11 @@ class contraint_parser {
     return ans;
   }
 
-  static isr *parse_simple_contraint(query_stream &query, const hashblob *blob) {
+  static isr *parse_simple_contraint(query_stream &query,
+                                     const hashblob *blob) {
     if (query.match('[')) {
-      if (query.match(']')) return new isr_null; // isr any?
-      
+      if (query.match(']')) return new isr_null;  // isr any?
+
       auto ans = parse_contraint(query, blob);
 
       if (!query.match(']')) {
@@ -162,8 +161,7 @@ class contraint_parser {
       return ans;
 
     } else if (query.match('"')) {
-
-      if (query.match('"')) return new isr_null; // maybe return isr_any here?
+      if (query.match('"')) return new isr_null;  // maybe return isr_any here?
 
       auto ans = new isr_phrase;
       while (!query.match('"')) {
@@ -198,13 +196,12 @@ class contraint_parser {
     }
     return nullptr;
   }
-
 };
 
 class rank_parser {
-  public:
-
-  static void parse_query(query_stream &query, vector<string_view> *words, const hashblob *blob) {
+ public:
+  static void parse_query(query_stream &query, vector<string_view> *words,
+                          const hashblob *blob) {
     parse_base_query(query, words, blob);
 
     while (1) {
@@ -218,7 +215,8 @@ class rank_parser {
     }
   }
 
-  static void parse_base_query(query_stream &query, vector<string_view> *words, const hashblob *blob) {
+  static void parse_base_query(query_stream &query, vector<string_view> *words,
+                               const hashblob *blob) {
     parse_simple_query(query, words, blob);
 
     while (query.match('|')) {
@@ -226,7 +224,9 @@ class rank_parser {
     }
   }
 
-  static void parse_simple_query(query_stream &query, vector<string_view> *words, const hashblob *blob) {
+  static void parse_simple_query(query_stream &query,
+                                 vector<string_view> *words,
+                                 const hashblob *blob) {
     if (query.match('[')) {
       parse_query(query, words, blob);
     } else if (query.match('"')) {
@@ -250,5 +250,4 @@ class rank_parser {
   }
 };
 
-
-}
+}  // namespace fast::query
