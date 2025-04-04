@@ -6,12 +6,12 @@
 #include <isr.hpp>
 #include <map>
 #include <string.hpp>
-#include "url_components.hpp"
 #include <vector.hpp>
 
 #include "constants.hpp"
 #include "isr.hpp"
 #include "language.hpp"
+#include "url_components.hpp"
 
 namespace fast::query {
 
@@ -58,6 +58,7 @@ class ranker {
     for (size_t i = 0; i < sz; ++i) {
       free(isrs[i]);
     };
+    free(isrs);
   }
 
   void score_doc() {
@@ -82,7 +83,7 @@ class ranker {
     // title
 
     // url
-    //score *= url_score();
+    // score *= url_score();
 
     // insertion sort into top 10
     if (score < results[fast::query::MAX_RESULTS - 1].first) {
