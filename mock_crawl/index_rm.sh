@@ -1,3 +1,3 @@
 #!/usr/bin/bash
-rm -rf /tmp/index /tmp/bloom.bin /tmp/index_chunk /tmp/queue.bin
+rm -rf /var/index /var/bloom.bin /var/index_chunk /var/queue.bin
 echo "Index cleared"
