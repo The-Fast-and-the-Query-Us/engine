@@ -31,9 +31,6 @@ class link_finder {
 public:
   void parse_url(const char *file) {
     url = file;
-    if (file_fd == -1) {
-      throw std::runtime_error("Could not open file in link_finder\n");
-    }
 
     path_buffer = new char[url.size() + 1];
 
@@ -130,7 +127,7 @@ public:
 private:
   struct addrinfo *address{};
   struct addrinfo hints{};
-  int file_fd = -1, sock_fd = -1;
+  int sock_fd = -1;
   fast::string url;
   SSL_CTX *ctx{};
   SSL *ssl{};
@@ -306,10 +303,6 @@ private:
     if (ctx) {
       SSL_CTX_free(ctx);
       ctx = nullptr;
-    }
-    if (file_fd >= 0) {
-      close(file_fd);
-      file_fd = -1;
     }
   }
 };
