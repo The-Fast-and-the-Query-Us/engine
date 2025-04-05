@@ -9,4 +9,8 @@ int main() {
   fast::english::porter_stem(md);
   std::cout << md.begin() << std::endl;
   assert(md == "multidimension");
+
+  fast::string ch = "characterization";
+  fast::english::porter_stem(ch);
+  assert(ch == "character");
 }
