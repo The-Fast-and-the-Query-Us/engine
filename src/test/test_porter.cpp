@@ -1,16 +1,27 @@
 #include <cassert>
 #include <english.hpp>
-#include <iostream>
-#include <ostream>
 #include <string.hpp>
 
-int main() {
-  fast::string md = "multidimensional";
-  fast::english::porter_stem(md);
-  std::cout << md.begin() << std::endl;
-  assert(md == "multidimension");
+using namespace fast::english;
+using namespace fast;
 
-  fast::string ch = "characterization";
-  fast::english::porter_stem(ch);
-  assert(ch == "character");
+void test(const char *in, const char *out) {
+  string str(in);
+  porter_stem(str);
+  assert(str == out);
+}
+
+int main() {
+  test("multidimensional", "multidimension");
+  test("characterization", "character");
+  test("flies", "fli");
+  test("denied", "deni");
+  test("feed", "feed");
+  test("agreed", "agre");
+  test("milling", "mill");
+  test("messing", "mess");
+  test("sadly", "sadli");
+  test("goodness", "good");
+  test("best", "best");
+  test("better", "better");
 }
