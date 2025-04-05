@@ -32,7 +32,6 @@ class ranker {
          isr_container* container, array<Result, MAX_RESULTS>& res)
       : results(res), flattened(sv) {
     sz = flattened.size();
-    std::cout << "sz: " << sz << '\n';
 
     isrs = (isr**)malloc((sz) * sizeof(isr*));
     title_isrs = (isr**)malloc((sz) * sizeof(isr*));
@@ -51,7 +50,6 @@ class ranker {
     // intialize isrs for body
     for (size_t i = 0; i < sz; ++i) {
       auto* post_list = index_chunk->get(flattened[i]);
-      std::cout << post_list << '\n';
       isrs[i] = index_chunk->get(flattened[i])->get_isr();
     }
 
@@ -103,8 +101,6 @@ class ranker {
 
     // loop for all metastreams
     for (auto& [metastream, multiplier] : meta_stream_mult) {
-      std::cout << "metastream: "
-                << (metastream == meta_stream::BODY ? "body" : "title") << '\n';
       size_t cur_sz = metastream == meta_stream::BODY ? sz : title_isrs_sz;
       if (cur_sz == 0) {
         continue;
@@ -512,7 +508,6 @@ void blob_rank(
 
   auto rank_stream = fast::query::query_stream(query);
   fast::query::rank_parser::parse_query(rank_stream, &flattened, blob);
-  std::cout << "sz: " << flattened.size() << '\n';
   fast::query::ranker(blob, flattened, constraints, results);
 
   delete constraints;
