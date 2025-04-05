@@ -23,6 +23,8 @@ class char_classifier {
 
 public:
 
+  bool last_was_vowel() const { return !last_was_cons; }
+
   bool is_vowel(char c) {
     switch (c) {
       case 'a':
@@ -45,10 +47,91 @@ public:
   }
 };
 
-static int calc_m(const fast::string_view &word, size_t suffix_len) {
-  if (suffix_len >= word.size()) return 0;
+/*
+A consonant will be denoted by c, a vowel by v. A list ccc... of length
+greater than 0 will be denoted by C, and a list vvv... of length greater
+than 0 will be denoted by V. Any word, or part of a word, therefore has one
+of the four forms:
+
+    CVCV ... C
+    CVCV ... V
+    VCVC ... C
+    VCVC ... V
+
+These may all be represented by the single form
+
+    [C]VCVC ... [V]
+
+where the square brackets denote arbitrary presence of their contents.
+Using (VC){m} to denote VC repeated m times, this may again be written as
+
+    [C](VC){m}[V].
+
+m will be called the \measure\ of any word or word part when represented in
+this form. The case m = 0 covers the null word. Here are some examples:
+
+    m=0    TR,  EE,  TREE,  Y,  BY.
+    m=1    TROUBLE,  OATS,  TREES,  IVY.
+    m=2    TROUBLES,  PRIVATE,  OATEN,  ORRERY.
+*/
+static int calc_m(const fast::string_view &word) {
+  char_classifier cc;
+  int m = 0;
+
+  for (const auto c : word) {
+    if (cc.last_was_vowel() && !cc.is_vowel(c)) ++m;
+  }
+
+  return m;
+}
+
+// the stem ends with S (and similarly for the other letters)
+static bool s_star(const fast::string_view &word, char s) {
+  return word.size() > 0 && word[word.size() - 1] == s;
+}
+
+// the stem contains a vowel
+static bool v_star(const fast::string_view &word) {
+  char_classifier cc;
+  for (const auto c : word) {
+    if (cc.is_vowel(c)) return true;
+  }
+  return false;
+}
+
+// the stem ends with a double consonant (e.g. -TT, -SS)
+static bool d_star(const fast::string_view &word) {
+  if (word.size() < 2) return false;
 
   char_classifier cc;
+  if (word.size() > 2) cc.is_vowel(word[word.size() - 3]);
+
+  return (
+    !cc.is_vowel(word[word.size() - 2]) &&
+    !cc.is_vowel(word[word.size() - 1])
+  );
+}
+
+// the stem ends cvc, where the second c is not W, X or Y (e.g. -WIL, -HOP)
+static bool o_star(const fast::string_view &word) {
+  if (word.size() < 3) return false;
+
+  switch (word[word.size() - 1]) {
+    case 'w':
+    case 'x':
+    case 'y':
+      return false;
+  }
+
+  char_classifier cc;
+  // init for special case of y
+  if (word.size() > 3) cc.is_vowel(word[word.size() - 4]);
+
+  return (
+    !cc.is_vowel(word[word.size() - 3]) &&
+    cc.is_vowel(word[word.size() - 2]) &&
+    !cc.is_vowel(word[word.size() - 1])
+  );
 }
 
 /*
@@ -71,13 +154,40 @@ static void porter_step_1a(fast::string &word) {
 }
 
 /*
-* Rules:
-*   (m > 0) EED -> EE
-*   (*v*)   ED  -> <NULL>
-*   (*v*)   ING -> <NULL>
+Rules:
+   (m > 0) EED -> EE
+   (*v*)   ED  -> <NULL>
+   (*v*)   ING -> <NULL>
+   
+   If the second or third of the rules in Step 1b is successful, the following is performed.
+
+      AT -> ATE
+      BL -> BLE
+      IZ ->IZE
+      (*d and not (*L or *S or *Z)) -> single letter
+      (m=1 and *o) -> E
 */
 static void porter_step_1b(fast::string &word) {
+  if (word.ends_with("eed") && calc_m(fast::string_view(word).trim_suffix(3)) > 0) {
+    word.pop_back();
+    return;
+  } else if (word.ends_with("ed") && v_star(fast::string_view(word).trim_suffix(2))) {
+    word.pop_back(2);
+  } else if (word.ends_with("ing") && v_star(fast::string_view(word).trim_suffix(3))) {
+    word.pop_back(3);
+  } else {
+    return;
+  }
 
+  if (word.ends_with("at")) {
+    word += 'e';
+  } else if (word.ends_with("bl")) {
+    word += 'e';
+  } else if (d_star(word) && !(s_star(word, 'l') || s_star(word, 's') || s_star(word, 'z'))) {
+    word.pop_back();
+  } else if (calc_m(word) == 1 && o_star(word)) {
+    word += 'e';
+  }
 }
 
 void fast::english::porter_stem(fast::string &word) {
