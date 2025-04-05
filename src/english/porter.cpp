@@ -331,8 +331,33 @@ static void porter_step_4(fast::string &word) {
   }
 }
 
-static void porter_step_5(fast::string &word) {
+/*
 
+5A:
+(m>1) E -> <NUL>
+(m=1 and not *o) E -> <NUL>
+
+Step 5b:
+(m > 1 and *d and *L) -> single letter
+
+*/
+static void porter_step_5(fast::string &word) {
+  // part a
+  if (word.ends_with("e")) {
+    const auto m = calc_m(fast::string_view(word).trim_suffix(1));
+
+    if (m > 1) {
+      word.pop_back();
+    } else if (m == 1 && !o_star(fast::string_view(word).trim_suffix(1))) {
+      word.pop_back();
+    }
+  }
+
+  // part b
+  const auto m = calc_m(word);
+  if (m > 1 && d_star(word) && s_star(word, 'l')) {
+    word.pop_back();
+  }
 }
 
 void fast::english::porter_stem(fast::string &word) {
