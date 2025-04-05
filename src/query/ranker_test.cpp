@@ -1,27 +1,28 @@
-#include "constants.hpp"
 #include "ranker.hpp"
-#include <cstdlib>
-#include <filesystem>
-#include <string>
-#include <string_view.hpp>
-#include <array.hpp>
 #include <sys/fcntl.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <sys/mman.h>
+#include <array.hpp>
+#include <cstdlib>
+#include <filesystem>
 #include <string.hpp>
+#include <string>
+#include <string_view.hpp>
+#include "constants.hpp"
 
-std::filesystem::path BASE =  std::filesystem::path(std::getenv("HOME")) / ".local" / "share" / "crawler" / "index";
-const int NUM_CHUNK = 2;
+std::filesystem::path BASE = std::filesystem::path(std::getenv("HOME")) /
+                             ".local" / "share" / "crawler" / "index";
+const int NUM_CHUNK = 1;
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   std::cout << BASE.string() << std::endl;
-  
+
   const fast::string_view query = argv[1];
-  
+
   fast::array<fast::query::Result, fast::query::MAX_RESULTS> results;
 
-  for (int i = 0; i < NUM_CHUNK;++i) {
+  for (int i = 0; i < NUM_CHUNK; ++i) {
     const auto path = BASE / std::to_string(i);
 
     const auto fd = open(path.c_str(), O_RDONLY);
@@ -50,7 +51,7 @@ int main(int argc, char **argv) {
 
     close(fd);
 
-    auto blob = reinterpret_cast<const fast::hashblob *>(map_ptr);
+    auto blob = reinterpret_cast<const fast::hashblob*>(map_ptr);
 
     fast::query::blob_rank(blob, query, results);
 
@@ -60,8 +61,8 @@ int main(int argc, char **argv) {
     }
   }
 
-
-  for (const auto &r : results) {
-    std::cout << "Url : " << r.second.c_str() << ", Rank : " << r.first << std::endl;
+  for (const auto& r : results) {
+    std::cout << "Url : " << r.second.c_str() << ", Rank : " << r.first
+              << std::endl;
   }
 }

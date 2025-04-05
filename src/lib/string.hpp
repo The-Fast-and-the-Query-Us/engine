@@ -1,10 +1,11 @@
 #pragma once
 
-#include "string_view.hpp"
 #include <compare>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
+
+#include "string_view.hpp"
 
 namespace fast {
 
@@ -21,7 +22,7 @@ class string {
     cap = need;
   }
 
-public:
+ public:
   string() {
     grow(8);
     len_ = 0;
@@ -31,14 +32,13 @@ public:
   string(const string &other) {
     grow(other.cap);
     len_ = other.len_;
-    memcpy(start_, other.start_, len_ + 1); // +1 for null
+    memcpy(start_, other.start_, len_ + 1);  // +1 for null
   }
 
-  string(const char *cstr) { // maybe mark explicit to avoid accidentaly heap
-                             // allocation?
+  string(const char *cstr) {  // maybe mark explicit to avoid accidentaly heap
+                              // allocation?
     size_t str_len{0};
-    for (auto ptr = cstr; *ptr; ++ptr, ++str_len)
-      ;
+    for (auto ptr = cstr; *ptr; ++ptr, ++str_len);
 
     grow(str_len);
     len_ = str_len;
@@ -70,8 +70,7 @@ public:
   const char *c_str() const { return start_; }
 
   void reserve(size_t need) {
-    if (need > cap)
-      grow(need);
+    if (need > cap) grow(need);
   }
 
   void resize(size_t size, char fill = 'a') {
@@ -92,12 +91,10 @@ public:
   }
 
   bool operator==(const string &s) const {
-    if (s.size() != this->size())
-      return false;
+    if (s.size() != this->size()) return false;
 
     for (size_t i = 0; i < s.size(); i++) {
-      if (s[i] != (*this)[i])
-        return false;
+      if (s[i] != (*this)[i]) return false;
     }
 
     return true;
@@ -106,15 +103,13 @@ public:
   bool operator!=(string &s) { return !(*this == s); }
 
   void operator+=(char c) {
-    if (len_ == cap)
-      grow(len_ << 1);
+    if (len_ == cap) grow(len_ << 1);
     start_[len_++] = c;
     start_[len_] = 0;
   }
 
   void operator+=(const string &other) {
-    if (len_ + other.len_ > cap)
-      grow(len_ + other.len_);
+    if (len_ + other.len_ > cap) grow(len_ + other.len_);
     memcpy(start_ + len_, other.start_, other.len_);
     len_ += other.len_;
     start_[len_] = 0;
@@ -146,23 +141,21 @@ public:
 
   string_view view() const { return this->operator string_view(); }
 
-  template<class T>
+  template <class T>
   bool operator==(const T &other) const {
     return this->view() == static_cast<string_view>(other);
   }
 
-  template<class T>
+  template <class T>
   std::strong_ordering operator<=>(const T &other) const {
     return this->view() <=> static_cast<string_view>(other);
   }
 
-  bool operator==(const char *cstr) const {
-    return this->view() == cstr;
-  }
+  bool operator==(const char *cstr) const { return this->view() == cstr; }
 
   std::strong_ordering operator<=>(const char *cstr) const {
     return this->view() <=> cstr;
   }
 };
 
-} // namespace fast
+}  // namespace fast
