@@ -10,7 +10,7 @@ foreach(TEST_SOURCE ${TEST_SOURCES})
   endif()
 
   add_executable(${TEST_NAME} ${TEST_SOURCE})
-  target_link_libraries(${TEST_NAME} index lib crawler)
+  target_link_libraries(${TEST_NAME} index lib crawler english)
 
   if (CMAKE_BUILD_TYPE MATCHES "DebugGit")
     target_compile_options(${TEST_NAME} PRIVATE -fsanitize=address -fsanitize=leak -fno-omit-frame-pointer -Wall -Wextra -Werror -pedantic)

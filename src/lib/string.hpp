@@ -127,12 +127,26 @@ class string {
     start_[len_] = 0;
   }
 
+  bool ends_with(const string_view &sv) const {
+    if (sv.size() > len_) return false;
+
+    auto offset = len_ - sv.size();
+
+    for (size_t i = 0; i < sv.size(); ++i) {
+      if (start_[offset + i] != sv[i]) return false;
+    }
+
+    return true;
+  }
+
   string substr(size_t i, size_t len) { return string(start_ + i, len); }
 
   char &operator[](size_t idx) const { return start_[idx]; }
 
+  // should be marked const char * but dont want to break anything yet
   char *begin() const { return start_; }
 
+  // same as above
   char *end() const { return start_ + len_; }
 
   size_t size() const { return len_; }
