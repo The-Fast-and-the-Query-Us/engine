@@ -1,5 +1,6 @@
 #include <string.hpp>
 #include <english.hpp>
+#include <pair.hpp>
 
 // return 1 shifted by how far this is from 'a'
 // should only be called on lowercase letters
@@ -190,7 +191,159 @@ static void porter_step_1b(fast::string &word) {
   }
 }
 
+/*
+RULES:
+(m>0) ATIONAL -> ATE
+(m>0) TIONAL -> TION
+(m>0) ENCI -> ENCE
+(m>0) ANCI -> ANCE
+(m>0) IZER -> IZE
+(m>0) ABLI -> ABLE
+(m>0) ALLI -> AL
+(m>0) ENTLI -> ENT
+(m>0) ELI -> E
+(m>0) OUSLI -> OUS
+(m>0) IZATION -> IZE
+(m>0) ATION -> ATE
+(m>0) ATOR -> ATE
+(m>0) ALISM -> AL
+(m>0) IVENESS -> IVE
+(m>0) FULNESS -> FUL
+(m>0) OUSNESS -> OUS
+(m>0) ALITI -> AL
+(m>0) IVITI -> IVE
+(m>0) BILITI -> BLE
+*/
+static void porter_step_2(fast::string &word) {
+  static const fast::pair<fast::string_view> suffixes[] = {
+    {"ational", "ate"},
+    {"tional", "tion"},
+    {"enci",   "ence"},
+    {"anci",   "ance"},
+    {"izer",   "ize"},
+    {"abli",   "able"},
+    {"alli",   "al"},
+    {"entli",  "ent"},
+    {"eli",    "e"},
+    {"ousli",  "ous"},
+    {"ization", "ize"},
+    {"ation",   "ate"},
+    {"ator",    "ate"},
+    {"alism",   "al"},
+    {"iveness", "ive"},
+    {"fulness", "ful"},
+    {"ousness", "ous"},
+    {"aliti",   "al"},
+    {"iviti",   "ive"},
+    {"biliti",  "ble"},
+  };
+
+  for (const auto &trans : suffixes) {
+    if (word.ends_with(trans.first) && calc_m(fast::string_view(word).trim_suffix(trans.first.size()))) {
+      word.pop_back(trans.first.size());
+      word += trans.second;
+      return;
+    }
+  }
+}
+
+/*
+(m>0) ICATE   -> IC
+(m>0) ATIVE   -> 
+(m>0) ALIZE   -> AL
+(m>0) ICITI   -> IC
+(m>0) ICAL    -> IC
+(m>0) FUL     -> 
+(m>0) NESS    ->
+*/
+static void porter_step_3(fast::string &word) {
+  static const fast::pair<fast::string_view> suffixes[] = {
+    {"icate", "ic"},
+    {"ative", ""},
+    {"alize", "al"},
+    {"iciti", "ic"},
+    {"ical",  "ic"},
+    {"ful",   ""},
+    {"ness",  ""},
+  };
+
+  for (const auto &trans : suffixes) {
+    if (word.ends_with(trans.first) && calc_m(fast::string_view(word).trim_suffix(trans.first.size()))) {
+      word.pop_back(trans.first.size());
+      word += trans.second;
+      return;
+    }
+  }
+}
+
+/*
+All map to <NUL>
+(m>1) AL
+(m>1) ANCE
+(m>1) ENCE
+(m>1) ER
+(m>1) IC
+(m>1) ABLE
+(m>1) IBLE
+(m>1) ANT
+(m>1) EMENT
+(m>1) MENT
+(m>1) ENT
+(m>1 and (*S or *T)) ION
+(m>1) OU
+(m>1) ISM
+(m>1) ATE
+(m>1) ITI
+(m>1) OUS
+(m>1) IVE
+(m>1) IZE
+*/
+static void porter_step_4(fast::string &word) {
+  static const fast::string_view suffs[] = {
+    "al",
+    "ance",
+    "ence",
+    "er",
+    "ic",
+    "able",
+    "ible",
+    "ant",
+    "ement",
+    "ment",
+    "ent",
+    "ion",
+    "ou",
+    "ism",
+    "ate",
+    "iti",
+    "ous",
+    "ive",
+    "ize",
+  };
+
+  for (const auto &s : suffs) {
+    if (word.ends_with(s) && calc_m(fast::string_view(word).trim_suffix(s.size())) > 1) {
+      if (s == "ion" && !(s_star(word, 's') || s_star(word, 't'))) 
+        continue;
+      word.pop_back(s.size());
+      return;
+    }
+  }
+}
+
+static void porter_step_5(fast::string &word) {
+
+}
+
 void fast::english::porter_stem(fast::string &word) {
   porter_step_1a(word);
   porter_step_1b(word);
+
+  // step 1c, could be optimized
+  if (word.ends_with("y")) word[word.size() - 1] = 'i';
+
+  porter_step_2(word);
+  porter_step_3(word);
+  porter_step_4(word);
+  porter_step_5(word);
 }
