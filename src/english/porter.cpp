@@ -79,10 +79,14 @@ static int calc_m(const fast::string_view &word) {
   char_classifier cc;
   int m = 0;
 
+  bool last_vowel = false;
+
   for (const auto c : word) {
-    const auto lv = cc.last_was_vowel();
     if (!cc.is_vowel(c)) {
-      m += lv;
+      m += last_vowel;
+      last_vowel = false;
+    } else {
+      last_vowel = true;
     }
   }
 
@@ -175,7 +179,7 @@ static void porter_step_1b(fast::string &word) {
   if (word.ends_with("eed") && calc_m(fast::string_view(word).trim_suffix(3)) > 0) {
     word.pop_back();
     return;
-  } else if (word.ends_with("ed") && v_star(fast::string_view(word).trim_suffix(2))) {
+  } else if (word.ends_with("ed") && !word.ends_with("eed") && v_star(fast::string_view(word).trim_suffix(2))) {
     word.pop_back(2);
   } else if (word.ends_with("ing") && v_star(fast::string_view(word).trim_suffix(3))) {
     word.pop_back(3);
@@ -242,9 +246,12 @@ static void porter_step_2(fast::string &word) {
   };
 
   for (const auto &trans : suffixes) {
-    if (word.ends_with(trans.first) && calc_m(fast::string_view(word).trim_suffix(trans.first.size()))) {
-      word.pop_back(trans.first.size());
-      word += trans.second;
+    if (word.ends_with(trans.first)) {
+      const auto m = calc_m(fast::string_view(word).trim_suffix(trans.first.size()));
+      if (m > 0) {
+        word.pop_back(trans.first.size());
+        word += trans.second;
+      }
       return;
     }
   }
@@ -271,9 +278,13 @@ static void porter_step_3(fast::string &word) {
   };
 
   for (const auto &trans : suffixes) {
-    if (word.ends_with(trans.first) && calc_m(fast::string_view(word).trim_suffix(trans.first.size()))) {
-      word.pop_back(trans.first.size());
-      word += trans.second;
+    if (word.ends_with(trans.first)) {
+      const auto m = calc_m(fast::string_view(word).trim_suffix(trans.first.size()));
+
+      if (m > 0) {
+        word.pop_back(trans.first.size());
+        word += trans.second;
+      }
       return;
     }
   }
@@ -325,10 +336,15 @@ static void porter_step_4(fast::string &word) {
   };
 
   for (const auto &s : suffs) {
-    if (word.ends_with(s) && calc_m(fast::string_view(word).trim_suffix(s.size())) > 1) {
+    if (word.ends_with(s)) {
+      const auto m = calc_m(fast::string_view(word).trim_suffix(s.size()));
+
       if (s == "ion" && !(s_star(word, 's') || s_star(word, 't'))) 
-        continue;
-      word.pop_back(s.size());
+        return;
+
+      if (m > 1) {
+        word.pop_back(s.size());
+      }
       return;
     }
   }
