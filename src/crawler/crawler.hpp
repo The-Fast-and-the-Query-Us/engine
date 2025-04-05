@@ -178,26 +178,50 @@ class crawler {
       bank_mtx.lock();
 
       for (fast::string& word : parser.words) {
-        if (word.size() == 0)
+        if (word.size() == 0) {
           continue;
-        while (!is_alphabet(word[0]))
+        }
+        while (!is_alphabet(word[0])) {
+          if (word.size() == 0) {
+            break;
+          }
           word = word.substr(1, word.size() - 1);
-        while (!is_alphabet(word[word.size() - 1]))
-          word = word.substr(0, word.size() - 1);
-        if (word.size() == 0)
+        }
+        if (word.size() == 0) {
           continue;
+        }
+        while (!is_alphabet(word[word.size() - 1])) {
+          if (word.size() == 0) {
+            break;
+          }
+          word = word.substr(0, word.size() - 1);
+        }
+        if (word.size() == 0) {
+          continue;
+        }
         lower(word);
         word_bank->add(word);
       }
+
       for (fast::string& word : parser.titleWords) {
-        if (word.size() == 0)
+        if (word.size() == 0) {
           continue;
-        while (!is_alphabet(word[0]))
+        }
+        while (!is_alphabet(word[0])) {
+          if (word.size() == 0) {
+            break;
+          }
           word = word.substr(1, word.size() - 1);
-        while (!is_alphabet(word[word.size() - 1]))
+        }
+        while (!is_alphabet(word[word.size() - 1])) {
+          if (word.size() == 0) {
+            break;
+          }
           word = word.substr(0, word.size() - 1);
-        if (word.size() == 0)
+        }
+        if (word.size() == 0) {
           continue;
+        }
         lower(word);
         word += '#';
         word_bank->add(word);

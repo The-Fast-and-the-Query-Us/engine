@@ -1,34 +1,34 @@
 #pragma once
 
-#include "bitset.hpp"
-#include "murmur_hash3.hpp"
-#include "pair.hpp"
-#include "scoped_lock.hpp"
+#include <fcntl.h>
+#include <sys/fcntl.h>
+#include <unistd.h>
 #include <cmath>
 #include <concepts>
 #include <cstddef>
 #include <cstring>
-#include <fcntl.h>
 #include <stdexcept>
-#include <sys/fcntl.h>
 #include <type_traits>
-#include <unistd.h>
+#include "bitset.hpp"
+#include "murmur_hash3.hpp"
+#include "pair.hpp"
+#include "scoped_lock.hpp"
 
 namespace fast::crawler {
 
 template <typename T>
 class bloom_filter {
-public:
-  bloom_filter(size_t _n, double _fpr, const char *_save_path)
+ public:
+  bloom_filter(size_t _n, double _fpr, const char* _save_path)
       : n(_n), fpr(_fpr), save_path(_save_path) {
     init();
 
     bit_set = bitset(num_bits, save_path);
   }
 
-  bloom_filter(const char *load_path) { load(load_path); }
+  bloom_filter(const char* load_path) { load(load_path); }
 
-  void insert(const T &val) {
+  void insert(const T& val) {
     auto [h1, h2] = hash(val);
     fast::scoped_lock lock_guard(&m);
     for (size_t i = 0; i < num_hash; ++i) {
@@ -36,7 +36,7 @@ public:
     }
   }
 
-  bool contains(const T &val) {
+  bool contains(const T& val) {
     auto [h1, h2] = hash(val);
     fast::scoped_lock lock_guard(&m);
     for (size_t i = 0; i < num_hash; ++i) {
@@ -85,7 +85,7 @@ public:
     return bs_sz + n_written + fpr_written;
   }
 
-  int load(const char *load_path) {
+  int load(const char* load_path) {
     fast::scoped_lock lock(&m);
 
     int fd = open(load_path, O_RDONLY);
@@ -125,7 +125,7 @@ public:
     return bs_sz + n_read + fpr_read;
   }
 
-private:
+ private:
   size_t n;
 
   uint64_t num_bits;
@@ -138,7 +138,7 @@ private:
 
   fast::mutex m;
 
-  const char *save_path;
+  const char* save_path;
 
   void init() {
     if (n == 0) {
@@ -155,15 +155,15 @@ private:
     num_hash = static_cast<uint64_t>((static_cast<double>(num_bits) / n) * ln2);
   }
 
-  pair<const unsigned char *, size_t> serialize(const T &datum) {
-    return pair{reinterpret_cast<const unsigned char *>(&datum), datum.size()};
+  pair<const unsigned char*, size_t> serialize(const T& datum) {
+    return pair{reinterpret_cast<const unsigned char*>(&datum), datum.size()};
   }
 
   size_t double_hash(uint64_t h1, uint64_t h2, uint32_t i) {
     return (h1 + i * h2) % num_bits;
   }
 
-  pair<uint64_t, uint64_t> hash(const T &datum) {
+  pair<uint64_t, uint64_t> hash(const T& datum) {
     auto [serialized, len] = serialize(datum);
 
     uint64_t curr_hash[2];
@@ -173,4 +173,4 @@ private:
   }
 };
 
-} // namespace fast::crawler
+}  // namespace fast::crawler

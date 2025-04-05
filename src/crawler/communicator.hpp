@@ -1,23 +1,23 @@
 #pragma once
 
+#include <fcntl.h>
+#include <netdb.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <cctype>
+#include <cstdint>
+#include <cstring>
+#include <stdexcept>
 #include "hashtable.hpp"
 #include "html_file.hpp"
 #include "html_parser.hpp"
 #include "mutex.hpp"
 #include "string.hpp"
 #include "vector.hpp"
-#include <cctype>
-#include <cstdint>
-#include <cstring>
-#include <fcntl.h>
-#include <netdb.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <stdexcept>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 static constexpr uint16_t MAX_PACKET_SIZE = 10240;
 static constexpr uint16_t MAX_MESSAGE_SIZE = 8192;
@@ -29,11 +29,11 @@ static constexpr uint8_t HTML_TAIL_LEN = 61;
 namespace fast::crawler {
 
 class communicator {
-private:
-  struct addrinfo *address{};
+ private:
+  struct addrinfo* address{};
   struct addrinfo hints{};
   int sock_fd = -1;
-  SSL *ssl{};
+  SSL* ssl{};
   char *host{}, *port{}, *path{};
 
   void destroy_objects() {
@@ -56,11 +56,11 @@ private:
     host = port = path = nullptr;
   }
 
-public:
-  communicator(SSL_CTX *ctx, char *host_, char *port_, char *path_) :
-    host(new char[strlen(host_) + 1]),
-    port(new char[strlen(port_) + 1]),
-    path(new char[strlen(path_) + 1]) {
+ public:
+  communicator(SSL_CTX* ctx, char* host_, char* port_, char* path_)
+      : host(new char[strlen(host_) + 1]),
+        port(new char[strlen(port_) + 1]),
+        path(new char[strlen(path_) + 1]) {
 
     strcpy(host, host_);
     strcpy(port, port_);
@@ -70,52 +70,44 @@ public:
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
-    
+
     if (getaddrinfo(host, "443", &hints, &address) < 0) {
       throw std::runtime_error("getaddrinfo failed. Address not found.\n");
     }
 
     sock_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (sock_fd < 0) {
-      freeaddrinfo(address);
+      destroy_objects();
       throw std::runtime_error("Failed to create socket.\n");
     }
 
     if (connect(sock_fd, address->ai_addr, address->ai_addrlen) < 0) {
-      close(sock_fd);
-      freeaddrinfo(address);
+      destroy_objects();
       perror("connect failed");
       throw std::runtime_error("Connection to host failed.\n");
     }
 
     ssl = SSL_new(ctx);
     if (!ssl) {
-      close(sock_fd);
-      freeaddrinfo(address);
+      destroy_objects();
       perror("SSL_new failed.");
       throw std::runtime_error("Failed to create SSL connection.\n");
     }
 
     if (SSL_set_fd(ssl, sock_fd) != 1) {
-      SSL_free(ssl);
-      close(sock_fd);
-      freeaddrinfo(address);
+      destroy_objects();
       perror("SSL_set_fd failed.\n");
       throw std::runtime_error("Failed to bind SSL to socket.\n");
     }
-    
+
     // Ensure host is valid before using it
     if (!host || *host == '\0') {
-      SSL_free(ssl);
-      close(sock_fd);
-      freeaddrinfo(address);
+      destroy_objects();
       throw std::runtime_error("Invalid hostname for SSL.\n");
     }
-    
+
     if (!SSL_set_tlsext_host_name(ssl, host)) {
-      SSL_free(ssl);
-      close(sock_fd);
-      freeaddrinfo(address);
+      destroy_objects();
       throw std::runtime_error("Failed to set SSL hostname: ");
     }
 
@@ -123,28 +115,24 @@ public:
     if (ssl_connect_result != 1) {
       int ssl_error = SSL_get_error(ssl, ssl_connect_result);
       char error_buffer[256];
-      snprintf(error_buffer, sizeof(error_buffer), 
+      snprintf(error_buffer, sizeof(error_buffer),
                "SSL_connect failed with error code: %d", ssl_error);
-      
-      SSL_free(ssl);
-      close(sock_fd);
-      freeaddrinfo(address);
+
+      destroy_objects();
       perror("SSL connection failed with error.\n");
       ERR_print_errors_fp(stderr);
       throw std::runtime_error(error_buffer);
     }
   }
 
-  ~communicator() {
-    destroy_objects();
-  }
+  ~communicator() { destroy_objects(); }
 
   void send_get_request() {
     char get_request[MAX_MESSAGE_SIZE];
     get_request[0] = '\0';
-    char *p = get_request;
-    char *limit = get_request + MAX_MESSAGE_SIZE;
-    const char *agent_email = "shivgov@umich.edu";
+    char* p = get_request;
+    char* limit = get_request + MAX_MESSAGE_SIZE;
+    const char* agent_email = "shivgov@umich.edu";
 
     if (p + REQUEST_TYPE_LEN + strlen(path) > limit) {
       throw std::runtime_error("Get request buffer overflow.\n");
@@ -175,25 +163,25 @@ public:
     if (p + HTML_TAIL_LEN > limit) {
       throw std::runtime_error("Get request buffer overflow.\n");
     }
-    strcat(p, "Accept: */*\r\nAccept-Encoding: identity\r\nConnection: "
-              "close\r\n\r\n");
+    strcat(p,
+           "Accept: */*\r\nAccept-Encoding: identity\r\nConnection: "
+           "close\r\n\r\n");
 
     /*for (int i = 0; i < strlen(get_request); ++i) {*/
     /*  std::cout << get_request[i];*/
     /*}*/
 
     if (SSL_write(ssl, get_request, strlen(get_request)) <= 0) {
-      SSL_free(ssl);
-      close(sock_fd);
+      destroy_objects();
       throw std::runtime_error("SSL write failed.\n");
     }
   }
 
-  void get_html(fast::crawler::html_file &html) {
+  void get_html(fast::crawler::html_file& html) {
     char buffer[MAX_PACKET_SIZE];
     ssize_t bytes{};
     bool found_header_end = false;
-    const char *header_end = "\r\n\r\n";
+    const char* header_end = "\r\n\r\n";
     int header_match_pos = 0;
 
     while (true) {
@@ -207,7 +195,8 @@ public:
 
       if (bytes <= 0) {
         int ssl_error = SSL_get_error(ssl, bytes);
-        if (ssl_error == SSL_ERROR_WANT_READ || ssl_error == SSL_ERROR_WANT_WRITE) {
+        if (ssl_error == SSL_ERROR_WANT_READ ||
+            ssl_error == SSL_ERROR_WANT_WRITE) {
           // Non-blocking operation, would block - try again
           continue;
         }
@@ -219,7 +208,7 @@ public:
         for (int i = 0; i < bytes; i++) {
           if (buffer[i] == header_end[header_match_pos]) {
             header_match_pos++;
-            if (header_match_pos == 4) { // Found \r\n\r\n
+            if (header_match_pos == 4) {  // Found \r\n\r\n
               found_header_end = true;
               if (i + 1 < bytes) {
                 html.add(buffer + i + 1, bytes - i - 1);
@@ -242,4 +231,4 @@ public:
   }
 };
 
-}
+}  // namespace fast::crawler

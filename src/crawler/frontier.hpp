@@ -29,7 +29,6 @@ class frontier {
       : save_path(_save_path) {
     priorities.resize(4);
     if (seed_list) {
-      std::cout << seed_list << '\n';
       load_seed_list(seed_list);
     }
   }
@@ -42,27 +41,21 @@ class frontier {
     priorities[pri_level].push(url);
 
     ++num_links;
-    std::cout << "there are now " << num_links << " links\n";
     cv.signal();
   }
 
   void insert(fast::string& url) {
     fast::scoped_lock lock(&mtx);
-    std::cout << "lock acquired\n";
     insert_no_mutex(url);
   }
 
   fast::string next(volatile sig_atomic_t* shutdown_flag = nullptr) {
     fast::scoped_lock lock(&mtx);
-    std::cout << "next()\n";
 
-    std::cout << "num_links: " << num_links << '\n';
     while (num_links == 0 &&
            (shutdown_flag == nullptr || *shutdown_flag != 1)) {
-      std::cout << "going to sleep\n";
       cv.wait(&mtx);
     }
-    std::cout << "waking up\n";
 
     if (shutdown_flag != nullptr && *shutdown_flag == 1) {
       return "";
@@ -82,7 +75,6 @@ class frontier {
           if (crawl_cnt[curr_hostname] <= CRAWL_LIM) {
             ++crawl_cnt[curr_hostname];
             --num_links;
-            std::cout << "there are now " << num_links << " links\n";
             return curr_hostname;
           }
 
@@ -176,7 +168,6 @@ class frontier {
         t_q.pop();
         size_t f_len = f.size();
 
-        std::cout << "writing f_len: " << f_len << '\n';
         ssize_t link_len_written = write(fd, &f_len, sizeof(f_len));
         if (link_len_written == -1) {
           std::cerr << "Failed writing string length in frontier save(): "
@@ -186,7 +177,6 @@ class frontier {
         }
         total_priority_bytes += link_len_written;
 
-        std::cout << "writing f.c_str(): " << f.c_str() << '\n';
         ssize_t link_written = write(fd, f.c_str(), f_len);
 
         if (link_written == -1) {
@@ -214,7 +204,6 @@ class frontier {
     }
 
     ssize_t num_links_read = read(fd, &num_links, sizeof(uint64_t));
-    std::cout << "read num_links: " << num_links << '\n';
     if (num_links_read == -1) {
       std::cerr << "failed reading num_links in frontier load()";
       close(fd);
