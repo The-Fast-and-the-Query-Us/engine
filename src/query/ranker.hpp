@@ -34,6 +34,7 @@ class ranker {
     sz = flattened.size();
 
     isrs = (isr**)malloc((sz) * sizeof(isr*));
+    title_isrs = (isr**)malloc((sz) * sizeof(isr*));
 
     // get rarest word
     rare_word_idx = 0;
@@ -48,14 +49,25 @@ class ranker {
 
     // intialize isrs for body
     for (size_t i = 0; i < sz; ++i) {
+      auto* post_list = index_chunk->get(flattened[i]);
       isrs[i] = index_chunk->get(flattened[i])->get_isr();
     }
 
+    title_isrs_sz = 0;
+    min_num_words = SIZE_MAX;
     // initialize isrs for title
     for (size_t i = 0; i < sz; ++i) {
       string title_string(flattened[i].begin(), flattened[i].size());
       title_string += "#";
-      title_isrs[i] = index_chunk->get(title_string)->get_isr();
+      auto* post_list = index_chunk->get(title_string);
+      if (post_list != nullptr) {
+        size_t num_words = post_list->words();
+        if (num_words < min_num_words) {
+          rare_title_word_idx = title_isrs_sz;
+          min_num_words = num_words;
+        }
+        title_isrs[title_isrs_sz++] = post_list->get_isr();
+      }
     }
 
     // rarest_isr = isrs[rare_word_idx];
@@ -77,6 +89,11 @@ class ranker {
       free(isrs[i]);
     };
     free(isrs);
+
+    for (auto i = 0; i < title_isrs_sz; ++i) {
+      free(title_isrs[i]);
+    }
+    free(title_isrs);
   }
 
   void score_doc() {
@@ -84,7 +101,11 @@ class ranker {
 
     // loop for all metastreams
     for (auto& [metastream, multiplier] : meta_stream_mult) {
-      if (sz == 1) {
+      size_t cur_sz = metastream == meta_stream::BODY ? sz : title_isrs_sz;
+      if (cur_sz == 0) {
+        continue;
+      }
+      if (cur_sz == 1) {
         // do not look for spans
         cur_doc_score += multiplier * count_single(metastream);
       } else {
@@ -92,12 +113,12 @@ class ranker {
         cur_doc_score += multiplier * count_full(metastream);
 
         // loop for spans of size 2
-        if (sz > 2) {
+        if (cur_sz > 2) {
           cur_doc_score += multiplier * count_doubles(metastream);
         }
 
         // look for spans for size 3
-        if (sz > 3) {
+        if (cur_sz > 3) {
           cur_doc_score += multiplier * count_triples(metastream);
         }
       }
@@ -126,6 +147,9 @@ class ranker {
 
   double count_single(meta_stream ms) {
     // only one word queries
+    if (ms == meta_stream::TITLE && title_isrs_sz == 0) {
+      return 0;
+    }
     isr** use_isrs = (ms == meta_stream::BODY) ? isrs : title_isrs;
     double score(0.0);
     vector<Offset> positions(1);
@@ -210,27 +234,33 @@ class ranker {
   double count_full(meta_stream ms) {
     // count complete query spans
     isr** cur_isrs = (ms == meta_stream::BODY) ? isrs : title_isrs;
+    size_t cur_sz = (ms == meta_stream::BODY) ? sz : title_isrs_sz;
+    size_t cur_rare_word_idx =
+        (ms == meta_stream::BODY) ? rare_word_idx : rare_title_word_idx;
     std::map<string, vector<size_t>> word_to_isrs;
-    for (size_t i = 0; i < sz; ++i) {
+    for (size_t i = 0; i < cur_sz; ++i) {
       word_to_isrs[flattened[i]].push_back(i);
     }
-    return count_spans(sz, cur_isrs, rare_word_idx, &word_to_isrs);
+    return count_spans(sz, cur_isrs, cur_rare_word_idx, &word_to_isrs);
   }
 
   double count_doubles(meta_stream ms) {
     // only two words of query
     isr** use_isrs = (ms == meta_stream::BODY) ? isrs : title_isrs;
+    size_t cur_sz = (ms == meta_stream::BODY) ? sz : title_isrs_sz;
+    size_t cur_rare_word_idx =
+        (ms == meta_stream::BODY) ? rare_word_idx : rare_title_word_idx;
 
     double score(0);
     isr* cur_isrs[2];
-    for (size_t i = 0; i < sz; ++i) {
-      if (flattened[i] == flattened[rare_word_idx]) {
+    for (size_t i = 0; i < cur_sz; ++i) {
+      if (flattened[i] == flattened[cur_rare_word_idx]) {
         continue;
-      } else if (i < rare_word_idx) {
+      } else if (i < cur_rare_word_idx) {
         cur_isrs[0] = use_isrs[i];
-        cur_isrs[1] = use_isrs[rare_word_idx];
+        cur_isrs[1] = use_isrs[cur_rare_word_idx];
       } else {
-        cur_isrs[0] = use_isrs[rare_word_idx];
+        cur_isrs[0] = use_isrs[cur_rare_word_idx];
         cur_isrs[1] = use_isrs[i];
       }
       score += count_spans(2, cur_isrs, 1);
@@ -242,30 +272,33 @@ class ranker {
   double count_triples(meta_stream ms) {
     // three word spans
     isr** use_isrs = (ms == meta_stream::BODY) ? isrs : title_isrs;
+    size_t cur_sz = (ms == meta_stream::BODY) ? sz : title_isrs_sz;
+    size_t cur_rare_word_idx =
+        (ms == meta_stream::BODY) ? rare_word_idx : rare_title_word_idx;
 
     double score(0);
     isr* cur_isrs[3];
     size_t rare_idx = 3;
-    for (size_t i = 0; i < sz - 1; ++i) {
-      if (i == rare_word_idx) {
+    for (size_t i = 0; i < cur_sz - 1; ++i) {
+      if (i == cur_rare_word_idx) {
         continue;
-      } else if (i < rare_word_idx) {
+      } else if (i < cur_rare_word_idx) {
         cur_isrs[0] = use_isrs[i];
       } else {
-        cur_isrs[0] = use_isrs[rare_word_idx];
+        cur_isrs[0] = use_isrs[cur_rare_word_idx];
         cur_isrs[1] = use_isrs[i];
         rare_idx = 0;
       }
-      for (size_t j = i + 1; j < sz; ++j) {
-        if (j == rare_word_idx) {
+      for (size_t j = i + 1; j < cur_sz; ++j) {
+        if (j == cur_rare_word_idx) {
           continue;
-        } else if (j < rare_word_idx) {
+        } else if (j < cur_rare_word_idx) {
           cur_isrs[1] = use_isrs[j];
-          cur_isrs[2] = use_isrs[rare_word_idx];
+          cur_isrs[2] = use_isrs[cur_rare_word_idx];
           rare_idx = 2;
         } else {
           if (rare_idx == 3) {
-            cur_isrs[1] = use_isrs[rare_word_idx];
+            cur_isrs[1] = use_isrs[cur_rare_word_idx];
             cur_isrs[2] = use_isrs[j];
             rare_idx = 1;
           } else {
@@ -445,6 +478,7 @@ class ranker {
 
   vector<string_view>& flattened;
   size_t sz;
+  size_t title_isrs_sz = 0;
 
   double cur_doc_score;
 
@@ -454,6 +488,7 @@ class ranker {
   string_view cur_doc_url;
 
   size_t rare_word_idx;
+  size_t rare_title_word_idx;
   // isr* rarest_isr;
   isr** isrs;
   isr** title_isrs;
@@ -466,7 +501,8 @@ void blob_rank(
   auto constraints =
       fast::query::contraint_parser::parse_contraint(query_stream, blob);
 
-  if (!constraints) return;
+  if (!constraints)
+    return;
 
   fast::vector<fast::string_view> flattened;
 
