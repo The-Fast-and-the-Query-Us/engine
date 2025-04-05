@@ -20,4 +20,8 @@ int main() {
   assert(s == "cccc");
 
   assert(string("some") == string_view("some"));
+
+  assert(string("abs").ends_with("bs"));
+  assert(string("abs").ends_with("abs"));
+  assert(!string("abs").ends_with("aabs"));
 }
