@@ -1,36 +1,38 @@
 #pragma once
 
+#include <pthread.h>
+#include <sys/mman.h>
+#include <csignal>
+#include <hashblob.hpp>
+#include <hashtable.hpp>
+#include <stdexcept>
 #include "bloom_filter.hpp"
+#include "communicator.hpp"
 #include "frontier.hpp"
 #include "html_parser.hpp"
 #include "url_parser.hpp"
-#include "communicator.hpp"
-#include <hashblob.hpp>
-#include <hashtable.hpp>
-#include <pthread.h>
-#include <stdexcept>
-#include <sys/mman.h>
-#include <csignal>
 
 static constexpr int THREAD_COUNT = 5;
-static constexpr int LINK_COUNT = 1000000; // ONE MILLION
-static constexpr const char *BLOOM_FILE_PATH = "bloom_filter_dump.dat";
-static constexpr const char *FRONTIER_PATH = "fronter_dump.dat";
-static constexpr const char *SEED_LIST = "./seed_list.txt";
+static constexpr int LINK_COUNT = 1000000;  // ONE MILLION
+static constexpr const char* BLOOM_FILE_PATH = "bloom_filter_dump.dat";
+static constexpr const char* FRONTIER_PATH = "fronter_dump.dat";
+static constexpr const char* SEED_LIST = "./seed_list.txt";
 static constexpr size_t BLOOM_FILTER_NUM_OBJ = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 500'000;
 
+namespace fast::crawler {
 class crawler {
-public:
+ public:
   crawler()
       : visited_urls(BLOOM_FILTER_NUM_OBJ, BLOOM_FILTER_FPR, BLOOM_FILE_PATH),
         crawl_frontier(FRONTIER_PATH, SEED_LIST),
         word_bank(new fast::hashtable) {}
 
   void run() {
-    OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS | 
-                     OPENSSL_INIT_LOAD_CRYPTO_STRINGS, nullptr);
+    OPENSSL_init_ssl(
+        OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS,
+        nullptr);
     g_ssl_ctx = SSL_CTX_new(TLS_client_method());
     if (!g_ssl_ctx) {
       throw std::runtime_error("Failed to create SSL context");
@@ -39,7 +41,8 @@ public:
     SSL_CTX_set_security_level(g_ssl_ctx, 2);  // Reasonable security level
 
     // Set a broad cipher list that includes secure ciphers
-    if (SSL_CTX_set_cipher_list(g_ssl_ctx, "HIGH:!aNULL:!kRSA:!PSK:!SRP:!MD5:!RC4") != 1) {
+    if (SSL_CTX_set_cipher_list(g_ssl_ctx,
+                                "HIGH:!aNULL:!kRSA:!PSK:!SRP:!MD5:!RC4") != 1) {
       SSL_CTX_free(g_ssl_ctx);
       throw std::runtime_error("Failed to set cipher list");
     }
@@ -51,15 +54,17 @@ public:
 
     // For TLS 1.3 specific ciphers (if using OpenSSL 1.1.1+)
 #if defined(TLS1_3_VERSION)
-    SSL_CTX_set_ciphersuites(g_ssl_ctx, "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256");
+    SSL_CTX_set_ciphersuites(g_ssl_ctx,
+                             "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_"
+                             "SHA256:TLS_AES_128_GCM_SHA256");
 #endif
 
-    for (auto &t : thread_pool) {
+    for (auto& t : thread_pool) {
       // Lambda used as worker is not static
       if (pthread_create(
               &t, nullptr,
-              [](void *arg) -> void * {
-                auto self = static_cast<crawler *>(arg);
+              [](void* arg) -> void* {
+                auto self = static_cast<crawler*>(arg);
                 self->worker();
                 return nullptr;
               },
@@ -68,7 +73,7 @@ public:
       }
     }
 
-    for (auto &t : thread_pool) {
+    for (auto& t : thread_pool) {
       pthread_join(t, nullptr);
     }
 
@@ -82,17 +87,20 @@ public:
     SSL_CTX_free(g_ssl_ctx);
   }
 
-  void shutdown() { shutdown_flag = 1; }
+  void shutdown() {
+    shutdown_flag = 1;
+    crawl_frontier.cv.broadcast();
+  }
 
-private:
+ private:
   volatile sig_atomic_t shutdown_flag = 0;
   fast::crawler::bloom_filter<fast::string> visited_urls;
   fast::crawler::frontier crawl_frontier;
-  fast::hashtable *word_bank;
+  fast::hashtable* word_bank;
   fast::mutex bank_mtx;
   fast::mutex ssl_mtx;
-  SSL_CTX *g_ssl_ctx{};
-  int chunk_count{}; // TODO: search dir for next chunk count to continue crawling
+  SSL_CTX* g_ssl_ctx{};
+  int chunk_count{};  // TODO: search dir for next chunk count to continue crawling
   /*std::unordered_map<fast::string, std::unordered_set<fast::string>>*/
   pthread_t thread_pool[THREAD_COUNT]{};
   // We also need a map for robots.txt stuff
@@ -100,14 +108,14 @@ private:
   static fast::string itos(int x) {
     fast::string s;
     while (x > 0) {
-      int d = x % 10; // NOLINT
-      x /= 10;        // NOLINT
+      int d = x % 10;  // NOLINT
+      x /= 10;         // NOLINT
       s.insert(0, static_cast<char>('0' + d));
     }
     return s;
   }
 
-  void *worker() {
+  void* worker() {
     // Get url from frontier
     // parse url
     // Setup connection for this url
@@ -121,13 +129,13 @@ private:
     // If we have not shutdown, then repeat
     //
     // Separate:
-    //  - 
+    //  -
     while (!shutdown_flag) {
       fast::string url = "";
       // TODO: How do we get our start list to the right computers?
       int attempts = 0;
       while (url == "" && attempts < 3 && !shutdown_flag) {
-        url = crawl_frontier.next();
+        url = crawl_frontier.next(&shutdown_flag);
         if (url == "") {
           usleep(100'000);
           ++attempts;
@@ -147,12 +155,14 @@ private:
       }
 
       ssl_mtx.lock();
-      SSL_CTX *ctx_cpy = g_ssl_ctx;
+      SSL_CTX* ctx_cpy = g_ssl_ctx;
       ssl_mtx.unlock();
 
-      if (!ctx_cpy) continue;
+      if (!ctx_cpy)
+        continue;
 
-      fast::crawler::communicator ssl_connection(ctx_cpy, url_parts.host, url_parts.port, url_parts.path);
+      fast::crawler::communicator ssl_connection(
+          ctx_cpy, url_parts.host, url_parts.port, url_parts.path);
 
       ssl_connection.send_get_request();
       fast::crawler::html_file html;
@@ -167,7 +177,7 @@ private:
 
       bank_mtx.lock();
 
-      for (fast::string &word : parser.words) {
+      for (fast::string& word : parser.words) {
         if (word.size() == 0)
           continue;
         while (!is_alphabet(word[0]))
@@ -179,7 +189,7 @@ private:
         lower(word);
         word_bank->add(word);
       }
-      for (fast::string &word : parser.titleWords) {
+      for (fast::string& word : parser.titleWords) {
         if (word.size() == 0)
           continue;
         while (!is_alphabet(word[0]))
@@ -201,7 +211,7 @@ private:
 
       bank_mtx.unlock();
 
-      for (auto &link : parser.links) {
+      for (auto& link : parser.links) {
         if (!visited_urls.contains(link.URL)) {
           crawl_frontier.insert(link.URL);
         }
@@ -214,7 +224,7 @@ private:
     return nullptr;
   }
 
-  void write_blob(const fast::string &path) {
+  void write_blob(const fast::string& path) {
     auto fd = open(path.c_str(), O_CREAT | O_RDWR, 0777);
 
     if (fd == -1) {
@@ -252,12 +262,12 @@ private:
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
   }
 
-  static void lower(fast::string &word) {
-    for (char &c : word) {
+  static void lower(fast::string& word) {
+    for (char& c : word) {
       if (is_alphabet(c) && c <= 'Z' && c >= 'A') {
-        c = c + 32; // NOLINT
+        c = c + 32;  // NOLINT
       }
     }
   }
-
 };
+}  // namespace fast::crawler

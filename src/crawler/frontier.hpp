@@ -6,35 +6,35 @@
 #include "string.hpp"
 #include "vector.hpp"
 
-#include <cstdint>
-#include <iostream>
-#include <map>
 #include <sys/fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <cstdint>
+#include <iostream>
+#include <map>
 #include <vector>
 
 namespace fast::crawler {
+
+class crawler;
 
 // TODO:
 //  - Add blacklist?
 //  - How do we manage data and communication across all our latpops?
 //  - redirects
 class frontier {
-public:
-  frontier(const char *_save_path, const char *seed_list = nullptr)
+ public:
+  frontier(const char* _save_path, const char* seed_list = nullptr)
       : save_path(_save_path) {
     priorities.resize(4);
     if (seed_list) {
+      std::cout << seed_list << '\n';
       load_seed_list(seed_list);
     }
   }
 
-  void insert(fast::string &url) {
-    fast::scoped_lock lock(&mtx);
-    std::cout << "lock acquired\n";
-
+  void insert_no_mutex(fast::string& url) {
     int pri_level = calc_priority(url);
     if (pri_level < 0)
       return;
@@ -46,19 +46,30 @@ public:
     cv.signal();
   }
 
-  fast::string next() {
+  void insert(fast::string& url) {
+    fast::scoped_lock lock(&mtx);
+    std::cout << "lock acquired\n";
+    insert_no_mutex(url);
+  }
+
+  fast::string next(volatile sig_atomic_t* shutdown_flag = nullptr) {
     fast::scoped_lock lock(&mtx);
     std::cout << "next()\n";
 
     std::cout << "num_links: " << num_links << '\n';
-    while (num_links == 0) {
+    while (num_links == 0 &&
+           (shutdown_flag == nullptr || *shutdown_flag != 1)) {
       std::cout << "going to sleep\n";
       cv.wait(&mtx);
     }
     std::cout << "waking up\n";
 
+    if (shutdown_flag != nullptr && *shutdown_flag == 1) {
+      return "";
+    }
+
     for (int64_t i = priorities.size() - 1; i >= 0; --i) {
-      fast::queue<fast::string> &curr_pri = priorities[i];
+      fast::queue<fast::string>& curr_pri = priorities[i];
 
       if (!curr_pri.empty()) {
         const size_t n = curr_pri.size();
@@ -83,8 +94,8 @@ public:
     return "";
   }
 
-  void load_seed_list(const char *fp) {
-    mtx.lock();
+  void load_seed_list(const char* fp) {
+    fast::scoped_lock lock(&mtx);
     int fd = open(fp, O_RDONLY);
     if (fd == -1) {
       perror("failed to open seedlist");
@@ -99,15 +110,15 @@ public:
     }
     size_t length = sb.st_size;
 
-    char *file =
-        static_cast<char *>(mmap(NULL, length, PROT_READ, MAP_PRIVATE, fd, 0));
+    char* file =
+        static_cast<char*>(mmap(NULL, length, PROT_READ, MAP_PRIVATE, fd, 0));
     if (file == MAP_FAILED) {
       perror("mmap");
       return;
     }
     close(fd);
 
-    char *end = file + length;
+    char* end = file + length;
     while (file < end) {
       fast::string url{};
       while (file < end && *file != '\n') {
@@ -115,15 +126,13 @@ public:
       }
       file++;
 
-      mtx.unlock();
-      insert(url);
-      mtx.lock();
+      insert_no_mutex(url);
     }
-    mtx.unlock();
+    // mtx.unlock();
     munmap(file, length);
   }
 
-  void notify_crawled(fast::string &url) {
+  void notify_crawled(fast::string& url) {
     fast::scoped_lock lock(&mtx);
     fast::string hostname = extract_hostname(url);
     --crawl_cnt[hostname];
@@ -250,7 +259,7 @@ public:
     return tbr;
   }
 
-  static fast::string extract_hostname(fast::string &url) {
+  static fast::string extract_hostname(fast::string& url) {
     fast::string hostname;
     uint8_t slash_cnt = 0;
     for (size_t i = 0; i < url.size(); ++i) {
@@ -262,7 +271,9 @@ public:
     return hostname;
   }
 
-private:
+ private:
+  friend class crawler;
+
   static constexpr uint8_t GOOD_LEN = 25;
 
   static constexpr uint8_t CRAWL_LIM = 3;
@@ -275,7 +286,7 @@ private:
 
   uint64_t num_links{0};
 
-  const char *save_path;
+  const char* save_path;
 
   fast::vector<fast::queue<fast::string>> priorities;
 
@@ -286,7 +297,7 @@ private:
   std::vector<fast::string> good_tld = {"com", "org", "gov", "net", "edu"};
   std::vector<fast::string> blacklist = {"signup", "signin", "login"};
 
-  int8_t calc_priority(fast::string &url) {
+  int8_t calc_priority(fast::string& url) {
     fast::string hostname = extract_hostname(url);
 
     uint8_t score = 0;
@@ -338,4 +349,4 @@ private:
   }
 };
 
-} // namespace fast::crawler
+}  // namespace fast::crawler
