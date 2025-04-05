@@ -24,4 +24,6 @@ int main() {
   assert(string("abs").ends_with("bs"));
   assert(string("abs").ends_with("abs"));
   assert(!string("abs").ends_with("aabs"));
+
+  assert(string("multidimensional").ends_with("al"));
 }
