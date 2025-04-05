@@ -25,30 +25,73 @@ static constexpr uint8_t REQUEST_TYPE_LEN = 16;
 static constexpr uint8_t HOST_LEN = 6;
 static constexpr uint8_t USER_AGENT_LEN = 38;
 static constexpr uint8_t HTML_TAIL_LEN = 61;
-static constexpr char COLON = ':';
-static constexpr char SLASH = '/';
 
-class link_finder {
+namespace fast::crawler {
+
+class communicator {
+private:
+  struct addrinfo *address{};
+  struct addrinfo hints{};
+  int sock_fd = -1;
+  SSL *ssl{};
+  char *host{}, *port{}, *path{};
+
+  void destroy_objects() {
+    if (ssl) {
+      SSL_free(ssl);
+      ssl = nullptr;
+    }
+    if (sock_fd >= 0) {
+      close(sock_fd);
+      sock_fd = -1;
+    }
+    if (address) {
+      freeaddrinfo(address);
+      address = nullptr;
+    }
+
+    delete[] host;
+    delete[] port;
+    delete[] path;
+    host = port = path = nullptr;
+  }
+
 public:
-  void setup_connection(SSL_CTX *ctx) {
+  communicator(SSL_CTX *ctx, char *host_, char *port_, char *path_) :
+    host(new char[strlen(host_) + 1]),
+    port(new char[strlen(port_) + 1]),
+    path(new char[strlen(path_) + 1]) {
+
+    strcpy(host, host_);
+    strcpy(port, port_);
+    strcpy(path, path_);
+
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
+    
     if (getaddrinfo(host, "443", &hints, &address) < 0) {
       throw std::runtime_error("getaddrinfo failed. Address not found.\n");
     }
 
     sock_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (sock_fd < 0) {
+      freeaddrinfo(address);
+      throw std::runtime_error("Failed to create socket.\n");
+    }
 
     if (connect(sock_fd, address->ai_addr, address->ai_addrlen) < 0) {
-      perror("brev");
+      close(sock_fd);
+      freeaddrinfo(address);
+      perror("connect failed");
       throw std::runtime_error("Connection to host failed.\n");
     }
 
     ssl = SSL_new(ctx);
     if (!ssl) {
       close(sock_fd);
+      freeaddrinfo(address);
       perror("SSL_new failed.");
       throw std::runtime_error("Failed to create SSL connection.\n");
     }
@@ -56,123 +99,45 @@ public:
     if (SSL_set_fd(ssl, sock_fd) != 1) {
       SSL_free(ssl);
       close(sock_fd);
+      freeaddrinfo(address);
       perror("SSL_set_fd failed.\n");
       throw std::runtime_error("Failed to bind SSL to socket.\n");
+    }
+    
+    // Ensure host is valid before using it
+    if (!host || *host == '\0') {
+      SSL_free(ssl);
+      close(sock_fd);
+      freeaddrinfo(address);
+      throw std::runtime_error("Invalid hostname for SSL.\n");
     }
     
     if (!SSL_set_tlsext_host_name(ssl, host)) {
       SSL_free(ssl);
       close(sock_fd);
+      freeaddrinfo(address);
       throw std::runtime_error("Failed to set SSL hostname: ");
     }
 
-    if (SSL_connect(ssl) != 1) {
+    int ssl_connect_result = SSL_connect(ssl);
+    if (ssl_connect_result != 1) {
+      int ssl_error = SSL_get_error(ssl, ssl_connect_result);
+      char error_buffer[256];
+      snprintf(error_buffer, sizeof(error_buffer), 
+               "SSL_connect failed with error code: %d", ssl_error);
+      
       SSL_free(ssl);
       close(sock_fd);
+      freeaddrinfo(address);
       perror("SSL connection failed with error.\n");
       ERR_print_errors_fp(stderr);
-      throw std::runtime_error("SSL_connect returned -1");
+      throw std::runtime_error(error_buffer);
     }
   }
 
-  void parse_url(const char *file) {
-    url = file;
-    if (path_buffer) {
-      delete path_buffer;
-      path_buffer = nullptr;
-    }
-    path_buffer = new char[url.size() + 1];
-
-    const char *f{};
-    char *t{};
-    for (t = path_buffer, f = url.begin(); (*t++ = *f++);) {
-    }
-    service = path_buffer;
-    char *p{};
-    for (p = path_buffer; *p && *p != COLON; p++) {
-    }
-    if (*p) {
-      // Mark the end of the Service.
-      *p++ = 0;
-      if (*p == SLASH) 
-        ++p;
-      if (*p == SLASH)
-        ++p;
-
-      host = p;
-      for (; *p && *p != SLASH && *p != COLON; p++) {}
-
-      if (*p == COLON) {
-        *p++ = 0;
-        port = +p;
-        for (; *p && *p != SLASH; p++) {}
-      } else {
-        port = p;
-      }
-
-      if (*p) {
-        *p++ = 0;
-      }
-
-      path = p;
-    } else {
-      host = path = p;
-    }
-  }
-
-  fast::vector<fast::string> parse_html(fast::hashtable &word_bank,
-                                        fast::mutex &bank_mtx) {
-    fast::crawler::html_file html{};
-    get_html(html);
-    if (!html.size())
-      return {};
-
-    HtmlParser parser(html.html, html.size());
-    fast::vector<fast::string> links(parser.links.size());
-    for (size_t i = 0; i < links.size(); ++i) {
-      links[i] = parser.links[i].URL;
-    }
-
-    bank_mtx.lock();
-    for (fast::string &word : parser.words) {
-      if (word.size() == 0)
-        continue;
-      while (!is_alphabet(word[0]))
-        word = word.substr(1, word.size() - 1);
-      while (!is_alphabet(word[word.size() - 1]))
-        word = word.substr(0, word.size() - 1);
-      lower(word);
-      word_bank.add(word);
-    }
-    for (fast::string &word : parser.titleWords) {
-      if (word.size() == 0)
-        continue;
-      while (!is_alphabet(word[0]))
-        word = word.substr(1, word.size() - 1);
-      while (!is_alphabet(word[word.size() - 1]))
-        word = word.substr(0, word.size() - 1);
-      lower(word);
-      word += '#';
-      word_bank.add(word);
-    }
-    word_bank.add_doc(url);
-    bank_mtx.unlock();
-
+  ~communicator() {
     destroy_objects();
-
-    return links;
   }
-  
-  ~link_finder() { destroy_objects(); }
-
-private:
-  struct addrinfo *address{};
-  struct addrinfo hints{};
-  int sock_fd = -1;
-  fast::string url;
-  SSL *ssl{};
-  char *path_buffer{}, *service{}, *host{}, *port{}, *path{};
-
 
   void send_get_request() {
     char get_request[MAX_MESSAGE_SIZE];
@@ -231,17 +196,34 @@ private:
     const char *header_end = "\r\n\r\n";
     int header_match_pos = 0;
 
-    send_get_request();
+    while (true) {
+      if (!ssl) {
+        break;
+      }
 
-    while ((bytes = SSL_read(ssl, buffer, sizeof(buffer))) > 0) {
+      memset(buffer, 0, sizeof(buffer));
+
+      bytes = SSL_read(ssl, buffer, sizeof(buffer));
+
+      if (bytes <= 0) {
+        int ssl_error = SSL_get_error(ssl, bytes);
+        if (ssl_error == SSL_ERROR_WANT_READ || ssl_error == SSL_ERROR_WANT_WRITE) {
+          // Non-blocking operation, would block - try again
+          continue;
+        }
+        // Real error or connection closed
+        break;
+      }
+
       if (!found_header_end) {
         for (int i = 0; i < bytes; i++) {
           if (buffer[i] == header_end[header_match_pos]) {
             header_match_pos++;
             if (header_match_pos == 4) { // Found \r\n\r\n
               found_header_end = true;
-              html.add(buffer + i + 1, bytes - i - 1);
-              // write(1, buffer + i + 1, bytes - (i + 1));
+              if (i + 1 < bytes) {
+                html.add(buffer + i + 1, bytes - i - 1);
+              }
               break;
             }
           } else {
@@ -252,45 +234,12 @@ private:
         html.add(buffer, bytes);
       }
     }
-    if (bytes < 0) {
-      return;
-    }
 
-    if (SSL_shutdown(ssl) < 0) {
-      destroy_objects();
-      throw std::runtime_error("SSL shutdown failed with error.\n");
-    }
-  }
-
-  static bool is_alphabet(char c) {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-  }
-
-  static void lower(fast::string &word) {
-    for (char &c : word) {
-      if (is_alphabet(c) && c <= 'Z' && c >= 'A') {
-        c = c + 32;
-      }
-    }
-  }
-
-  // TODO: strip punctuation, read header to better prune shit
-  void destroy_objects() {
-    if (path_buffer) {
-      delete[] path_buffer;
-      path_buffer = nullptr;
-    }
     if (ssl) {
-      SSL_free(ssl);
+      SSL_shutdown(ssl);
       ssl = nullptr;
-    }
-    if (sock_fd >= 0) {
-      close(sock_fd);
-      sock_fd = -1;
-    }
-    if (address) {
-      freeaddrinfo(address);
-      address = nullptr;
     }
   }
 };
+
+}

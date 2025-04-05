@@ -2,7 +2,9 @@
 
 #include "bloom_filter.hpp"
 #include "frontier.hpp"
-#include "link_finder.hpp"
+#include "html_parser.hpp"
+#include "url_parser.hpp"
+#include "communicator.hpp"
 #include <hashblob.hpp>
 #include <hashtable.hpp>
 #include <pthread.h>
@@ -10,12 +12,12 @@
 #include <sys/mman.h>
 #include <csignal>
 
-static constexpr int THREAD_COUNT = 20;
+static constexpr int THREAD_COUNT = 5;
 static constexpr int LINK_COUNT = 1000000; // ONE MILLION
 static constexpr const char *BLOOM_FILE_PATH = "bloom_filter_dump.dat";
 static constexpr const char *FRONTIER_PATH = "fronter_dump.dat";
 static constexpr const char *SEED_LIST = "./seed_list.txt";
-static constexpr size_t BLOOM_FILTER_NUM_OBJ = 1e6;
+static constexpr size_t BLOOM_FILTER_NUM_OBJ = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 500'000;
 
@@ -58,7 +60,7 @@ public:
               &t, nullptr,
               [](void *arg) -> void * {
                 auto self = static_cast<crawler *>(arg);
-                self->worker(self->g_ssl_ctx);
+                self->worker();
                 return nullptr;
               },
               this)) {
@@ -72,7 +74,10 @@ public:
 
     visited_urls.save();
     crawl_frontier.save();
-    write_blob(itos(chunk_count) + ".txt", word_bank, bank_mtx);
+    // No threads, so no need to lock
+    if (word_bank->tokens() > 0)
+      write_blob(itos(chunk_count) + ".dat");
+
     delete word_bank;
     SSL_CTX_free(g_ssl_ctx);
   }
@@ -85,7 +90,8 @@ private:
   fast::crawler::frontier crawl_frontier;
   fast::hashtable *word_bank;
   fast::mutex bank_mtx;
-  SSL_CTX *g_ssl_ctx;
+  fast::mutex ssl_mtx;
+  SSL_CTX *g_ssl_ctx{};
   int chunk_count{}; // TODO: search dir for next chunk count to continue crawling
   /*std::unordered_map<fast::string, std::unordered_set<fast::string>>*/
   pthread_t thread_pool[THREAD_COUNT]{};
@@ -101,59 +107,137 @@ private:
     return s;
   }
 
-  void *worker(void *arg) {
-    auto *ctx = static_cast<SSL_CTX*>(arg);
-    
-    link_finder html_scraper(ctx);
+  void *worker() {
+    // Get url from frontier
+    // parse url
+    // Setup connection for this url
+    // setup get request - can this be a one time thing?
+    // send get request
+    // Get html and store it in a html_file obj
+    // Parse the html and get words, titleWords, and links
+    // Add links to frontier
+    // Add words, titleWords, and end_doc url -- lock for this in one go
+    // If the word_bank is big enough, write this out to a chunk
+    // If we have not shutdown, then repeat
+    //
+    // Separate:
+    //  - 
     while (!shutdown_flag) {
       fast::string url = "";
       // TODO: How do we get our start list to the right computers?
-      while (url == "") {
+      int attempts = 0;
+      while (url == "" && attempts < 3 && !shutdown_flag) {
         url = crawl_frontier.next();
-      }
-      visited_urls.insert(url);
-      html_scraper.parse_url(url.begin());
-      fast::vector<fast::string> extracted_links =
-          html_scraper.parse_html(*word_bank, bank_mtx);
-      for (auto &link : extracted_links) {
-        if (!visited_urls.contains(link)) {
-          crawl_frontier.insert(link);
+        if (url == "") {
+          usleep(100'000);
+          ++attempts;
         }
       }
-      crawl_frontier.notify_crawled(url);
-      if (word_bank->tokens() > BLOB_THRESHOLD) {
-        write_blob(itos(chunk_count) + ".txt", word_bank, bank_mtx);
+
+      if (url == "" || shutdown_flag) {
+        continue;
       }
+
+      visited_urls.insert(url);
+
+      fast::crawler::url_parser url_parts(url.begin());
+      if (!url_parts.host || !*url_parts.host) {
+        crawl_frontier.notify_crawled(url);
+        continue;
+      }
+
+      ssl_mtx.lock();
+      SSL_CTX *ctx_cpy = g_ssl_ctx;
+      ssl_mtx.unlock();
+
+      if (!ctx_cpy) continue;
+
+      fast::crawler::communicator ssl_connection(ctx_cpy, url_parts.host, url_parts.port, url_parts.path);
+
+      ssl_connection.send_get_request();
+      fast::crawler::html_file html;
+      ssl_connection.get_html(html);
+
+      if (!html.size()) {
+        crawl_frontier.notify_crawled(url);
+        continue;
+      }
+
+      html_parser parser(html.html, html.size());
+
+      bank_mtx.lock();
+
+      for (fast::string &word : parser.words) {
+        if (word.size() == 0)
+          continue;
+        while (!is_alphabet(word[0]))
+          word = word.substr(1, word.size() - 1);
+        while (!is_alphabet(word[word.size() - 1]))
+          word = word.substr(0, word.size() - 1);
+        if (word.size() == 0)
+          continue;
+        lower(word);
+        word_bank->add(word);
+      }
+      for (fast::string &word : parser.titleWords) {
+        if (word.size() == 0)
+          continue;
+        while (!is_alphabet(word[0]))
+          word = word.substr(1, word.size() - 1);
+        while (!is_alphabet(word[word.size() - 1]))
+          word = word.substr(0, word.size() - 1);
+        if (word.size() == 0)
+          continue;
+        lower(word);
+        word += '#';
+        word_bank->add(word);
+      }
+
+      word_bank->add_doc(url);
+
+      if (word_bank->tokens() > BLOB_THRESHOLD) {
+        write_blob(itos(chunk_count) + ".dat");
+      }
+
+      bank_mtx.unlock();
+
+      for (auto &link : parser.links) {
+        if (!visited_urls.contains(link.URL)) {
+          crawl_frontier.insert(link.URL);
+        }
+      }
+
+      crawl_frontier.notify_crawled(url);
     }
+
     std::cout << "Worker returning\n";
     return nullptr;
   }
 
-  void write_blob(const fast::string &path, fast::hashtable *word_bank,
-                  fast::mutex &bank_mtx) {
-    bank_mtx.lock();
-    const auto fd = open(path.c_str(), O_CREAT | O_RDWR, 0777);
+  void write_blob(const fast::string &path) {
+    auto fd = open(path.c_str(), O_CREAT | O_RDWR, 0777);
 
     if (fd == -1) {
       perror("open failed");
-      exit(1);
+      return;
     }
 
     size_t space = fast::hashblob::size_needed(*word_bank);
 
     if (ftruncate(fd, space) == -1) {
       perror("Ftruncate fail");
-      exit(1);
+      close(fd);
+      return;
     }
 
     auto mptr = mmap(nullptr, space, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (mptr == MAP_FAILED) {
       perror("cant mmap");
       close(fd);
-      exit(1);
+      return;
     }
 
-    auto blob = static_cast<fast::hashblob *>(mptr);
+    auto blob = static_cast<fast::hashblob*>(mptr);
     fast::hashblob::write(*word_bank, blob);
 
     delete word_bank;
@@ -162,6 +246,18 @@ private:
     munmap(mptr, space);
     close(fd);
     ++chunk_count;
-    bank_mtx.unlock();
   }
+
+  static bool is_alphabet(char c) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+  }
+
+  static void lower(fast::string &word) {
+    for (char &c : word) {
+      if (is_alphabet(c) && c <= 'Z' && c >= 'A') {
+        c = c + 32; // NOLINT
+      }
+    }
+  }
+
 };

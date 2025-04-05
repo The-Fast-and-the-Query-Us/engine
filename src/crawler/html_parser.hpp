@@ -1,4 +1,4 @@
-// HtmlParser.h
+// html_parser.h
 // Nicole Hamilton, nham@umich.edu
 
 #pragma once
@@ -77,7 +77,7 @@ public:
   Link(fast::string &URL) : URL(URL) {}
 };
 
-class HtmlParser {
+class html_parser {
 private:
   static bool IsWhitespace(char c) {
     return (c == ' ' || c == '\n' || c == '\t' || c == '\r' || c == '\f');
@@ -137,7 +137,7 @@ public:
   fast::vector<Link> links{};
   fast::string base{};
 
-  HtmlParser(const char *buffer, size_t length) {
+  html_parser(const char *buffer, size_t length) {
     const char *start = buffer;
     const char *const end = buffer + length;
 
