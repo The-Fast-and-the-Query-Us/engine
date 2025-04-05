@@ -80,7 +80,10 @@ static int calc_m(const fast::string_view &word) {
   int m = 0;
 
   for (const auto c : word) {
-    if (cc.last_was_vowel() && !cc.is_vowel(c)) ++m;
+    const auto lv = cc.last_was_vowel();
+    if (!cc.is_vowel(c)) {
+      m += lv;
+    }
   }
 
   return m;
