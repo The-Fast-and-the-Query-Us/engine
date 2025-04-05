@@ -12,8 +12,7 @@
 #include "constants.hpp"
 
 std::filesystem::path BASE = std::filesystem::path(std::getenv("HOME")) /
-                             ".local" / "share" / "crawler" / "training" /
-                             "index";
+                             ".local" / "share" / "crawler" / "index";
 const int NUM_CHUNK = 1;
 
 int main(int argc, char** argv) {
