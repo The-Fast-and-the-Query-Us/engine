@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <compare>
 #include <cstddef>
 #include <cstring>
@@ -53,6 +54,21 @@ class string_view {
     }
 
     return nullptr;  // no match found
+  }
+
+  string_view sub_view(size_t start, size_t length) {
+    // this should get compiled out in release mode
+    assert(start + length <= this->size() && 
+           "sub_view would go past the end of the main view");
+    return string_view(this->start + start, length);
+  }
+
+  string_view trim_suffix(size_t count) {
+    return sub_view(0, size() - count);
+  }
+
+  string_view trim_prefix(size_t count) {
+    return sub_view(count, size() - count);
   }
 
   bool operator==(const string_view &other) const {
