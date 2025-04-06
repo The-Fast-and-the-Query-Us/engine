@@ -14,7 +14,7 @@ foreach(TEST_SOURCE ${TEST_SOURCES})
 
   add_executable(${TEST_NAME} ${TEST_SOURCE})
 
-  target_link_libraries(${TEST_NAME} index lib crawler OpenSSL::SSL OpenSSL::Crypto)
+  target_link_libraries(${TEST_NAME} index lib crawler english OpenSSL::SSL OpenSSL::Crypto)
 
   if (CMAKE_BUILD_TYPE MATCHES "DebugGit")
     target_compile_options(${TEST_NAME} PRIVATE -fsanitize=address -fsanitize=leak -fno-omit-frame-pointer -Wall -Wextra -Werror -pedantic)

@@ -5,7 +5,7 @@
 using namespace fast::english;
 using namespace fast;
 
-void test(const char *in, const char *out) {
+void test(const char* in, const char* out) {
   string str(in);
   porter_stem(str);
   assert(str == out);
