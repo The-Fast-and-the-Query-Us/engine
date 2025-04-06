@@ -159,10 +159,6 @@ class bloom_filter {
     num_hash = static_cast<uint64_t>((static_cast<double>(num_bits) / n) * ln2);
   }
 
-  pair<const unsigned char*, size_t> serialize(const T& datum) {
-    return pair{reinterpret_cast<const unsigned char*>(&datum), datum.size()};
-  }
-
   size_t double_hash(uint64_t h1, uint64_t h2, uint32_t i) {
     return (h1 + i * h2) % num_bits;
   }
