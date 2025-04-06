@@ -32,6 +32,8 @@ class bloom_filter {
     auto [h1, h2] = hash(val);
     fast::scoped_lock lock_guard(&m);
     for (size_t i = 0; i < num_hash; ++i) {
+      std::cout << "setting bit " << double_hash(h1, h2, i)
+                << " for value: " << val.begin() << '\n';
       bit_set[double_hash(h1, h2, i)] = 1;
     }
   }
@@ -40,6 +42,8 @@ class bloom_filter {
     auto [h1, h2] = hash(val);
     fast::scoped_lock lock_guard(&m);
     for (size_t i = 0; i < num_hash; ++i) {
+      std::cout << "checking bit " << double_hash(h1, h2, i)
+                << " for value: " << val.begin() << '\n';
       if (!bit_set[double_hash(h1, h2, i)])
         return false;
     }
