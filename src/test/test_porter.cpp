@@ -24,4 +24,5 @@ int main() {
   test("goodness", "good");
   test("best", "best");
   test("better", "better");
+  test("", "");
 }
