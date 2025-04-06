@@ -21,17 +21,12 @@ class bloom_filter {
  public:
   bloom_filter(size_t _n, double _fpr, const char* _save_path = nullptr)
       : n(_n), fpr(_fpr), save_path(_save_path) {
-    std::cout
-        << "bloom_filter(size_t _n, double _fpr, const char* _save_path)\n";
     init();
 
     bit_set = bitset(num_bits, save_path);
   }
 
-  bloom_filter(const char* load_path) {
-    std::cout << "bloom_filter(const char* load_path)\n";
-    load(load_path);
-  }
+  bloom_filter(const char* load_path) { load(load_path); }
 
   void insert(const T& val) {
     auto [h1, h2] = hash(val);
