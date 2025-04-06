@@ -10,6 +10,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <csignal>
 #include <cstdint>
 #include <iostream>
 #include <map>
