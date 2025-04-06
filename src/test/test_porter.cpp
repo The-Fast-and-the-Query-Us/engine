@@ -25,4 +25,9 @@ int main() {
   test("best", "best");
   test("better", "better");
   test("", "");
+  test("try", "tri");
+  test("by", "by");
+  test("sky", "sky");
+  test("hopefully", "hope");
+  test("frivolously", "frivol");
 }
