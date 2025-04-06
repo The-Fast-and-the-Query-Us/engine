@@ -168,10 +168,8 @@ class bloom_filter {
   }
 
   pair<uint64_t, uint64_t> hash(const T& datum) {
-    auto [serialized, len] = serialize(datum);
-
     uint64_t curr_hash[2];
-    MurmurHash3_x86_128(serialized, len, 0, curr_hash);
+    MurmurHash3_x86_128(datum.begin(), datum.size(), 0, curr_hash);
 
     return pair(curr_hash[0], curr_hash[1]);
   }
