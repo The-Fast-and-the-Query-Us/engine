@@ -1,4 +1,5 @@
-// This file is for testing with data from the python script
+// This file is for testing with data piped from from the python script
+// prefer to use the pybindings
 
 #include <cassert>
 #include <csignal>

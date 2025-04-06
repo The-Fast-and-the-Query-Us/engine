@@ -13,6 +13,7 @@ foreach(TEST_SOURCE ${TEST_SOURCES})
   endif()
 
   add_executable(${TEST_NAME} ${TEST_SOURCE})
+
   target_link_libraries(${TEST_NAME} index lib crawler OpenSSL::SSL OpenSSL::Crypto)
 
   if (CMAKE_BUILD_TYPE MATCHES "DebugGit")

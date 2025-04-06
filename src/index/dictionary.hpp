@@ -70,8 +70,8 @@ class dictionary {
   }
 
   /*
-   * buffer must be zero init and align of size_t.
-   * constructs dictionary in buffer with each key set to dict[key] = 1
+   * buffer must be align of size_t.
+   * until put is called, the value for each key is undefined
    */
   static unsigned char *write(const hashtable &ht, dictionary *buffer) {
     buffer->num_unique = ht.unique_words;
@@ -82,9 +82,7 @@ class dictionary {
 
     for (auto i = 0u; i < ht.num_buckets; ++i) {
       for (const auto &bucket : ht.buckets[i]) {
-        const auto hashval = hash(bucket.word.c_str());
-
-        auto &offset = buffer->buckets()[hashval % buffer->num_buckets];
+        auto &offset = buffer->buckets()[bucket.hashval % buffer->num_buckets];
         offset += sizeof(size_t);
 
         encode(bucket.word.size(), (unsigned char*) buffer->dict() + offset);

@@ -1,4 +1,4 @@
-https://www.wikipedia.org
+https://umich.edu
 https://www.nytimes.com
 https://www.food.com
 https://www.osu.edu
@@ -30,3 +30,20 @@ https://dblp.org/
 https://www.fanduel.com/
 https://www.linkedin.com/
 https://www.espn.com/
+https://nicolehamilton.com
+https://en.wikipedia.org/wiki/LeBron_James
+https://stackoverflow.com/
+https://www.cnn.com/
+https://www.amazon.com/
+https://curlie.org/en
+https://www.medium.com/
+https://techcrunch.com/
+https://www.healthline.com/
+https://www.investopedia.com/
+https://www.autoblog.com
+https://www.rei.com/learn
+https://www.wikihow.com/Main-Page
+https://doc.rust-lang.org/reference/
+https://en.cppreference.com/w/
+https://www.history.com
+https://www.janestreet.com

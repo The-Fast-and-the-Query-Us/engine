@@ -21,7 +21,15 @@ int main() {
 
   assert(string("some") == string_view("some"));
 
+
   s.insert(0, '#');
 
   assert(s == "#cccc");
+
+  assert(string("abs").ends_with("bs"));
+  assert(string("abs").ends_with("abs"));
+  assert(!string("abs").ends_with("aabs"));
+
+  assert(string("multidimensional").ends_with("al"));
+
 }
