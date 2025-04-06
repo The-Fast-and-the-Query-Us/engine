@@ -51,36 +51,32 @@ class bitset {
 
   // ========== Constructor and Methods ==========
 
-  bitset() : num_bits(0), num_int64(0), bits(nullptr), save_path(nullptr) {
-    std::cout << "bitset()\n";
-  }
+  bitset() : num_bits(0), num_int64(0), bits(nullptr), save_path(nullptr) {}
 
   bitset(size_t _num_bits, const char* _save_path = nullptr)
-      : num_bits(_num_bits), save_path(strdup(_save_path)) {
-    std::cout << "bitset(size_t _num_bits, const char* _save_path = nullptr)\n";
+      : num_bits(_num_bits),
+        save_path(_save_path == nullptr ? nullptr : strdup(_save_path)) {
     num_int64 = uint64_from_bits(num_bits);
     bits = new uint64_t[num_int64]();
   }
 
-  bitset(const char* load_path) : save_path(strdup(load_path)) {
-    std::cout << "bitset(const char* load_path)\n";
+  bitset(const char* load_path)
+      : save_path(load_path == nullptr ? nullptr : strdup(load_path)) {
     load();
   }
 
   bitset(const bitset& rhs) : num_bits(rhs.num_bits), num_int64(rhs.num_int64) {
-    std::cout << "bitset(const bitset& rhs)\n";
     bits = new uint64_t[num_int64];
     std::memcpy(bits, rhs.bits, num_int64 * sizeof(uint64_t));
   }
 
   bitset& operator=(const bitset& rhs) {
-    std::cout << "bitset& operator=(const bitset& rhs)\n";
     if (this != &rhs) {
       delete[] bits;
       num_bits = rhs.num_bits;
       num_int64 = rhs.num_int64;
       bits = new uint64_t[num_int64];
-      save_path = strdup(rhs.save_path);
+      save_path = rhs.save_path == nullptr ? nullptr : strdup(rhs.save_path);
       std::memcpy(bits, rhs.bits, num_int64 * sizeof(uint64_t));
     }
     return *this;
@@ -88,7 +84,6 @@ class bitset {
 
   int save(int pos = 0) {
     int fd = open(save_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    std::cout << "save_path==nullptr: " << (save_path == nullptr) << '\n';
     if (fd < 0) {
       throw std::runtime_error("Failed to open save_path");
     }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "condition_variable.hpp"
+#include "flat_map.hpp"
 #include "queue.hpp"
 #include "scoped_lock.hpp"
 #include "string.hpp"
@@ -13,7 +14,6 @@
 #include <csignal>
 #include <cstdint>
 #include <iostream>
-#include <map>
 #include <vector>
 
 namespace fast::crawler {
@@ -281,7 +281,8 @@ class frontier {
   fast::vector<fast::queue<fast::string>> priorities;
 
   // Need to finish fast::hashmap
-  std::map<fast::string, uint8_t> crawl_cnt;
+  // std::map<fast::string, uint8_t> crawl_cnt;
+  fast::flat_map<fast::string, uint8_t> crawl_cnt;
 
   // How to initialise this with fast::vector
   std::vector<fast::string> good_tld = {"com", "org", "gov", "net", "edu"};
