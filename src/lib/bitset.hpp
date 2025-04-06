@@ -51,30 +51,36 @@ class bitset {
 
   // ========== Constructor and Methods ==========
 
-  bitset() : num_bits(0), num_int64(0), bits(nullptr), save_path(nullptr) {}
+  bitset() : num_bits(0), num_int64(0), bits(nullptr), save_path(nullptr) {
+    std::cout << "bitset()\n";
+  }
 
   bitset(size_t _num_bits, const char* _save_path = nullptr)
-      : num_bits(_num_bits), save_path(_save_path) {
+      : num_bits(_num_bits), save_path(strdup(_save_path)) {
+    std::cout << "bitset(size_t _num_bits, const char* _save_path = nullptr)\n";
     num_int64 = uint64_from_bits(num_bits);
     bits = new uint64_t[num_int64]();
   }
 
-  bitset(const char* load_path) {
-    save_path = load_path;
+  bitset(const char* load_path) : save_path(strdup(load_path)) {
+    std::cout << "bitset(const char* load_path)\n";
     load();
   }
 
   bitset(const bitset& rhs) : num_bits(rhs.num_bits), num_int64(rhs.num_int64) {
+    std::cout << "bitset(const bitset& rhs)\n";
     bits = new uint64_t[num_int64];
     std::memcpy(bits, rhs.bits, num_int64 * sizeof(uint64_t));
   }
 
   bitset& operator=(const bitset& rhs) {
+    std::cout << "bitset& operator=(const bitset& rhs)\n";
     if (this != &rhs) {
       delete[] bits;
       num_bits = rhs.num_bits;
       num_int64 = rhs.num_int64;
       bits = new uint64_t[num_int64];
+      save_path = strdup(rhs.save_path);
       std::memcpy(bits, rhs.bits, num_int64 * sizeof(uint64_t));
     }
     return *this;
@@ -215,7 +221,7 @@ class bitset {
 
   uint64_t* bits;
 
-  const char* save_path;
+  char* save_path;
 
   // ================== Helpers =================
   void calc_idx_info(size_t idx, size_t& ele_idx, uint64_t& mask) const {

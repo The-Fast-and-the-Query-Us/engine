@@ -15,7 +15,7 @@
 static constexpr int THREAD_COUNT = 5;
 static constexpr int LINK_COUNT = 1000000;  // ONE MILLION
 static constexpr const char* BLOOM_FILE_PATH = "bloom_filter_dump.dat";
-static constexpr const char* FRONTIER_PATH = "fronter_dump.dat";
+static constexpr const char* FRONTIER_PATH = "frontier_dump.dat";
 static constexpr const char* SEED_LIST = "./seed_list.txt";
 static constexpr size_t BLOOM_FILTER_NUM_OBJ = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
@@ -80,8 +80,9 @@ class crawler {
     visited_urls.save();
     crawl_frontier.save();
     // No threads, so no need to lock
-    if (word_bank->tokens() > 0)
-      write_blob(itos(chunk_count) + ".dat");
+    if (word_bank->tokens() > 0) {
+      write_blob(get_blob_path(chunk_count));
+    }
 
     delete word_bank;
     SSL_CTX_free(g_ssl_ctx);
@@ -105,14 +106,21 @@ class crawler {
   pthread_t thread_pool[THREAD_COUNT]{};
   // We also need a map for robots.txt stuff
 
-  static fast::string itos(int x) {
-    fast::string s;
-    while (x > 0) {
-      int d = x % 10;  // NOLINT
-      x /= 10;         // NOLINT
-      s.insert(0, static_cast<char>('0' + d));
+  static fast::string get_blob_path(int chunk_count) {
+    if (chunk_count == 0) {
+      return "index.dat/0";
     }
-    return s;
+    fast::string num_str{};
+    while (chunk_count > 0) {
+      int d = chunk_count % 10;  // NOLINT
+      chunk_count /= 10;         // NOLINT
+      num_str.insert(0, static_cast<char>('0' + d));
+    }
+    std::cout << "num_str: " << num_str.begin() << '\n';
+
+    fast::string path_str = "index.dat/";
+    path_str += num_str;
+    return path_str;
   }
 
   void* worker() {
@@ -230,7 +238,7 @@ class crawler {
       word_bank->add_doc(url);
 
       if (word_bank->tokens() > BLOB_THRESHOLD) {
-        write_blob(itos(chunk_count) + ".dat");
+        write_blob(get_blob_path(chunk_count));
       }
 
       bank_mtx.unlock();
@@ -249,6 +257,7 @@ class crawler {
   }
 
   void write_blob(const fast::string& path) {
+    std::cout << "writing blob " << path.begin() << '\n';
     auto fd = open(path.c_str(), O_CREAT | O_RDWR, 0777);
 
     if (fd == -1) {

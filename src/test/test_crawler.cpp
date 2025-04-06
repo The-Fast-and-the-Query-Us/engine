@@ -9,7 +9,7 @@ using namespace fast::crawler;
 crawler* g_crawler = nullptr;
 
 void signal_handler(int signum) {
-  if ((signum == SIGINT || signum == SIGSTOP) && g_crawler) {
+  if ((signum == SIGINT || signum == SIGSTOP) && g_crawler != nullptr) {
     std::cout << "SIGINT: graceful shutdown\n";
     g_crawler->shutdown();
   }

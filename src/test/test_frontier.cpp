@@ -3,7 +3,7 @@
 using namespace fast;
 using namespace crawler;
 
-constexpr char SAVE_PATH[] = "./frontier_test.txt";
+constexpr char SAVE_PATH[] = "./frontier_test.dat";
 int main() {
   frontier f(SAVE_PATH);
   string psql_wiki = "https://en.wikipedia.org/wiki/PostgreSQL/";
