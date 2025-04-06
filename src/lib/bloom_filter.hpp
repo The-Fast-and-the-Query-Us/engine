@@ -19,7 +19,7 @@ namespace fast::crawler {
 template <typename T>
 class bloom_filter {
  public:
-  bloom_filter(size_t _n, double _fpr, const char* _save_path)
+  bloom_filter(size_t _n, double _fpr, const char* _save_path = nullptr)
       : n(_n), fpr(_fpr), save_path(_save_path) {
     std::cout
         << "bloom_filter(size_t _n, double _fpr, const char* _save_path)\n";

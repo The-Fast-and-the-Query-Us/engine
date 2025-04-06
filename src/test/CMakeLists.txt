@@ -8,10 +8,6 @@ foreach(TEST_SOURCE ${TEST_SOURCES})
   # Extract name without extension
   get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
 
-  if (TEST_NAME STREQUAL "test_bloom_filter") # REMOVE THIS WHEN IT PASSES!
-    continue()
-  endif()
-
   if (TEST_NAME STREQUAL "test_crawler") # This doesnt finish
     continue()
   endif()
