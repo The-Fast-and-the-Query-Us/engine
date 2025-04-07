@@ -496,88 +496,161 @@ class ranker {
   isr** title_isrs;
 };
 
-struct PARAMS {
-  static constexpr double DOUBLE_MULT = 100;
-  static constexpr double TRIP_MULT = 100'000;
-  static constexpr double RARE_MULT = 5.0;
-  static constexpr double REGULAR_MULT = 1.0;
-  static constexpr double TITLE_MULT = 100.0;
-  static constexpr double URL_MATCH = 2.0;
-  static constexpr double URL_FACTOR = 10.0;
+// tuning parameters
+namespace Params {
+  enum {
+    Title = 0,
+    OrderedDouble,
+    Double,
+    OrderedTriple,
+    Triple,
+    Decay,
+    Span,
+    ShortUrl,
+    DomainHit,
+    UrlHit,
+  };
+
+  static double FACTORS[] = {
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.2,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+  };
 };
 
+enum url_location {
+  None,
+  Domain,
+  Any,
+};
+
+static url_location find_in_url(const string_view &url, const string_view &word) {
+  bool slash = false;
+
+  for (size_t i = 9; i <= url.size() - word.size(); ++i) {
+    bool good = true;
+    for (size_t j = 0; j < word.size() && good; ++j) {
+      if (url[i + j] == '/') slash = true;
+      if (url[i + j] != word[j]) good = false;
+    }
+
+    if (good) {
+      if (slash) return Any;
+      else       return Domain;
+    }
+  }
+
+  return None;
+}
+
+// maybe prioritize rare word?
+static double url_rank(const string_view &url, const vector<string_view> &words, size_t rare) {
+  double score = 0;
+  score += Params::FACTORS[Params::ShortUrl] / url.size(); // maybe squre this?
+  
+  for (const auto word : words) {
+    const auto hit = find_in_url(url, word);
+
+    if (hit == Domain) {
+      score += Params::FACTORS[Params::DomainHit];
+    } else if (hit == Any) {
+      score += Params::FACTORS[Params::UrlHit];
+    }
+  }
+  return score;
+}
+
+/*
+* Brain storm:
+*   Maybe square the width
+*   Calc proportion of document that is query words
+*/
 static double rank_isrs(const vector<isr*> words, Offset start, Offset end, size_t rare) {
   for (const auto isr : words) {
     isr->seek(start);
   }
 
-  vector<Offset> offs(words.size(), MAX_OFFSET);
+  vector<Offset> last(words.size(), MAX_OFFSET);
   vector<size_t> counts(words.size(), 0);
 
   double score = 0;
 
   while (!words[rare]->is_end() && words[rare]->offset() < end) {
     counts[rare]++;
-    const auto RARE_OFFSET = words[rare]->offset();
+    last[rare] = words[rare]->offset();
 
     // get as close as possible
     for (size_t i = 0; i < words.size(); ++i) {
       if (i != rare) {
-        while (!words[i]->is_end() && words[i]->offset() < RARE_OFFSET) {
+        while (!words[i]->is_end() && words[i]->offset() < last[rare]) {
           counts[i]++;
-          offs[i] = words[i]->offset();
+          last[i] = words[i]->offset();
           words[i]->next();
         }
 
-        if (!words[i]->is_end() && words[i]->offset() < end) {
-          if (offs[i] == MAX_OFFSET || RARE_OFFSET - offs[i] > words[i]->offset() - RARE_OFFSET) {
-            offs[i] = words[i]->offset();
-          }
+        if (!words[i]->is_end() && words[i]->offset() < end && (last[i] == MAX_OFFSET || last[rare] - last[i] > words[i]->offset() - last[rare])) {
+            last[i] = words[i]->offset();
         }
-
       }
     }
 
-    vector<Offset> difference(words.size(), 0);
+    const auto decay = pow(Params::FACTORS[Params::Decay], last[rare]);
+
+    size_t word_in_span = 1;
+    Offset span_begin = last[rare], span_end = last[rare];
 
     for (size_t i = 0; i < words.size(); ++i) {
-      if (i != rare) {
-        difference[i] = abs(long(offs[i]) - RARE_OFFSET);
-        difference[i] = max(difference[i], Offset(1));
+      if (last[i] == MAX_OFFSET || i == rare) continue;
+
+      ++word_in_span;
+      span_begin = min(span_begin, last[i]);
+      span_end = max(span_end, last[i]);
+
+      const auto width = max(last[i], last[rare]) - min(last[i], last[rare]);
+      const auto ordered_double = (
+        (i < rare && last[i] <= last[rare]) ||
+        (i > rare && last[i] >= last[rare])
+      );
+
+      if (ordered_double) {
+        score += Params::FACTORS[Params::OrderedDouble] / width / decay;
+      } else {
+        score += Params::FACTORS[Params::Double] / width / decay;
       }
-    }
-
-    auto DEGRADE = max(Offset(1), RARE_OFFSET - start);
-    DEGRADE *= DEGRADE;
-
-    for (size_t i = 0; i < words.size(); ++i) {
-      if (i != rare && offs[i] != MAX_OFFSET) {
-        score += PARAMS::DOUBLE_MULT / difference[i] / DEGRADE;
-      }
-    }
-
-    for (size_t i = 0; i < words.size(); ++i) {
+      
       for (size_t j = i + 1; j < words.size(); ++j) {
-        if (i != rare && j != rare && offs[i] != MAX_OFFSET && offs[j] != MAX_OFFSET) {
-          score += PARAMS::TRIP_MULT / difference[i] / difference[j] / DEGRADE;
+        if (last[j] == MAX_OFFSET || j == rare) continue;
+        
+        const auto width = max(last[i], max(last[j], last[rare])) - 
+                           min(last[i], min(last[j], last[rare]));
+
+        const auto ordered_trip = (
+          (j < rare && last[j] <= last[rare] && last[i] <= last[j]) ||
+          (j > rare && last[j] >= last[rare] && ordered_double)
+        );
+
+        if (ordered_trip) {
+          score += Params::FACTORS[Params::OrderedTriple] / width / decay;
+        } else {
+          score += Params::FACTORS[Params::Triple] / width / decay;
         }
+
       }
+    } // for(i < words.size())
+
+    if (span_begin < span_end && word_in_span == words.size()) {
+      const auto width = span_end - span_begin;
+      score += Params::FACTORS[Params::Span] / width / decay;
     }
 
     words[rare]->next();
-  }
-
-
-  for (size_t i = 0; i < words.size(); ++i) {
-    while (!words[i]->is_end() && words[i]->offset() < end) {
-      counts[i]++;
-      words[i]->next();
-    }
-    if (i == rare) {
-      score += PARAMS::RARE_MULT * counts[i];
-    } else {
-      score += PARAMS::REGULAR_MULT * counts[i];
-    }
   }
 
   return score;
@@ -615,23 +688,11 @@ static void rank(const hashblob *blob, const vector<string_view> &flat, isr_cont
     const auto body_score = rank_isrs(body, matches->get_doc_start(), matches->get_doc_end(), rare_idx);
     const auto title_score = rank_isrs(title, matches->get_doc_start(), matches->get_doc_end(), rare_idx);
     
-    auto score = body_score + title_score * PARAMS::TITLE_MULT;
-
     const auto url = matches->get_doc_url();
-    for (size_t i = 5; i  <= url.size() - flat[rare_idx].size(); ++i) {
-      bool good = true;
-      for (size_t j = 0; j < flat[rare_idx].size() && good; ++j) {
-        if (url[i + j] != flat[rare_idx][j]) good = false;
-      }
-      if (good) {
-        score *= PARAMS::URL_MATCH;
-        break;
-      }
-    }
+    auto score = body_score + title_score * Params::FACTORS[Params::Title] 
+      + url_rank(url, flat, rare_idx);
 
-    score += PARAMS::URL_FACTOR / url.size();
-    score /= url.size();
-
+    // insertion sort
     if (score > results[MAX_RESULTS - 1].first) {
       results[MAX_RESULTS - 1] = {score, url};
       for (int i = MAX_RESULTS - 2; i >= 0; --i) {
@@ -649,6 +710,7 @@ static void rank(const hashblob *blob, const vector<string_view> &flat, isr_cont
   for (const auto isr : body) {
     delete isr;
   }
+
   for (const auto isr : title) {
     delete isr;
   }
