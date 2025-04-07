@@ -40,3 +40,4 @@ build/
 compile_commands.json
 
 **/*.venv
+**/*.dat
