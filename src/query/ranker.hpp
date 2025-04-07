@@ -502,7 +502,7 @@ struct PARAMS {
   static constexpr double RARE_MULT = 5.0;
   static constexpr double REGULAR_MULT = 1.0;
   static constexpr double TITLE_MULT = 100.0;
-  static constexpr double URL_MATCH = 1000.0;
+  static constexpr double URL_MATCH = 2.0;
   static constexpr double URL_FACTOR = 10.0;
 };
 
@@ -621,10 +621,10 @@ static void rank(const hashblob *blob, const vector<string_view> &flat, isr_cont
     for (size_t i = 5; i  <= url.size() - flat[rare_idx].size(); ++i) {
       bool good = true;
       for (size_t j = 0; j < flat[rare_idx].size() && good; ++j) {
-        if (url[i] != flat[rare_idx][j]) good = false;
+        if (url[i + j] != flat[rare_idx][j]) good = false;
       }
       if (good) {
-        score += PARAMS::URL_MATCH;
+        score *= PARAMS::URL_MATCH;
         break;
       }
     }
