@@ -3,12 +3,11 @@
 #include <fcntl.h>
 #include <sys/fcntl.h>
 #include <unistd.h>
+#include <cassert>
 #include <cmath>
-#include <concepts>
 #include <cstddef>
 #include <cstring>
 #include <stdexcept>
-#include <type_traits>
 #include "bitset.hpp"
 #include "murmur_hash3.hpp"
 #include "pair.hpp"
@@ -20,7 +19,9 @@ template <typename T>
 class bloom_filter {
  public:
   bloom_filter(size_t _n, double _fpr, const char* _save_path = nullptr)
-      : n(_n), fpr(_fpr), save_path(_save_path) {
+      : n(_n),
+        fpr(_fpr),
+        save_path(_save_path == nullptr ? nullptr : strdup(_save_path)) {
     init();
 
     bit_set = bitset(num_bits, save_path);
@@ -52,7 +53,8 @@ class bloom_filter {
 
     int fd = open(save_path, O_WRONLY);
     if (fd == -1) {
-      std::cerr << "Failed to open bitset dump file on write\n";
+      std::cerr << "Failed to open bloom_filter dump file on write: "
+                << save_path << '\n';
       return -1;
     }
 
@@ -82,17 +84,19 @@ class bloom_filter {
       return -1;
     }
 
+    std::cout << "Successfully wrote bloomfilter to " << save_path << '\n';
     return bs_sz + n_written + fpr_written;
   }
 
   int load(const char* load_path) {
+    assert(load_path != nullptr);
     fast::scoped_lock lock(&m);
 
     int fd = open(load_path, O_RDONLY);
     if (fd == -1)
       throw std::runtime_error("Failed to open bloom_filter dump file on read");
 
-    save_path = load_path;
+    save_path = strdup(load_path);
 
     int bs_sz = bit_set.load(fd);
 

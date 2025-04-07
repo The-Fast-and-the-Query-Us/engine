@@ -1,6 +1,7 @@
 #include "crawler.hpp"
 #include <sys/signal.h>
 #include <csignal>
+#include <iostream>
 
 fast::crawler::crawler c{};
 

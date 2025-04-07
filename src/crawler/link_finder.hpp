@@ -1,23 +1,23 @@
 #pragma once
 
+#include <fcntl.h>
+#include <netdb.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <cctype>
+#include <cstdint>
+#include <cstring>
+#include <stdexcept>
 #include "hashtable.hpp"
 #include "html_file.hpp"
 #include "html_parser.hpp"
 #include "mutex.hpp"
 #include "string.hpp"
 #include "vector.hpp"
-#include <cctype>
-#include <cstdint>
-#include <cstring>
-#include <fcntl.h>
-#include <netdb.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <stdexcept>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 static constexpr uint16_t MAX_PACKET_SIZE = 10240;
 static constexpr uint16_t MAX_MESSAGE_SIZE = 8192;
@@ -29,8 +29,8 @@ static constexpr char COLON = ':';
 static constexpr char SLASH = '/';
 
 class link_finder {
-public:
-  void setup_connection(SSL_CTX *ctx) {
+ public:
+  void setup_connection(SSL_CTX* ctx) {
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
@@ -59,7 +59,7 @@ public:
       perror("SSL_set_fd failed.\n");
       throw std::runtime_error("Failed to bind SSL to socket.\n");
     }
-    
+
     if (!SSL_set_tlsext_host_name(ssl, host)) {
       SSL_free(ssl);
       close(sock_fd);
@@ -75,7 +75,7 @@ public:
     }
   }
 
-  void parse_url(const char *file) {
+  void parse_url(const char* file) {
     url = file;
     if (path_buffer) {
       delete path_buffer;
@@ -83,18 +83,16 @@ public:
     }
     path_buffer = new char[url.size() + 1];
 
-    const char *f{};
-    char *t{};
-    for (t = path_buffer, f = url.begin(); (*t++ = *f++);) {
-    }
+    const char* f{};
+    char* t{};
+    for (t = path_buffer, f = url.begin(); (*t++ = *f++);) {}
     service = path_buffer;
-    char *p{};
-    for (p = path_buffer; *p && *p != COLON; p++) {
-    }
+    char* p{};
+    for (p = path_buffer; *p && *p != COLON; p++) {}
     if (*p) {
       // Mark the end of the Service.
       *p++ = 0;
-      if (*p == SLASH) 
+      if (*p == SLASH)
         ++p;
       if (*p == SLASH)
         ++p;
@@ -120,8 +118,8 @@ public:
     }
   }
 
-  fast::vector<fast::string> parse_html(fast::hashtable &word_bank,
-                                        fast::mutex &bank_mtx) {
+  fast::vector<fast::string> parse_html(fast::hashtable& word_bank,
+                                        fast::mutex& bank_mtx) {
     fast::crawler::html_file html{};
     get_html(html);
     if (!html.size())
@@ -134,7 +132,7 @@ public:
     }
 
     bank_mtx.lock();
-    for (fast::string &word : parser.words) {
+    for (fast::string& word : parser.words) {
       if (word.size() == 0)
         continue;
       while (!is_alphabet(word[0]))
@@ -144,7 +142,7 @@ public:
       lower(word);
       word_bank.add(word);
     }
-    for (fast::string &word : parser.titleWords) {
+    for (fast::string& word : parser.titleWords) {
       if (word.size() == 0)
         continue;
       while (!is_alphabet(word[0]))
@@ -162,24 +160,23 @@ public:
 
     return links;
   }
-  
+
   ~link_finder() { destroy_objects(); }
 
-private:
-  struct addrinfo *address{};
+ private:
+  struct addrinfo* address{};
   struct addrinfo hints{};
   int sock_fd = -1;
   fast::string url;
-  SSL *ssl{};
+  SSL* ssl{};
   char *path_buffer{}, *service{}, *host{}, *port{}, *path{};
-
 
   void send_get_request() {
     char get_request[MAX_MESSAGE_SIZE];
     get_request[0] = '\0';
-    char *p = get_request;
-    char *limit = get_request + MAX_MESSAGE_SIZE;
-    const char *agent_email = "shivgov@umich.edu";
+    char* p = get_request;
+    char* limit = get_request + MAX_MESSAGE_SIZE;
+    const char* agent_email = "shivgov@umich.edu";
 
     if (p + REQUEST_TYPE_LEN + strlen(path) > limit) {
       throw std::runtime_error("Get request buffer overflow.\n");
@@ -210,8 +207,9 @@ private:
     if (p + HTML_TAIL_LEN > limit) {
       throw std::runtime_error("Get request buffer overflow.\n");
     }
-    strcat(p, "Accept: */*\r\nAccept-Encoding: identity\r\nConnection: "
-              "close\r\n\r\n");
+    strcat(p,
+           "Accept: */*\r\nAccept-Encoding: identity\r\nConnection: "
+           "close\r\n\r\n");
 
     /*for (int i = 0; i < strlen(get_request); ++i) {*/
     /*  std::cout << get_request[i];*/
@@ -224,11 +222,11 @@ private:
     }
   }
 
-  void get_html(fast::crawler::html_file &html) {
+  void get_html(fast::crawler::html_file& html) {
     char buffer[MAX_PACKET_SIZE];
     ssize_t bytes{};
     bool found_header_end = false;
-    const char *header_end = "\r\n\r\n";
+    const char* header_end = "\r\n\r\n";
     int header_match_pos = 0;
 
     send_get_request();
@@ -238,7 +236,7 @@ private:
         for (int i = 0; i < bytes; i++) {
           if (buffer[i] == header_end[header_match_pos]) {
             header_match_pos++;
-            if (header_match_pos == 4) { // Found \r\n\r\n
+            if (header_match_pos == 4) {  // Found \r\n\r\n
               found_header_end = true;
               html.add(buffer + i + 1, bytes - i - 1);
               // write(1, buffer + i + 1, bytes - (i + 1));
@@ -266,8 +264,8 @@ private:
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
   }
 
-  static void lower(fast::string &word) {
-    for (char &c : word) {
+  static void lower(fast::string& word) {
+    for (char& c : word) {
       if (is_alphabet(c) && c <= 'Z' && c >= 'A') {
         c = c + 32;
       }

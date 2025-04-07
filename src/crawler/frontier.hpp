@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <csignal>
 #include <cstdint>
+#include <cstdio>
 #include <iostream>
 #include <vector>
 
@@ -27,7 +28,8 @@ class crawler;
 class frontier {
  public:
   frontier(const char* _save_path, const char* seed_list = nullptr)
-      : save_path(_save_path) {
+      : save_path(_save_path == nullptr ? nullptr : strdup(_save_path)) {
+    assert(save_path != nullptr);
     priorities.resize(4);
     if (seed_list) {
       load_seed_list(seed_list);
@@ -136,7 +138,8 @@ class frontier {
 
     int fd = open(save_path, O_RDWR | O_CREAT | O_TRUNC, 0777);
     if (fd == -1) {
-      perror("Failed to open file in frontier save()\n");
+      perror("Failed to open file in frontier save():");
+      std::cout << "save_path: " << save_path << '\n';
       return -1;
     }
 

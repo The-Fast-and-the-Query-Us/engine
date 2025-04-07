@@ -85,6 +85,7 @@ class bitset {
   int save(int pos = 0) {
     int fd = open(save_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd < 0) {
+      std::cerr << save_path << '\n';
       throw std::runtime_error("Failed to open save_path");
     }
     int num_seek = lseek(fd, pos, SEEK_SET);
@@ -92,7 +93,8 @@ class bitset {
       throw std::runtime_error("Failed to seek to pos in save");
 
     if (fd == -1) {
-      std::cerr << "Failed to open bitset dump file on write\n";
+      std::cerr << "Failed to open bitset dump file on write: " << save_path
+                << "\n";
       return -1;
     }
 
@@ -120,6 +122,8 @@ class bitset {
     if (close(fd) == -1) {
       std::cerr << "Error closing file in bitset save()\n";
     }
+
+    std::cout << "Successfully wrote bitset to " << save_path << '\n';
 
     return int64_written + num_bits_written + elts_written;
   }
@@ -164,11 +168,7 @@ class bitset {
     return int64_read + num_bits_read + elts_read;
   }
 
-  ~bitset() {
-    if (save_path)
-      save();
-    delete[] bits;
-  }
+  ~bitset() { delete[] bits; }
 
   inline size_t size() { return num_bits; }
 

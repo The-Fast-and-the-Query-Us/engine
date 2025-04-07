@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <sys/mman.h>
 #include <csignal>
+#include <cstdlib>
 #include <hashblob.hpp>
 #include <hashtable.hpp>
 #include <stdexcept>
@@ -14,10 +15,8 @@
 
 static constexpr int THREAD_COUNT = 5;
 static constexpr int LINK_COUNT = 1000000;  // ONE MILLION
-static constexpr const char* BLOOM_FILE_PATH = "bloom_filter_dump.dat";
-static constexpr const char* FRONTIER_PATH = "frontier_dump.dat";
 static constexpr const char* SEED_LIST = "./seed_list.txt";
-static constexpr size_t BLOOM_FILTER_NUM_OBJ = 1e8;
+static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 500'000;
 
@@ -25,8 +24,9 @@ namespace fast::crawler {
 class crawler {
  public:
   crawler()
-      : visited_urls(BLOOM_FILTER_NUM_OBJ, BLOOM_FILTER_FPR, BLOOM_FILE_PATH),
-        crawl_frontier(FRONTIER_PATH, SEED_LIST),
+      : visited_urls(BLOOM_FILTER_SIZE, BLOOM_FILTER_FPR,
+                     get_bloomfilter_path().begin()),
+        crawl_frontier(get_frontier_path().begin(), SEED_LIST),
         word_bank(new fast::hashtable) {}
 
   void run() {
@@ -106,9 +106,26 @@ class crawler {
   pthread_t thread_pool[THREAD_COUNT]{};
   // We also need a map for robots.txt stuff
 
+  // static constexpr const char* BLOOM_FILE_PATH = getenv("HOME");
+  // static constexpr const char* FRONTIER_PATH = "frontier_dump.dat";
+
+  static fast::string get_bloomfilter_path() {
+    fast::string path = getenv("HOME");
+    path += "/.local/share/crawler/bloomfilter.bin";
+    return path;
+  }
+
+  static fast::string get_frontier_path() {
+    fast::string path = getenv("HOME");
+    path += "/.local/share/crawler/frontier.bin";
+    return path;
+  }
+
   static fast::string get_blob_path(int chunk_count) {
+    fast::string path = getenv("HOME");
+    path += "/.local/share/crawler/index/";
     if (chunk_count == 0) {
-      return "index/0";
+      return path + "0";
     }
     fast::string num_str{};
     while (chunk_count > 0) {
@@ -116,7 +133,6 @@ class crawler {
       chunk_count /= 10;         // NOLINT
       num_str.insert(0, static_cast<char>('0' + d));
     }
-    std::cout << "num_str: " << num_str.begin() << '\n';
 
     fast::string path_str = "index/";
     path_str += num_str;
