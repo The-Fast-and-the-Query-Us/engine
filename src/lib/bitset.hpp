@@ -170,7 +170,7 @@ class bitset {
 
   ~bitset() {
     delete[] bits;
-    free(save_path);
+    if (save_path) free(save_path);
   }
 
   inline size_t size() { return num_bits; }

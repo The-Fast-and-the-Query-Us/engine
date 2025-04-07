@@ -37,7 +37,7 @@ class frontier {
   }
 
   ~frontier() {
-    free(save_path);
+    if (save_path) free(save_path);
   }
 
   void insert_no_mutex(fast::string& url) {
