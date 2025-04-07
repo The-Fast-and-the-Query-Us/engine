@@ -507,7 +507,7 @@ void blob_rank(
   fast::vector<fast::string_view> flattened;
 
   auto rank_stream = fast::query::query_stream(query);
-  fast::query::rank_parser::parse_query(rank_stream, &flattened, blob);
+  fast::query::rank_parser::parse_query(rank_stream, &flattened);
   fast::query::ranker(blob, flattened, constraints, results);
 
   delete constraints;
