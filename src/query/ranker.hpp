@@ -2,6 +2,8 @@
 
 #include <array.hpp>
 #include <cstddef>
+#include <cstdint>
+#include <cstdlib>
 #include <hashblob.hpp>
 #include <isr.hpp>
 #include <map>
@@ -494,17 +496,163 @@ class ranker {
   isr** title_isrs;
 };
 
-static void rank(const hashblob *blob, const vector<string_view> &flat, isr_container *matches, array<Result, MAX_RESULTS> &results) {
-  vector<isr*> body;
-  vector<isr*> title;
+struct PARAMS {
+  static constexpr double DOUBLE_MULT = 100;
+  static constexpr double TRIP_MULT = 100'000;
+  static constexpr double RARE_MULT = 5.0;
+  static constexpr double REGULAR_MULT = 1.0;
+  static constexpr double TITLE_MULT = 100.0;
+  static constexpr double URL_MATCH = 1000.0;
+  static constexpr double URL_FACTOR = 10.0;
+};
 
-  for (const auto word : flat) {
+static double rank_isrs(const vector<isr*> words, Offset start, Offset end, size_t rare) {
+  for (const auto isr : words) {
+    isr->seek(start);
   }
+
+  vector<Offset> offs(words.size(), MAX_OFFSET);
+  vector<size_t> counts(words.size(), 0);
+
+  double score = 0;
+
+  while (!words[rare]->is_end() && words[rare]->offset() < end) {
+    counts[rare]++;
+    const auto RARE_OFFSET = words[rare]->offset();
+
+    // get as close as possible
+    for (size_t i = 0; i < words.size(); ++i) {
+      if (i != rare) {
+        while (!words[i]->is_end() && words[i]->offset() < RARE_OFFSET) {
+          counts[i]++;
+          offs[i] = words[i]->offset();
+          words[i]->next();
+        }
+
+        if (!words[i]->is_end() && words[i]->offset() < end) {
+          if (offs[i] == MAX_OFFSET || RARE_OFFSET - offs[i] > words[i]->offset() - RARE_OFFSET) {
+            offs[i] = words[i]->offset();
+          }
+        }
+
+      }
+    }
+
+    vector<Offset> difference(words.size(), 0);
+
+    for (size_t i = 0; i < words.size(); ++i) {
+      if (i != rare) {
+        difference[i] = abs(long(offs[i]) - RARE_OFFSET);
+        difference[i] = max(difference[i], Offset(1));
+      }
+    }
+
+    for (size_t i = 0; i < words.size(); ++i) {
+      if (i != rare && offs[i] != MAX_OFFSET) {
+        score += PARAMS::DOUBLE_MULT / difference[i] / (max(Offset(1), RARE_OFFSET - start));
+      }
+    }
+
+    for (size_t i = 0; i < words.size(); ++i) {
+      for (size_t j = i + 1; j < words.size(); ++j) {
+        if (i != rare && j != rare && offs[i] != MAX_OFFSET && offs[j] != MAX_OFFSET) {
+          score += PARAMS::TRIP_MULT / difference[i] / difference[j] / max(Offset(1), RARE_OFFSET - start);
+        }
+      }
+    }
+
+    words[rare]->next();
+  }
+
+
+  for (size_t i = 0; i < words.size(); ++i) {
+    while (!words[i]->is_end() && words[i]->offset() < end) {
+      counts[i]++;
+      words[i]->next();
+    }
+    if (i == rare) {
+      score += PARAMS::RARE_MULT * counts[i];
+    } else {
+      score += PARAMS::REGULAR_MULT * counts[i];
+    }
+  }
+
+  return score;
 }
 
-void blob_rank(
-    const fast::hashblob* blob, const fast::string& query,
-    fast::array<fast::query::Result, fast::query::MAX_RESULTS>& results) {
+static void rank(const hashblob *blob, const vector<string_view> &flat, isr_container *matches, array<Result, MAX_RESULTS> &results) {
+  if (flat.size() == 0) return;
+
+  vector<isr*> body;
+  vector<isr*> title;
+  size_t rare_idx = 0;
+  size_t rare_count = 0;
+
+  for (const auto word : flat) {
+    auto pl = blob->get(word);
+    if (pl) {
+      body.push_back(pl->get_isr());
+      if (rare_count == 0 || rare_count > pl->words()) {
+        rare_count = pl->words();
+        rare_idx = body.size() - 1;
+      }
+    } else {
+      body.push_back(new isr_null);
+    }
+
+    pl = blob->get(string(word) + "#");
+    if (pl) {
+      title.push_back(pl->get_isr());
+    } else {
+      title.push_back(new isr_null);
+    }
+  }
+
+  while (!matches->is_end()) {
+    const auto body_score = rank_isrs(body, matches->get_doc_start(), matches->get_doc_end(), rare_idx);
+    const auto title_score = rank_isrs(title, matches->get_doc_start(), matches->get_doc_end(), rare_idx);
+    
+    auto score = body_score + title_score * PARAMS::TITLE_MULT;
+
+    const auto url = matches->get_doc_url();
+    for (size_t i = 5; i  <= url.size() - flat[rare_idx].size(); ++i) {
+      bool good = true;
+      for (size_t j = 0; j < flat[rare_idx].size() && good; ++j) {
+        if (url[i] != flat[rare_idx][j]) good = false;
+      }
+      if (good) {
+        score += PARAMS::URL_MATCH;
+        break;
+      }
+    }
+
+    score += PARAMS::URL_FACTOR / url.size();
+
+    if (score > results[MAX_RESULTS - 1].first) {
+      results[MAX_RESULTS - 1] = {score, url};
+      for (int i = MAX_RESULTS - 2; i >= 0; --i) {
+        if (results[i].first < results[i + 1].first) {
+          swap(results[i], results[i + 1]);
+        } else {
+          break;
+        }
+      }
+    }
+
+    matches->next();
+  }
+
+  for (const auto isr : body) {
+    delete isr;
+  }
+  for (const auto isr : title) {
+    delete isr;
+  }
+
+  return;
+}
+
+void blob_rank(const fast::hashblob* blob, const fast::string& query, fast::array<fast::query::Result, fast::query::MAX_RESULTS>& results) {
   auto query_stream = fast::query::query_stream(query);
   auto constraints =
       fast::query::contraint_parser::parse_contraint(query_stream, blob);
@@ -516,7 +664,8 @@ void blob_rank(
 
   auto rank_stream = fast::query::query_stream(query);
   fast::query::rank_parser::parse_query(rank_stream, &flattened);
-  fast::query::ranker(blob, flattened, constraints, results);
+  //fast::query::ranker(blob, flattened, constraints, results);
+  rank(blob, flattened, constraints, results);
 
   delete constraints;
   return;
