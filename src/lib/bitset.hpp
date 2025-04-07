@@ -61,9 +61,7 @@ class bitset {
   }
 
   bitset(const char* load_path)
-      : save_path(load_path == nullptr ? nullptr : strdup(load_path)) {
-    load();
-  }
+      : save_path(load_path == nullptr ? nullptr : strdup(load_path)) {}
 
   bitset(const bitset& rhs) : num_bits(rhs.num_bits), num_int64(rhs.num_int64) {
     bits = new uint64_t[num_int64];
@@ -99,6 +97,7 @@ class bitset {
     }
 
     ssize_t int64_written = write(fd, &num_int64, sizeof(uint64_t));
+    std::cout << "int64_written: " << int64_written << '\n';
     if (int64_written == -1) {
       std::cerr << "Write in save for bitset failed on member num_int64\n";
       close(fd);
@@ -106,6 +105,7 @@ class bitset {
     }
 
     ssize_t num_bits_written = write(fd, &num_bits, sizeof(uint64_t));
+    std::cout << "num_bits_written: " << num_bits_written << '\n';
     if (num_bits_written == -1) {
       std::cerr << "Write in save for bitset failed on member num_bits\n";
       close(fd);
@@ -113,6 +113,7 @@ class bitset {
     }
 
     ssize_t elts_written = write(fd, bits, num_int64 * sizeof(uint64_t));
+    std::cout << "elts_written: " << elts_written << '\n';
     if (elts_written == -1) {
       std::cerr << "Write in save for bitset failed on member bits\n";
       close(fd);
@@ -129,10 +130,19 @@ class bitset {
   }
 
   int load(int pos = 0) {
+    if (save_path == nullptr) {
+      std::cerr << "save_path=nullptr\n";
+      return -1;
+    }
     int fd = open(save_path, O_RDONLY);
+    if (fd < 0) {
+      std::cerr << "error opening save_path: " << save_path << '\n';
+      return -1;
+    }
     int offset = lseek(fd, pos, SEEK_SET);
     if (offset == off_t(-1)) {
       std::cerr << "error seeking: " << strerror(errno) << std::endl;
+      std::cerr << "save_path: " << save_path << '\n';
       close(fd);
       return -1;
     }
@@ -170,7 +180,8 @@ class bitset {
 
   ~bitset() {
     delete[] bits;
-    if (save_path) free(save_path);
+    if (save_path)
+      free(save_path);
   }
 
   inline size_t size() { return num_bits; }

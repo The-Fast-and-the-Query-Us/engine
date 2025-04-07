@@ -129,6 +129,7 @@ class frontier {
     }
     // mtx.unlock();
     munmap(file, length);
+    std::cout << "Succesfully loaded seed_list from " << fp << '\n';
   }
 
   void notify_crawled(fast::string& url) {
@@ -198,6 +199,7 @@ class frontier {
       }
     }
     close(fd);
+    std::cout << "Succesfully saved frontier to " << save_path << '\n';
     return num_links_written + total_priority_bytes;
   }
 
@@ -253,6 +255,7 @@ class frontier {
     }
 
     close(fd);
+    std::cout << "Succesfully loaded frontier from " << save_path << '\n';
     return tbr;
   }
 

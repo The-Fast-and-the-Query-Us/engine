@@ -27,10 +27,14 @@ class bloom_filter {
     bit_set = bitset(num_bits, save_path);
   }
 
-  bloom_filter(const char* load_path) { load(load_path); }
+  bloom_filter(const char* load_path) : bit_set(load_path) {
+    assert(load_path != nullptr);
+    load(load_path);
+  }
 
   ~bloom_filter() {
-    if (save_path) free(save_path);
+    if (save_path)
+      free(save_path);
   }
 
   void insert(const T& val) {
@@ -53,7 +57,12 @@ class bloom_filter {
 
   int save() {
     fast::scoped_lock lock_guard(&m);
+    if (save_path == nullptr) {
+      std::cout << "not writing (save_path=" << save_path << ")\n";
+      return -1;
+    }
     int bs_sz = bit_set.save();
+    std::cout << "bitset written (" << bs_sz << " bytes)\n";
 
     int fd = open(save_path, O_WRONLY);
     if (fd == -1) {
@@ -65,6 +74,7 @@ class bloom_filter {
     int offset = lseek(fd, bs_sz, SEEK_SET);
     if (offset == off_t(-1)) {
       std::cerr << "error seeking: " << strerror(errno) << std::endl;
+      std::cerr << "save_path: " << save_path << '\n';
       close(fd);
       return -1;
     }
@@ -94,6 +104,7 @@ class bloom_filter {
 
   int load(const char* load_path) {
     assert(load_path != nullptr);
+    std::cout << "Loading bloom_filter from " << load_path << " ...\n";
     fast::scoped_lock lock(&m);
 
     int fd = open(load_path, O_RDONLY);
@@ -102,7 +113,12 @@ class bloom_filter {
 
     save_path = strdup(load_path);
 
-    int bs_sz = bit_set.load(fd);
+    int bs_sz = bit_set.load();
+
+    if (bs_sz == -1) {
+      std::cerr << "bit_set.load returned -1\n";
+      return 0;
+    }
 
     fd = open(save_path, O_RDONLY);
     int offset = lseek(fd, bs_sz, SEEK_SET);
@@ -129,6 +145,8 @@ class bloom_filter {
       throw std::runtime_error("Error closing file in bloom_filter load()");
 
     init();
+
+    std::cout << "Successfully loaded bloom_filter from " << save_path << '\n';
 
     return bs_sz + n_read + fpr_read;
   }

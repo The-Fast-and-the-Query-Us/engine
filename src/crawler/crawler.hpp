@@ -2,6 +2,7 @@
 
 #include <pthread.h>
 #include <sys/mman.h>
+#include <unistd.h>
 #include <csignal>
 #include <cstdlib>
 #include <hashblob.hpp>
@@ -24,8 +25,12 @@ namespace fast::crawler {
 class crawler {
  public:
   crawler()
-      : visited_urls(BLOOM_FILTER_SIZE, BLOOM_FILTER_FPR,
-                     get_bloomfilter_path().begin()),
+      : visited_urls(
+            access(get_bloomfilter_path().begin(), F_OK) == 0
+                ? bloom_filter<fast::string>(get_bloomfilter_path().begin())
+                : bloom_filter<fast::string>(BLOOM_FILTER_SIZE,
+                                             BLOOM_FILTER_FPR,
+                                             get_bloomfilter_path().begin())),
         crawl_frontier(get_frontier_path().begin(), SEED_LIST),
         word_bank(new fast::hashtable) {}
 
@@ -284,7 +289,6 @@ class crawler {
   }
 
   void write_blob(const fast::string& path) {
-    std::cout << "writing blob " << path.begin() << '\n';
     auto fd = open(path.c_str(), O_CREAT | O_RDWR, 0777);
 
     if (fd == -1) {
@@ -315,6 +319,7 @@ class crawler {
 
     munmap(mptr, space);
     close(fd);
+    std::cout << "Successfully wrote blob to " << path.begin() << '\n';
     ++chunk_count;
   }
 
