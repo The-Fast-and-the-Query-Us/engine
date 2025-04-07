@@ -14,9 +14,8 @@
 #include "html_parser.hpp"
 #include "url_parser.hpp"
 
-static constexpr int THREAD_COUNT = 5;
+static constexpr int THREAD_COUNT = 20;
 static constexpr int LINK_COUNT = 1000000;  // ONE MILLION
-static constexpr const char* SEED_LIST = "./seed_list.txt";
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 500'000;
@@ -31,7 +30,7 @@ class crawler {
                 : bloom_filter<fast::string>(BLOOM_FILTER_SIZE,
                                              BLOOM_FILTER_FPR,
                                              get_bloomfilter_path().begin())),
-        crawl_frontier(get_frontier_path().begin(), SEED_LIST),
+        crawl_frontier(get_frontier_path().begin(), get_seedlist_path().begin()),
         word_bank(new fast::hashtable) {}
 
   void run() {
@@ -116,13 +115,19 @@ class crawler {
 
   static fast::string get_bloomfilter_path() {
     fast::string path = getenv("HOME");
-    path += "/.local/share/crawler/bloomfilter.bin";
+    path += "/.local/share/crawler/bloom_filter.bin";
     return path;
   }
 
   static fast::string get_frontier_path() {
     fast::string path = getenv("HOME");
     path += "/.local/share/crawler/frontier.bin";
+    return path;
+  }
+
+  static fast::string get_seedlist_path() {
+    fast::string path = getenv("HOME");
+    path += "/.local/share/crawler/seed_list.txt";
     return path;
   }
 
@@ -139,9 +144,8 @@ class crawler {
       num_str.insert(0, static_cast<char>('0' + d));
     }
 
-    fast::string path_str = "index/";
-    path_str += num_str;
-    return path_str;
+    path += num_str;
+    return path;
   }
 
   void* worker() {
@@ -159,6 +163,7 @@ class crawler {
     //
     // Separate:
     //  -
+
     while (!shutdown_flag) {
       fast::string url = "";
       // TODO: How do we get our start list to the right computers?
@@ -206,7 +211,7 @@ class crawler {
 
       ssl_connection.send_get_request();
       fast::crawler::html_file html;
-      ssl_connection.get_html(html);
+      ssl_connection.get_html(html, &shutdown_flag);
 
       if (!html.size()) {
         crawl_frontier.notify_crawled(url);
@@ -284,7 +289,7 @@ class crawler {
       crawl_frontier.notify_crawled(url);
     }
 
-    std::cout << "Worker returning\n";
+    std::cout << "Worker " << pthread_self() << " returning\n";
     return nullptr;
   }
 

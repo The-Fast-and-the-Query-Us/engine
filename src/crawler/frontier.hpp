@@ -74,6 +74,9 @@ class frontier {
       if (!curr_pri.empty()) {
         const size_t n = curr_pri.size();
         for (size_t j = 0; j < n; ++j) {
+          if (shutdown_flag != nullptr && *shutdown_flag == 1) {
+            return "";
+          }
 
           fast::string url = curr_pri.front();
           fast::string curr_hostname = extract_hostname(url);

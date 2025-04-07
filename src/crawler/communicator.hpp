@@ -1,5 +1,6 @@
 #pragma once
 
+#include <csignal>
 #include <iostream>
 #include <fcntl.h>
 #include <netdb.h>
@@ -77,6 +78,19 @@ class communicator {
     if (sock_fd < 0) {
       destroy_objects();
       throw std::runtime_error("Failed to create socket.\n");
+    }
+
+    struct timeval timeout;
+    timeout.tv_sec = 5;  // 5 second timeout
+    timeout.tv_usec = 0;
+
+    // Get timeout
+    if (setsockopt(sock_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+      perror("setsockopt failed");
+    }
+    // Send timeout
+    if (setsockopt(sock_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0) {
+      perror("setsockopt failed");
     }
 
     if (connect(sock_fd, address->ai_addr, address->ai_addrlen) < 0) {
@@ -175,7 +189,7 @@ class communicator {
     }
   }
 
-  void get_html(fast::crawler::html_file& html) {
+  void get_html(fast::crawler::html_file& html, const volatile sig_atomic_t* shutdown_flag) {
     html_file header;
     char buffer[MAX_PACKET_SIZE];
     ssize_t bytes{};
@@ -185,7 +199,7 @@ class communicator {
     bool invalid_html = false;
 
     while (true) {
-      if (!ssl || invalid_html) {
+      if (!ssl || invalid_html || (shutdown_flag && *shutdown_flag)) {
         break;
       }
 
@@ -198,6 +212,8 @@ class communicator {
         if (ssl_error == SSL_ERROR_WANT_READ ||
             ssl_error == SSL_ERROR_WANT_WRITE) {
           // Non-blocking operation, would block - try again
+          if (shutdown_flag && *shutdown_flag) break;
+          usleep(10000);
           continue;
         }
         // Real error or connection closed
