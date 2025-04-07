@@ -36,6 +36,8 @@ class url_sender {
       if (recv_all(client, buffer)) {
         me->callback(buffer);
       }
+
+      close(client);
     }
   }
 
@@ -82,6 +84,7 @@ public:
 
     char IP_BUFFER[20];
     while (fgets(IP_BUFFER, 20, file) != NULL) {
+      IP_BUFFER[strcspn(IP_BUFFER, "\r\n")] = 0; // remove trailing \r or \n
       ips.emplace_back(IP_BUFFER);
     }
 
@@ -133,8 +136,8 @@ public:
 
   ~url_sender() {
     shutdown(connect_fd, SHUT_RDWR);
-    pthread_join(accept_thread, NULL);
     close(connect_fd);
+    pthread_join(accept_thread, NULL);
   }
 }; // url_sender
 
