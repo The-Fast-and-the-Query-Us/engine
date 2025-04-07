@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <fcntl.h>
 #include <netdb.h>
 #include <openssl/err.h>
@@ -12,19 +13,16 @@
 #include <cstdint>
 #include <cstring>
 #include <stdexcept>
-#include "hashtable.hpp"
 #include "html_file.hpp"
-#include "html_parser.hpp"
-#include "mutex.hpp"
-#include "string.hpp"
-#include "vector.hpp"
 
+static const char *pattern = "content-type: text/html";
 static constexpr uint16_t MAX_PACKET_SIZE = 10240;
 static constexpr uint16_t MAX_MESSAGE_SIZE = 8192;
 static constexpr uint8_t REQUEST_TYPE_LEN = 16;
 static constexpr uint8_t HOST_LEN = 6;
 static constexpr uint8_t USER_AGENT_LEN = 38;
 static constexpr uint8_t HTML_TAIL_LEN = 61;
+static constexpr uint8_t PATTERN_LEN = 23;
 
 namespace fast::crawler {
 
@@ -178,14 +176,16 @@ class communicator {
   }
 
   void get_html(fast::crawler::html_file& html) {
+    html_file header;
     char buffer[MAX_PACKET_SIZE];
     ssize_t bytes{};
-    bool found_header_end = false;
     const char* header_end = "\r\n\r\n";
     int header_match_pos = 0;
+    bool found_header_end = false;
+    bool invalid_html = false;
 
     while (true) {
-      if (!ssl) {
+      if (!ssl || invalid_html) {
         break;
       }
 
@@ -210,6 +210,16 @@ class communicator {
             header_match_pos++;
             if (header_match_pos == 4) {  // Found \r\n\r\n
               found_header_end = true;
+              if (header.size()) {
+                header.add(buffer, i + 1);
+              }
+              if (!check_data_is_html(
+                header.size() ? header.html : buffer,
+                header.size() ? header.size() : bytes
+              )) {
+                invalid_html = true;
+                break;
+              }
               if (i + 1 < bytes) {
                 html.add(buffer + i + 1, bytes - i - 1);
               }
@@ -219,6 +229,7 @@ class communicator {
             header_match_pos = (buffer[i] == '\r') ? 1 : 0;
           }
         }
+        if (!found_header_end) header.add(buffer, bytes);
       } else {
         html.add(buffer, bytes);
       }
@@ -229,6 +240,32 @@ class communicator {
       ssl = nullptr;
     }
   }
+
+  static bool check_data_is_html(const char *buffer, size_t bytes) {
+    uint8_t pattern_index = 0;
+
+    for (size_t i = 0; i < bytes; ++i) {
+      if (lowercase(buffer[i]) == pattern[pattern_index]) {
+        ++pattern_index;
+        for (; pattern_index < PATTERN_LEN && i < bytes; ++pattern_index) {
+          if (lowercase(buffer[i + pattern_index]) != pattern[pattern_index]) {
+            i += pattern_index - 1;
+            pattern_index = 0;
+            break;
+          }
+        }
+        if (pattern_index == PATTERN_LEN) return true;
+      }
+    }
+    std::cout << "HEADER PARSING CAUGHT NO TEXT/HTML\n";
+
+    return false;
+  }
+
+  static char lowercase(char c) {
+    return (c >= 'A' && c <= 'Z') ? static_cast<char>(c + 32) : c; // NOLINT
+  }
+
 };
 
 }  // namespace fast::crawler

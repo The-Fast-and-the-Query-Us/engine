@@ -76,7 +76,7 @@ class frontier {
           if (crawl_cnt[curr_hostname] <= CRAWL_LIM) {
             ++crawl_cnt[curr_hostname];
             --num_links;
-            return curr_hostname;
+            return url;
           }
 
           curr_pri.push(url);

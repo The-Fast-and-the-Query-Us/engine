@@ -108,7 +108,7 @@ class crawler {
 
   static fast::string get_blob_path(int chunk_count) {
     if (chunk_count == 0) {
-      return "index.dat/0";
+      return "index/0";
     }
     fast::string num_str{};
     while (chunk_count > 0) {
@@ -118,7 +118,7 @@ class crawler {
     }
     std::cout << "num_str: " << num_str.begin() << '\n';
 
-    fast::string path_str = "index.dat/";
+    fast::string path_str = "index/";
     path_str += num_str;
     return path_str;
   }
@@ -154,7 +154,18 @@ class crawler {
         continue;
       }
 
-      visited_urls.insert(url);
+      if (!visited_urls.contains(url)) {
+        visited_urls.insert(url);
+      } else {
+        crawl_frontier.notify_crawled(url);
+        continue;
+      }
+
+      std::cout << url.begin() << '\n';
+      if (url == "https://whereis.mit.edu/") {
+        crawl_frontier.notify_crawled(url);
+        continue;
+      }
 
       fast::crawler::url_parser url_parts(url.begin());
       if (!url_parts.host || !*url_parts.host) {
