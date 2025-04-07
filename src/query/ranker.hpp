@@ -630,6 +630,7 @@ static void rank(const hashblob *blob, const vector<string_view> &flat, isr_cont
     }
 
     score += PARAMS::URL_FACTOR / url.size();
+    score /= url.size();
 
     if (score > results[MAX_RESULTS - 1].first) {
       results[MAX_RESULTS - 1] = {score, url};
