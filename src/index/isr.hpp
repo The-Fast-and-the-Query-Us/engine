@@ -8,6 +8,11 @@ namespace fast {
 
 class isr {
   public:
+
+  // return the number of occurences 
+  // TODO
+  virtual size_t count() = 0;
+
   // jump forward one post
   virtual void next() = 0;
 
