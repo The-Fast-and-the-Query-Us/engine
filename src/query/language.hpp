@@ -227,6 +227,7 @@ class rank_parser {
   static void parse_simple_query(query_stream &query, vector<string_view> *words) {
     if (query.match('[')) {
       parse_query(query, words);
+      query.match(']');
     } else if (query.match('"')) {
       while (!query.match('"')) {
         if (query.is_end()) return;
