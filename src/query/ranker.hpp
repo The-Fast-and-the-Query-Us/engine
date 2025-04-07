@@ -547,16 +547,19 @@ static double rank_isrs(const vector<isr*> words, Offset start, Offset end, size
       }
     }
 
+    auto DEGRADE = max(Offset(1), RARE_OFFSET - start);
+    DEGRADE *= DEGRADE;
+
     for (size_t i = 0; i < words.size(); ++i) {
       if (i != rare && offs[i] != MAX_OFFSET) {
-        score += PARAMS::DOUBLE_MULT / difference[i] / (max(Offset(1), RARE_OFFSET - start));
+        score += PARAMS::DOUBLE_MULT / difference[i] / DEGRADE;
       }
     }
 
     for (size_t i = 0; i < words.size(); ++i) {
       for (size_t j = i + 1; j < words.size(); ++j) {
         if (i != rare && j != rare && offs[i] != MAX_OFFSET && offs[j] != MAX_OFFSET) {
-          score += PARAMS::TRIP_MULT / difference[i] / difference[j] / max(Offset(1), RARE_OFFSET - start);
+          score += PARAMS::TRIP_MULT / difference[i] / difference[j] / DEGRADE;
         }
       }
     }
