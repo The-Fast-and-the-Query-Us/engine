@@ -194,7 +194,7 @@ class crawler {
       }
 
       fast::crawler::url_parser url_parts(url.begin());
-      if (!url_parts.host || !*url_parts.host) {
+      if (!url_parts.host || !*url_parts.host || !url_parts.port || !url_parts.path || !isalnum(*url_parts.host)) {
         crawl_frontier.notify_crawled(url);
         continue;
       }
