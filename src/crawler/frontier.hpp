@@ -36,6 +36,10 @@ class frontier {
     }
   }
 
+  ~frontier() {
+    delete save_path;
+  }
+
   void insert_no_mutex(fast::string& url) {
     int pri_level = calc_priority(url);
     if (pri_level < 0)
