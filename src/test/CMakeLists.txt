@@ -23,7 +23,11 @@ foreach(TEST_SOURCE ${TEST_SOURCES})
     target_compile_options(${TEST_NAME} PRIVATE -fno-omit-frame-pointer -Wall -Wextra -Werror -pedantic -g -O0)
   endif()
 
-  add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})  # Register as a test
+  if (TEST_NAME STREQUAL "test_url_send")
+    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/test_data/loopback_ip.txt)
+  else()
+    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})  # Register as a test
+  endif()
 endforeach()
 
 find_package(Threads REQUIRED) # for thread

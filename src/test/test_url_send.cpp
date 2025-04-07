@@ -4,9 +4,7 @@
 
 using namespace fast::crawler;
 
-const fast::string ips = "test_data/loopback_ip.txt";
 const fast::string urls[] = {"www,google.com", "www.github.com", "www.walmart.com"};
-
 std::atomic_int32_t idx = 0;
 
 void test(const fast::string &url) {
@@ -15,8 +13,9 @@ void test(const fast::string &url) {
 }
 
 
-int main() {
-  url_sender sender(ips, test);
+int main(int argc, char **argv) {
+  assert(argc == 2);
+  url_sender sender(argv[1], test);
   for (const auto &url : urls) {
     sender.send_link(url);
   }
