@@ -12,20 +12,20 @@ int main() {
   string amazon = "https://www.amazon.com/";
   f.insert(amazon);
 
-  assert(f.next() == frontier::extract_hostname(psql_wiki));
+  assert(f.next() == psql_wiki);
   auto actual = f.next();
   std::cout << "actual: " << actual.begin() << '\n';
-  std::cout << "expected: " << frontier::extract_hostname(amazon).begin()
+  std::cout << "expected: " << amazon.begin()
             << '\n';
-  assert(actual == frontier::extract_hostname(amazon));
+  assert(actual == amazon);
   f.insert(amazon);
 
   f.save();
 
   frontier f_loaded(SAVE_PATH);
   f_loaded.load();
-  assert(f_loaded.next() == frontier::extract_hostname(amazon));
+  assert(f_loaded.next() == amazon);
 
-  std::cout << "PASSED" << std::endl;
+  std::cout << "PASSED" << '\n';
   return 0;
 }
