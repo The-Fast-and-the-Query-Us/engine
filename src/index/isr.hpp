@@ -9,9 +9,6 @@ namespace fast {
 class isr {
   public:
 
-  // return the fraction of total words 
-  virtual double rarity() = 0;
-
   // jump forward one post
   virtual void next() = 0;
 
