@@ -494,6 +494,14 @@ class ranker {
   isr** title_isrs;
 };
 
+static void rank(const hashblob *blob, const vector<string_view> &flat, isr_container *matches, array<Result, MAX_RESULTS> &results) {
+  vector<isr*> body;
+  vector<isr*> title;
+
+  for (const auto word : flat) {
+  }
+}
+
 void blob_rank(
     const fast::hashblob* blob, const fast::string& query,
     fast::array<fast::query::Result, fast::query::MAX_RESULTS>& results) {
@@ -507,7 +515,7 @@ void blob_rank(
   fast::vector<fast::string_view> flattened;
 
   auto rank_stream = fast::query::query_stream(query);
-  fast::query::rank_parser::parse_query(rank_stream, &flattened, blob);
+  fast::query::rank_parser::parse_query(rank_stream, &flattened);
   fast::query::ranker(blob, flattened, constraints, results);
 
   delete constraints;
