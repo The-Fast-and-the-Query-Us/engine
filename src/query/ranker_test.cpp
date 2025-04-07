@@ -13,7 +13,7 @@
 
 std::filesystem::path BASE = std::filesystem::path(std::getenv("HOME")) /
                              ".local" / "share" / "crawler" / "index";
-const int NUM_CHUNK = 1;
+const int NUM_CHUNK = 11;
 
 int main(int argc, char** argv) {
   std::cout << BASE.string() << std::endl;

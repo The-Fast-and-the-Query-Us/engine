@@ -23,9 +23,6 @@ constexpr double POSITION_BOOST_MIN = 0.6;
 
 enum class meta_stream { TITLE, BODY };
 
-std::map<meta_stream, double> meta_stream_mult = {{meta_stream::TITLE, 1.5},
-                                                  {meta_stream::BODY, 1}};
-
 class ranker {
  public:
   ranker(const hashblob* index_chunk, vector<string_view>& sv,
@@ -36,41 +33,23 @@ class ranker {
     isrs = (isr**)malloc((sz) * sizeof(isr*));
     title_isrs = (isr**)malloc((sz) * sizeof(isr*));
 
-    // get rarest word
+    // get rarest word and init isrs for body
     rare_word_idx = 0;
     size_t min_num_words = SIZE_MAX;
     for (size_t i = 0; i < sz; ++i) {
-      size_t num_words = index_chunk->get(flattened[i])->words();
+      auto pl = index_chunk->get(flattened[i]);
+      size_t num_words = (pl) ? pl->words() : 0;
       if (num_words < min_num_words) {
         rare_word_idx = i;
         min_num_words = num_words;
       }
+
+      isrs[i] = (pl) ? pl->get_isr() : new isr_null;
+
+      pl = index_chunk->get(string(flattened[i]) + "#");
+      title_isrs[i] = (pl) ? pl->get_isr() : new isr_null;
     }
 
-    // intialize isrs for body
-    for (size_t i = 0; i < sz; ++i) {
-      auto* post_list = index_chunk->get(flattened[i]);
-      isrs[i] = index_chunk->get(flattened[i])->get_isr();
-    }
-
-    title_isrs_sz = 0;
-    min_num_words = SIZE_MAX;
-    // initialize isrs for title
-    for (size_t i = 0; i < sz; ++i) {
-      string title_string(flattened[i].begin(), flattened[i].size());
-      title_string += "#";
-      auto* post_list = index_chunk->get(title_string);
-      if (post_list != nullptr) {
-        size_t num_words = post_list->words();
-        if (num_words < min_num_words) {
-          rare_title_word_idx = title_isrs_sz;
-          min_num_words = num_words;
-        }
-        title_isrs[title_isrs_sz++] = post_list->get_isr();
-      }
-    }
-
-    // rarest_isr = isrs[rare_word_idx];
 
     // iterate through doc container
     while (!container->is_end()) {
@@ -100,6 +79,7 @@ class ranker {
     cur_doc_score = 0;
 
     // loop for all metastreams
+    /* refactoring!
     for (auto& [metastream, multiplier] : meta_stream_mult) {
       size_t cur_sz = metastream == meta_stream::BODY ? sz : title_isrs_sz;
       if (cur_sz == 0) {
@@ -123,6 +103,7 @@ class ranker {
         }
       }
     }
+    */
 
     // static ranks
 

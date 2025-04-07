@@ -92,8 +92,7 @@ class query_stream {
 
 class contraint_parser {
  public:
-  static isr_container *parse_contraint(query_stream &query,
-                                        const hashblob *blob) {
+  static isr_container *parse_contraint(query_stream &query, const hashblob *blob) {
     auto left = parse_base_contraint(query, blob);
 
     if (!left) return nullptr;
@@ -177,7 +176,6 @@ class contraint_parser {
       auto word = query.get_word();
       return get_body_or_title(word, blob);
     }
-    return nullptr;
   }
 
   static isr *get_body_or_title(string word, const hashblob *blob) {
