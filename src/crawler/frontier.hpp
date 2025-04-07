@@ -37,7 +37,7 @@ class frontier {
   }
 
   ~frontier() {
-    delete save_path;
+    free(save_path);
   }
 
   void insert_no_mutex(fast::string& url) {
@@ -283,7 +283,7 @@ class frontier {
 
   uint64_t num_links{0};
 
-  const char* save_path;
+  char* save_path;
 
   fast::vector<fast::queue<fast::string>> priorities;
 
