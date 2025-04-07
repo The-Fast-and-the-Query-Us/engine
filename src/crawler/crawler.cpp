@@ -13,6 +13,8 @@ void handle_interrupt(int sig) {
 }
 
 int main() {
+  signal(SIGPIPE, SIG_IGN);
+
   struct sigaction sa{};
   memset(&sa, 0, sizeof(sa));
   sa.sa_handler = handle_interrupt;
