@@ -168,7 +168,10 @@ class bitset {
     return int64_read + num_bits_read + elts_read;
   }
 
-  ~bitset() { delete[] bits; }
+  ~bitset() {
+    delete[] bits;
+    free(save_path);
+  }
 
   inline size_t size() { return num_bits; }
 

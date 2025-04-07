@@ -29,6 +29,10 @@ class bloom_filter {
 
   bloom_filter(const char* load_path) { load(load_path); }
 
+  ~bloom_filter() {
+    if (save_path) free(save_path);
+  }
+
   void insert(const T& val) {
     auto [h1, h2] = hash(val);
     fast::scoped_lock lock_guard(&m);
@@ -142,7 +146,7 @@ class bloom_filter {
 
   fast::mutex m;
 
-  const char* save_path;
+  char* save_path;
 
   void init() {
     if (n == 0) {
