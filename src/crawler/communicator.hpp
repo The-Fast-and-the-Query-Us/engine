@@ -1,7 +1,5 @@
 #pragma once
 
-#include <csignal>
-#include <iostream>
 #include <fcntl.h>
 #include <netdb.h>
 #include <openssl/err.h>
@@ -11,12 +9,14 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <cctype>
+#include <csignal>
 #include <cstdint>
 #include <cstring>
+#include <iostream>
 #include <stdexcept>
 #include "html_file.hpp"
 
-static const char *pattern = "content-type: text/html";
+static const char* pattern = "content-type: text/html";
 static constexpr uint16_t MAX_PACKET_SIZE = 10240;
 static constexpr uint16_t MAX_MESSAGE_SIZE = 8192;
 static constexpr uint8_t REQUEST_TYPE_LEN = 16;
@@ -57,9 +57,9 @@ class communicator {
 
  public:
   communicator(SSL_CTX* ctx, char* host_, char* port_, char* path_)
-    : host(new char[strlen(host_ ? host_ : "") + 1]),
-      port(new char[strlen(port_ ? port_ : "") + 1]),
-      path(new char[strlen(path_ ? path_ : "") + 1]) {
+      : host(new char[strlen(host_ ? host_ : "") + 1]),
+        port(new char[strlen(port_ ? port_ : "") + 1]),
+        path(new char[strlen(path_ ? path_ : "") + 1]) {
 
     strcpy(host, host_ ? host_ : "");
     strcpy(port, port_ ? port_ : "");
@@ -88,13 +88,15 @@ class communicator {
     timeout.tv_usec = 0;
 
     // Get timeout
-    if (setsockopt(sock_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+    if (setsockopt(sock_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout,
+                   sizeof(timeout)) < 0) {
       perror("setsockopt failed");
       destroy_objects();
       return;
     }
     // Send timeout
-    if (setsockopt(sock_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0) {
+    if (setsockopt(sock_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout,
+                   sizeof(timeout)) < 0) {
       perror("setsockopt failed");
       destroy_objects();
       return;
@@ -157,7 +159,8 @@ class communicator {
   ~communicator() { destroy_objects(); }
 
   void send_get_request() {
-    if (!ssl) return;
+    if (!ssl)
+      return;
 
     char get_request[MAX_MESSAGE_SIZE];
     get_request[0] = '\0';
@@ -206,17 +209,14 @@ class communicator {
            "Accept: */*\r\nAccept-Encoding: identity\r\nConnection: "
            "close\r\n\r\n");
 
-    /*for (int i = 0; i < strlen(get_request); ++i) {*/
-    /*  std::cout << get_request[i];*/
-    /*}*/
-
     if (SSL_write(ssl, get_request, strlen(get_request)) <= 0) {
       destroy_objects();
       // throw std::runtime_error("SSL write failed.\n");
     }
   }
 
-  void get_html(fast::crawler::html_file& html, const volatile sig_atomic_t* shutdown_flag) {
+  void get_html(fast::crawler::html_file& html,
+                const volatile sig_atomic_t* shutdown_flag) {
     if (!ssl || (shutdown_flag && *shutdown_flag)) {
       return;
     }
@@ -243,7 +243,8 @@ class communicator {
         if (ssl_error == SSL_ERROR_WANT_READ ||
             ssl_error == SSL_ERROR_WANT_WRITE) {
           // Non-blocking operation, would block - try again
-          if (shutdown_flag && *shutdown_flag) break;
+          if (shutdown_flag && *shutdown_flag)
+            break;
           usleep(10000);
           continue;
         }
@@ -260,10 +261,8 @@ class communicator {
               if (header.size()) {
                 header.add(buffer, i + 1);
               }
-              if (!check_data_is_html(
-                header.size() ? header.html : buffer,
-                header.size() ? header.size() : bytes
-              )) {
+              if (!check_data_is_html(header.size() ? header.html : buffer,
+                                      header.size() ? header.size() : bytes)) {
                 invalid_html = true;
                 break;
               }
@@ -276,7 +275,8 @@ class communicator {
             header_match_pos = (buffer[i] == '\r') ? 1 : 0;
           }
         }
-        if (!found_header_end) header.add(buffer, bytes);
+        if (!found_header_end)
+          header.add(buffer, bytes);
       } else {
         html.add(buffer, bytes);
       }
@@ -288,7 +288,7 @@ class communicator {
     }
   }
 
-  static bool check_data_is_html(const char *buffer, size_t bytes) {
+  static bool check_data_is_html(const char* buffer, size_t bytes) {
     uint8_t pattern_index = 0;
 
     for (size_t i = 0; i < bytes; ++i) {
@@ -301,18 +301,17 @@ class communicator {
             break;
           }
         }
-        if (pattern_index == PATTERN_LEN) return true;
+        if (pattern_index == PATTERN_LEN)
+          return true;
       }
     }
-    std::cout << "HEADER PARSING CAUGHT NO TEXT/HTML\n";
 
     return false;
   }
 
   static char lowercase(char c) {
-    return (c >= 'A' && c <= 'Z') ? static_cast<char>(c + 32) : c; // NOLINT
+    return (c >= 'A' && c <= 'Z') ? static_cast<char>(c + 32) : c;  // NOLINT
   }
-
 };
 
 }  // namespace fast::crawler

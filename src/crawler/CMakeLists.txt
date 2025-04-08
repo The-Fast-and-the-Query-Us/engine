@@ -6,4 +6,4 @@ target_link_libraries(crawler_interface INTERFACE lib index OpenSSL::SSL OpenSSL
 
 add_executable(crawler crawler.cpp)
 target_link_libraries(crawler PUBLIC crawler_interface)
-target_compile_options(crawler PUBLIC -Wno-deprecated-declarations)
+target_compile_options(crawler PUBLIC -Wall -Wextra -Werror -pedantic -g -O3)

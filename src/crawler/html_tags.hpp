@@ -9,7 +9,7 @@ static char lower(char c) { return ('A' <= c && c <= 'Z') ? c + 32 : c; }
 // 1 => name > tag
 static int cmp(const char *name, const char *end, size_t idx) {
   auto tp = TagsRecognized[idx].Tag;
-  while (name != end) {
+  while (name < end) {
     if (lower(*name) < *tp)
       return -1;
     else if (lower(*name) > *tp)

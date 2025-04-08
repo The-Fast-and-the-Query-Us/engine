@@ -1,9 +1,12 @@
 #pragma once
 
 #include <pthread.h>
+#include <sys/fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <csignal>
+#include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <hashblob.hpp>
 #include <hashtable.hpp>
@@ -18,7 +21,7 @@ static constexpr int THREAD_COUNT = 20;
 static constexpr int LINK_COUNT = 1000000;  // ONE MILLION
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
-static constexpr size_t BLOB_THRESHOLD = 500'000;
+static constexpr size_t BLOB_THRESHOLD = 12'500'000;
 
 namespace fast::crawler {
 class crawler {
@@ -30,7 +33,8 @@ class crawler {
                 : bloom_filter<fast::string>(BLOOM_FILTER_SIZE,
                                              BLOOM_FILTER_FPR,
                                              get_bloomfilter_path().begin())),
-        crawl_frontier(get_frontier_path().begin(), get_seedlist_path().begin()),
+        crawl_frontier(get_frontier_path().begin(),
+                       get_seedlist_path().begin()),
         word_bank(new fast::hashtable) {}
 
   void run() {
@@ -85,8 +89,9 @@ class crawler {
     crawl_frontier.save();
     // No threads, so no need to lock
     if (word_bank->tokens() > 0) {
-      write_blob(get_blob_path(chunk_count));
+      write_blob();
     }
+    std::cout << "Added " << doc_count << " docs to index\n";
 
     delete word_bank;
     SSL_CTX_free(g_ssl_ctx);
@@ -105,7 +110,8 @@ class crawler {
   fast::mutex bank_mtx;
   fast::mutex ssl_mtx;
   SSL_CTX* g_ssl_ctx{};
-  int chunk_count{};  // TODO: search dir for next chunk count to continue crawling
+  uint64_t doc_count{
+      0};  // TODO: search dir for next chunk count to continue crawling
   /*std::unordered_map<fast::string, std::unordered_set<fast::string>>*/
   pthread_t thread_pool[THREAD_COUNT]{};
   // We also need a map for robots.txt stuff
@@ -131,21 +137,63 @@ class crawler {
     return path;
   }
 
-  static fast::string get_blob_path(int chunk_count) {
+  static fast::string u64tos(uint64_t x) {
+    if (x == 0) {
+      return "0";
+    }
+    fast::string res{};
+    while (x > 0) {
+      int d = x %= 10;
+      x /= 10;
+      res.insert(0, '0' + d);
+    }
+    return res;
+  }
+
+  static fast::string get_blob_path() {
     fast::string path = getenv("HOME");
     path += "/.local/share/crawler/index/";
-    if (chunk_count == 0) {
-      return path + "0";
+    fast::string chunk_count_path = getenv("HOME");
+    chunk_count_path += "/.local/share/crawler/chunk_count.bin";
+    if (access(chunk_count_path.begin(), F_OK) == 0) {
+      int fd = open(chunk_count_path.begin(), O_RDONLY);
+      assert(fd >= 0);
+      uint64_t chunk_count{};
+      assert(read(fd, &chunk_count, sizeof(uint64_t)) == sizeof(uint64_t));
+      path += u64tos(chunk_count);
+    } else {
+      int fd = open(chunk_count_path.begin(), O_RDWR | O_CREAT | O_TRUNC, 0777);
+      assert(fd != 0);
+      uint64_t chunk_count{0};
+      std::cout << "createing chunk_count file, setting to " << chunk_count
+                << '\n';
+      assert(write(fd, &chunk_count, sizeof(uint64_t)) == sizeof(uint64_t));
+      path += "0";
     }
-    fast::string num_str{};
-    while (chunk_count > 0) {
-      int d = chunk_count % 10;  // NOLINT
-      chunk_count /= 10;         // NOLINT
-      num_str.insert(0, static_cast<char>('0' + d));
-    }
-
-    path += num_str;
     return path;
+  }
+
+  static void increment_chunk_count() {
+    fast::string chunk_count_path = getenv("HOME");
+    chunk_count_path += "/.local/share/crawler/chunk_count.bin";
+    if (access(chunk_count_path.begin(), F_OK) == 0) {
+      int fd = open(chunk_count_path.begin(), O_RDWR);
+      assert(fd != 0);
+      uint64_t chunk_count{};
+      assert(read(fd, &chunk_count, sizeof(uint64_t)) == sizeof(uint64_t));
+      chunk_count++;
+      lseek(fd, 0, SEEK_SET);
+      std::cout << "updating chunk_count from " << chunk_count - 1 << " to "
+                << chunk_count << '\n';
+      assert(write(fd, &chunk_count, sizeof(uint64_t)) == sizeof(uint64_t));
+    } else {
+      int fd = open(chunk_count_path.begin(), O_RDWR | O_CREAT | O_TRUNC, 0777);
+      assert(fd != 0);
+      uint64_t chunk_count{0};
+      std::cout << "createing chunk_count file, setting to " << chunk_count
+                << '\n';
+      assert(write(fd, &chunk_count, sizeof(uint64_t)) == sizeof(uint64_t));
+    }
   }
 
   void* worker() {
@@ -187,14 +235,14 @@ class crawler {
         continue;
       }
 
-      std::cout << url.begin() << '\n';
       if (url == "https://whereis.mit.edu/") {
         crawl_frontier.notify_crawled(url);
         continue;
       }
 
       fast::crawler::url_parser url_parts(url.begin());
-      if (!url_parts.host || !*url_parts.host || !url_parts.port || !url_parts.path || !isalnum(*url_parts.host)) {
+      if (!url_parts.host || !*url_parts.host || !url_parts.port ||
+          !url_parts.path || !isalnum(*url_parts.host)) {
         crawl_frontier.notify_crawled(url);
         continue;
       }
@@ -272,10 +320,11 @@ class crawler {
         word_bank->add(word);
       }
 
+      ++doc_count;
       word_bank->add_doc(url);
 
       if (word_bank->tokens() > BLOB_THRESHOLD) {
-        write_blob(get_blob_path(chunk_count));
+        write_blob();
       }
 
       bank_mtx.unlock();
@@ -293,7 +342,8 @@ class crawler {
     return nullptr;
   }
 
-  void write_blob(const fast::string& path) {
+  void write_blob() {
+    fast::string path = get_blob_path();
     auto fd = open(path.c_str(), O_CREAT | O_RDWR, 0777);
 
     if (fd == -1) {
@@ -325,7 +375,7 @@ class crawler {
     munmap(mptr, space);
     close(fd);
     std::cout << "Successfully wrote blob to " << path.begin() << '\n';
-    ++chunk_count;
+    increment_chunk_count();
   }
 
   static bool is_alphabet(char c) {

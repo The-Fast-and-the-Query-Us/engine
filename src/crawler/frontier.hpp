@@ -30,14 +30,20 @@ class frontier {
   frontier(const char* _save_path, const char* seed_list = nullptr)
       : save_path(_save_path == nullptr ? nullptr : strdup(_save_path)) {
     assert(save_path != nullptr);
+    if (access(save_path, F_OK) == 0) {
+      load();
+      return;
+    }
     priorities.resize(4);
-    if (seed_list) {
+    if (seed_list != nullptr) {
       load_seed_list(seed_list);
     }
   }
 
   ~frontier() {
-    if (save_path) free(save_path);
+    if (save_path != nullptr) {
+      free(save_path);
+    }
   }
 
   void insert_no_mutex(fast::string& url) {
@@ -147,7 +153,7 @@ class frontier {
     int fd = open(save_path, O_RDWR | O_CREAT | O_TRUNC, 0777);
     if (fd == -1) {
       perror("Failed to open file in frontier save():");
-      std::cout << "save_path: " << save_path << '\n';
+      std::cerr << "save_path: " << save_path << '\n';
       return -1;
     }
 
@@ -159,10 +165,19 @@ class frontier {
       return -1;
     }
 
-    int total_priority_bytes = 0;
-    for (size_t i = 0; i < priorities.size(); ++i) {
+    size_t num_priorities = priorities.size();
+    ssize_t num_priorities_written = write(fd, &num_priorities, sizeof(size_t));
 
-      size_t pri_sz = priorities[i].size();
+    if (num_priorities_written == -1) {
+      std::cerr << "Failed writing member num_priorities in frontier save()\n";
+      close(fd);
+      return -1;
+    }
+
+    int total_priority_bytes = 0;
+    for (auto& level : priorities) {
+
+      size_t pri_sz = level.size();
       ssize_t pri_sz_written = write(fd, &pri_sz, sizeof(size_t));
 
       if (pri_sz_written == -1) {
@@ -173,7 +188,7 @@ class frontier {
       }
 
       total_priority_bytes += pri_sz_written;
-      fast::queue<fast::string> t_q = priorities[i];
+      fast::queue<fast::string> t_q = level;
 
       for (size_t j = 0; j < pri_sz; ++j) {
         fast::string f = t_q.front();
@@ -224,8 +239,19 @@ class frontier {
     }
     tbr += num_links_read;
 
-    for (size_t i = 0; i < priorities.size(); ++i) {
-      size_t pri_sz;
+    size_t num_priorities{};
+    ssize_t num_priorities_read = read(fd, &num_priorities, sizeof(size_t));
+
+    if (num_priorities_read == -1) {
+      std::cerr << "Failed writing member num_priorities in frontier save()\n";
+      close(fd);
+      return -1;
+    }
+
+    priorities.resize(num_priorities);
+
+    for (auto& level : priorities) {
+      size_t pri_sz{};
       ssize_t num_pri_sz_read = read(fd, &pri_sz, sizeof(size_t));
       if (num_pri_sz_read == -1) {
         std::cerr << "failed reading pri_sz in frontier load()";
@@ -253,7 +279,7 @@ class frontier {
           return -1;
         }
         tbr += num_l_read;
-        priorities[i].push(l);
+        level.push(l);
       }
     }
 

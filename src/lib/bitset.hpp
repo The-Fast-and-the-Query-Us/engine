@@ -97,7 +97,6 @@ class bitset {
     }
 
     ssize_t int64_written = write(fd, &num_int64, sizeof(uint64_t));
-    std::cout << "int64_written: " << int64_written << '\n';
     if (int64_written == -1) {
       std::cerr << "Write in save for bitset failed on member num_int64\n";
       close(fd);
@@ -105,7 +104,6 @@ class bitset {
     }
 
     ssize_t num_bits_written = write(fd, &num_bits, sizeof(uint64_t));
-    std::cout << "num_bits_written: " << num_bits_written << '\n';
     if (num_bits_written == -1) {
       std::cerr << "Write in save for bitset failed on member num_bits\n";
       close(fd);
@@ -113,7 +111,6 @@ class bitset {
     }
 
     ssize_t elts_written = write(fd, bits, num_int64 * sizeof(uint64_t));
-    std::cout << "elts_written: " << elts_written << '\n';
     if (elts_written == -1) {
       std::cerr << "Write in save for bitset failed on member bits\n";
       close(fd);
