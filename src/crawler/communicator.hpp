@@ -248,7 +248,7 @@ class communicator {
           if (shutdown_flag && *shutdown_flag)
             break;
           usleep(10000);
-          continue;
+          break;
         }
         // Real error or connection closed
         break;
