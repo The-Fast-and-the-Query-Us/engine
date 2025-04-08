@@ -310,7 +310,6 @@ public:
                 for (i = 0; i < 6; ++i) {
                   if (buffer[i] != "href=\""[i])
                     break;
-                  ++buffer;
                 }
 
                 if (i == 6) {

@@ -369,17 +369,20 @@ class crawler {
           new_link += link.URL;
           link.URL = new_link;
         }
+        std::cout << "Found link" << link.URL.c_str() << '\n';
         if (!visited_urls.contains(link.URL)) {
+          std::cout << "Link not crawled" << std::endl;
           if (is_blacklisted(link.URL)) continue;
+          std::cout << "Not blacklisted" << std::endl;
           fast::string link_hostname = fast::crawler::frontier::extract_hostname(link.URL);
           if (link_hostname == url_parts.host) {
             if (!self_domain_seen) {
-              //std::cout << "INSERTING FIRST SAME-DOMAIN LINK: " << link.URL.begin() << '\n';
+              std::cout << "INSERTING FIRST SAME-DOMAIN LINK: " << link.URL.begin() << '\n';
               link_sender.send_link(link.URL);
               self_domain_seen = true;
             }
           } else {
-            //std::cout << "INSERTING EXTERNAL LINK: " << link.URL.begin() << '\n';
+            std::cout << "INSERTING EXTERNAL LINK: " << link.URL.begin() << '\n';
             link_sender.send_link(link.URL);
           }
         }
@@ -394,6 +397,7 @@ class crawler {
 
   void add_url(string &url) {
     if (!visited_urls.contains(url)) {
+      std::cout << "ADDING LINK: " << url.begin() << '\n';
       crawl_frontier.insert(url);
     }
   }

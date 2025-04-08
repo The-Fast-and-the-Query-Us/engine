@@ -32,6 +32,17 @@ int main() {
   }
 
   html_parser parser(buffer, bytes);
+  std::cout << "Titles: " << '\n';
+  for (const auto &title : parser.titleWords) {
+    std::cout << title.begin() << '\n';
+  }
+
+  std::cout << "Words:" << '\n';
+  for (const auto &word : parser.words) {
+    std::cout << word.begin() << '\n';
+  }
+
+  std::cout << "Link:" << std::endl;
   for (auto &link : parser.links) {
     std::cout << link.URL.begin() << '\n';
   }
