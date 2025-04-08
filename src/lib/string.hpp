@@ -176,6 +176,11 @@ class string {
     return true;
   }
 
+  // requires len_ > 0
+  char back() const {
+    return start_[len_ - 1];
+  }
+
   char &operator[](size_t idx) const { return start_[idx]; }
 
   // should be marked const char * but dont want to break anything yet
