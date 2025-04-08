@@ -42,7 +42,7 @@ class url_sender {
           if (recv_all(client, buffer)) {
             me->callback(buffer);
           } else {
-            perror("url_sender::handle_conn : Fail to recv");
+            perror("url_sender::handle_conn : Fail to recv link");
             break;
           }
         }
@@ -115,6 +115,50 @@ public:
   }
 
   /*
+   * Send all links in buffer to peer, not thread safe
+   */
+  void flush(size_t peer_idx) {
+    const auto &peer = ips[peer_idx];
+    
+    const auto peer_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (peer_fd < 0) {
+      perror("send_link::socket()");
+      exit(1); // maybe dont exit?
+    }
+
+    struct sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(PORT);
+
+    if (inet_pton(AF_INET, peer.c_str(), &addr.sin_addr) <= 0) {
+      perror("send_link::inet_pton");
+      close(peer_fd);
+      exit(1);
+    }
+
+    if (connect(peer_fd, (sockaddr *) &addr, sizeof(addr)) < 0) {
+      perror("send_link::connect");
+      close(peer_fd);
+      return;
+    }
+
+    uint32_t count = send_buffers[peer_idx].size();
+    if (send_all(peer_fd, count)) {
+      for (const auto &link : send_buffers[peer_idx]) {
+        if (!send_all(peer_fd, link)) {
+          perror("URL_SENDER:: Fail to send link");
+          break;
+        }
+      }
+    } else {
+      perror("URL_SENDER:: Fail to send count");
+    }
+
+    send_buffers[peer_idx].clear();
+    close(peer_fd);
+  }
+
+  /*
   * Hash url and send to the appropiate peer
   * Must be protected with lock
   */
@@ -122,44 +166,7 @@ public:
     const auto peer_idx = hash(url) % ips.size();
     send_buffers[peer_idx].push_back(url);
     if (send_buffers[peer_idx].size() >= MAX_BUFFER) {
-      const auto &peer = ips[peer_idx];
-      
-      const auto peer_fd = socket(AF_INET, SOCK_STREAM, 0);
-      if (peer_fd < 0) {
-        perror("send_link::socket()");
-        exit(1); // maybe dont exit?
-      }
-
-      struct sockaddr_in addr{};
-      addr.sin_family = AF_INET;
-      addr.sin_port = htons(PORT);
-
-      if (inet_pton(AF_INET, peer.c_str(), &addr.sin_addr) <= 0) {
-        perror("send_link::inet_pton");
-        close(peer_fd);
-        exit(1);
-      }
-
-      if (connect(peer_fd, (sockaddr *) &addr, sizeof(addr)) < 0) {
-        perror("send_link::connect");
-        close(peer_fd);
-        return;
-      }
-
-      uint32_t count = send_buffers[peer_idx].size();
-      if (send_all(peer_fd, count)) {
-        for (const auto &link : send_buffers[peer_idx]) {
-          if (!send_all(peer_fd, link)) {
-            perror("URL_SENDER:: Fail to send link");
-            break;
-          }
-        }
-      } else {
-        perror("URL_SENDER:: Fail to send count");
-      }
-
-      send_buffers[peer_idx].clear();
-      close(peer_fd);
+      flush(peer_idx);
     }
   }
 
