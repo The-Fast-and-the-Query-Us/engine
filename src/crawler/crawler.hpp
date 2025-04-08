@@ -56,6 +56,8 @@ class crawler {
         link_sender.send_link(buffer);
       }
 
+      link_sender.flush(0);
+
       std::cout << "Loaded seedlist" << std::endl;
 
     } else {
@@ -135,6 +137,7 @@ class crawler {
   fast::hashtable* word_bank;
   fast::mutex bank_mtx;
   fast::mutex ssl_mtx;
+  fast::mutex sender_mutex;
   SSL_CTX* g_ssl_ctx{};
   uint64_t doc_count{
       0};  // TODO: search dir for next chunk count to continue crawling
@@ -361,6 +364,9 @@ class crawler {
       bank_mtx.unlock();
 
       bool self_domain_seen = false;
+
+      sender_mutex.lock();
+
       for (auto& link : parser.links) {
         if (link.URL[0] == '/' || link.URL[0] == '#' ||
             !(link.URL.starts_with("http://") ||
@@ -387,6 +393,8 @@ class crawler {
           link_sender.send_link(link.URL);
         }
       }
+
+      sender_mutex.unlock();
 
       crawl_frontier.notify_crawled(url);
     }
