@@ -72,10 +72,6 @@ class vector {
     return *this;
   }
 
-  void clear() {
-    *this = vector<T>();
-  }
-
   void reserve(size_t newCapacity) {
     if (newCapacity > cap_) grow(newCapacity);
   }
