@@ -68,7 +68,7 @@ public:
       exit(1);
     }
 
-    if (listen(connect_fd, 5) < 0) {
+    if (listen(connect_fd, SOMAXCONN) < 0) {
       close(connect_fd);
       perror("url_serner::listen");
       exit(1);
@@ -118,13 +118,12 @@ public:
     if (inet_pton(AF_INET, peer.c_str(), &addr.sin_addr) <= 0) {
       perror("send_link::inet_pton");
       close(peer_fd);
-      exit(1); // same as above
+      exit(1);
     }
 
     if (connect(peer_fd, (sockaddr *) &addr, sizeof(addr)) < 0) {
       perror("send_link::connect");
       close(peer_fd);
-      exit(1);
     }
 
     if (!send_all(peer_fd, url)) {
