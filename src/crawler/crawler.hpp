@@ -271,12 +271,13 @@ class crawler {
         continue;
       }
 
-      if (!visited_urls.contains(url)) {
-        visited_urls.insert(url);
-      } else {
-        crawl_frontier.notify_crawled(url);
-        continue;
-      }
+      // We now set visited before adding to frontier!
+      //if (!visited_urls.contains(url)) {
+      //  visited_urls.insert(url);
+      //} else {
+      //  crawl_frontier.notify_crawled(url);
+      //  continue;
+      //}
 
       //if (url == "https://whereis.mit.edu/") {
       //crawl_frontier.notify_crawled(url);
@@ -386,19 +387,17 @@ class crawler {
           new_link += link.URL;
           link.URL = new_link;
         }
-        if (!visited_urls.contains(link.URL)) {
-          if (is_blacklisted(link.URL))
-            continue;
-          fast::string link_hostname =
-              fast::crawler::frontier::extract_hostname(link.URL);
-          if (link_hostname == url_parts.host) {
-            if (!self_domain_seen) {
-              link_sender.send_link(link.URL);
-              self_domain_seen = true;
-            }
-          } else {
+        if (is_blacklisted(link.URL))
+          continue;
+        fast::string link_hostname =
+            fast::crawler::frontier::extract_hostname(link.URL);
+        if (link_hostname == url_parts.host) {
+          if (!self_domain_seen) {
             link_sender.send_link(link.URL);
+            self_domain_seen = true;
           }
+        } else {
+          link_sender.send_link(link.URL);
         }
       }
 
