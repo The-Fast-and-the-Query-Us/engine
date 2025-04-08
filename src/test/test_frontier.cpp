@@ -1,10 +1,14 @@
+#include <stdio.h>
 #include <cassert>
 #include <frontier.hpp>
 using namespace fast;
 using namespace crawler;
 
 constexpr char SAVE_PATH[] = "./frontier_test.dat";
+
 int main() {
+  remove(SAVE_PATH); // dont load old data
+
   frontier f(SAVE_PATH);
   string psql_wiki = "https://en.wikipedia.org/wiki/PostgreSQL/";
   f.insert(psql_wiki);
