@@ -16,8 +16,9 @@
 #include "frontier.hpp"
 #include "html_parser.hpp"
 #include "url_parser.hpp"
+#include "vector.hpp"
 
-static constexpr int THREAD_COUNT = 20;
+static constexpr int THREAD_COUNT = 1;
 static constexpr int LINK_COUNT = 1000000;  // ONE MILLION
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
@@ -114,7 +115,26 @@ class crawler {
       0};  // TODO: search dir for next chunk count to continue crawling
   /*std::unordered_map<fast::string, std::unordered_set<fast::string>>*/
   pthread_t thread_pool[THREAD_COUNT]{};
-  // We also need a map for robots.txt stuff
+  // just for testing
+  fast::string blacklist[150] = {
+    "login", "signin", "signup", "account", "password", "admin", "profile",
+    "cart", "checkout", "buy", "purchase", "register", "payment", "shop", "order",
+    "cdn", "static", "assets", "media", "content", "cache", 
+
+    "fr", "es", "de", "it", "ru", "ja", "zh", "ko", "ar", "pt", "nl", "pl", "tr",
+    "bg", "cs", "da", "el", "fi", "he", "hi", "hu", "id", "no", "ro", "sk", "sl",
+    "sv", "th", "uk", "vi", "hr", "ca", "et", "fa", "lt", "lv", "ms", "sr", "sw",
+    "tl", "ur", "bn", "bs", "cy", "eo", "eu", "gl", "hy", "is", "ka", "kk", "km",
+    "kn", "ky", "lo", "mk", "ml", "mn", "mr", "mt", "my", "ne", "si", "sq", "ta",
+    "te", "uz", "zu", "cn", "jp", "kr", "ru", "tw", "hk", "br", "mx", "ar", "cl", "pe", "ve", "za",
+    "ae", "sa", "sg", "in", "pk", "ph", "vn", "th", "my", "id", "il", "tr", "ir",
+
+    "baidu", "weibo", "qq", "taobao", "yandex", "vk", "mail.ru", "rambler", 
+    "naver", "daum", "yahoo.co.jp", "goo.ne.jp", "mercadolibre",
+    "allegro", "coccoc", "onet", "interia", "wp", "sohu", "sina", 
+    "alipay", "tencent", "bilibili", "youku", "tudou", "dmm", "kakao", "line",
+    "mixi", "nicovideo", "pixiv", "qzone", "renren", "wechat", "weixin"
+  };
 
   // static constexpr const char* BLOOM_FILE_PATH = getenv("HOME");
   // static constexpr const char* FRONTIER_PATH = "frontier_dump.dat";
@@ -235,10 +255,10 @@ class crawler {
         continue;
       }
 
-      if (url == "https://whereis.mit.edu/") {
-        crawl_frontier.notify_crawled(url);
-        continue;
-      }
+      //if (url == "https://whereis.mit.edu/") {
+        //crawl_frontier.notify_crawled(url);
+        //continue;
+      //}
 
       fast::crawler::url_parser url_parts(url.begin());
       if (!url_parts.host || !*url_parts.host || !url_parts.port ||
@@ -246,6 +266,7 @@ class crawler {
         crawl_frontier.notify_crawled(url);
         continue;
       }
+      std::cout << "OG: " << url.begin() << '\n';
 
       ssl_mtx.lock();
       SSL_CTX* ctx_cpy = g_ssl_ctx;
@@ -329,9 +350,32 @@ class crawler {
 
       bank_mtx.unlock();
 
+      bool self_domain_seen = false;
       for (auto& link : parser.links) {
+        if (link.URL[0] == '/' || link.URL[0] == '#' ||
+          !link.URL.starts_with("http://") ||
+          !link.URL.starts_with("https://")) {
+
+          fast::string new_link{};
+          new_link += url_parts.service;
+          new_link += "://";
+          new_link += url_parts.host;
+          new_link += link.URL;
+          link.URL = new_link;
+        }
         if (!visited_urls.contains(link.URL)) {
-          crawl_frontier.insert(link.URL);
+          if (!is_blacklisted(link.URL)) continue;
+          fast::string link_hostname = fast::crawler::frontier::extract_hostname(link.URL);
+          if (link_hostname == url_parts.host) {
+            if (!self_domain_seen) {
+              //std::cout << "INSERTING FIRST SAME-DOMAIN LINK: " << link.URL.begin() << '\n';
+              crawl_frontier.insert(link.URL);
+              self_domain_seen = true;
+            }
+          } else {
+            //std::cout << "INSERTING EXTERNAL LINK: " << link.URL.begin() << '\n';
+            crawl_frontier.insert(link.URL);
+          }
         }
       }
 
@@ -376,6 +420,38 @@ class crawler {
     close(fd);
     std::cout << "Successfully wrote blob to " << path.begin() << '\n';
     increment_chunk_count();
+  }
+
+  bool is_blacklisted(fast::string &url) {
+    const char* word_start = nullptr;
+    const char* url_end = url.begin() + url.size();
+
+    for (const char* p = url.begin(); p <= url_end; ++p) {
+      bool is_delimiter = (p == url_end) || 
+        (*p == '/') || (*p == '.') || (*p == '#') || 
+        (*p == '?') || (*p == '&') || (*p == '=') || 
+        (*p == '-') || (*p == '_') || (*p == ':');
+
+      if (is_delimiter) {
+        if (word_start && p > word_start) {
+          size_t word_len = p - word_start;
+
+          if (word_len > 1) { // skip single letters
+            for (const auto& banned : blacklist) {
+              if (banned.size() == word_len && 
+                strncmp(word_start, banned.begin(), word_len) == 0) {
+                return true;
+              }
+            }
+          }
+        }
+        word_start = nullptr;
+      } else if (!word_start) {
+        word_start = p;
+      }
+    }
+
+    return false;
   }
 
   static bool is_alphabet(char c) {

@@ -154,6 +154,16 @@ class string {
 
   string substr(size_t i, size_t len) { return string{start_ + i, len}; }
 
+  bool starts_with(const string_view &sv) const {
+    if (sv.size() > len_) return false;
+
+    for (size_t i = 0; i < sv.size(); ++i) {
+      if (start_[i] != sv[i]) return false;
+    }
+
+    return true;
+  }
+
   bool ends_with(const string_view &sv) const {
     if (sv.size() > len_) return false;
 

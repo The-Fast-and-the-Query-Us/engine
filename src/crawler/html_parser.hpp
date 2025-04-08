@@ -70,7 +70,7 @@
 //          added to the links with no anchor text.
 
 class Link {
- public:
+public:
   fast::string URL;
   fast::vector<fast::string> anchorText;
 
@@ -78,7 +78,7 @@ class Link {
 };
 
 class html_parser {
- private:
+private:
   static bool IsWhitespace(char c) {
     return (c == ' ' || c == '\n' || c == '\t' || c == '\r' || c == '\f');
   }
@@ -101,21 +101,34 @@ class html_parser {
   }
 
   // return one past the end of the tag @ buf
-  static const char* TagEnd(const char* buff, const char* end) {
-    while (buff < end && *(buff++) != '>')
-      ;
+  static const char *TagEnd(const char *buff, const char *end) {
+    while (buff < end) {
+      if (*buff == '>') {
+        return buff + 1 < end ? buff + 1 : end;
+      }
+      ++buff;
+    }
     return buff;
   }
 
   // return pointer to '<' in the tags pair
-  static const char* TagPair(const char* name, const char* name_end,
-                             const char* buff, const char* end) {
+  static const char *TagPair(const char *name, const char *name_end,
+                             const char *buff, const char *end) {
     while (buff < end) {
-      if (buff[0] != '<')
+      if (buff[0] != '<') {
         ++buff;
-      else if (buff[1] != '/')
-        ++buff;  // Check bounds?
+      }
+      else if (buff + 1 >= end) {
+        ++buff;
+      }
+      else if (buff[1] != '/') {
+        ++buff;
+      }
       else {
+        if (buff + 2 >= end) {
+          ++buff;
+          continue;
+        }
         const auto this_end = NameEnd(buff + 2, end);
 
         if (StrEqual(name, name_end, buff + 2, this_end)) {
@@ -128,7 +141,7 @@ class html_parser {
     return end;
   }
 
- public:
+public:
   // The constructor is given a buffer and length containing
   // presumed HTML.  It will parse the buffer, stripping out
   // all the HTML tags and producing the list of words in body,
@@ -137,9 +150,10 @@ class html_parser {
   fast::vector<Link> links{};
   fast::string base{};
 
-  html_parser(const char* buffer, size_t length) {
-    const char* start = buffer;
-    const char* const end = buffer + length;
+  html_parser(const char *buffer, size_t length) {
+    if (!buffer || length == 0) return;
+    const char *start = buffer;
+    const char *const end = buffer + length;
 
     bool inAnchor = false;
     bool inTitle = false;
@@ -160,7 +174,15 @@ class html_parser {
         ++buffer;
         start = buffer;
       } else if (buffer[0] == '<') {
+        if (buffer + 1 >= end) {
+          ++buffer;
+          continue;
+        }
         if (buffer[1] == '/') {
+          if (buffer + 2 >= end) {
+            ++buffer;
+            continue;
+          }
           const auto name_end = NameEnd(buffer + 2, end);
           const auto action = LookupPossibleTag(buffer + 2, name_end);
 
@@ -185,6 +207,10 @@ class html_parser {
           else if (action == DesiredAction::Title)
             inTitle = false;
         } else {
+          if (buffer + 1 >= end) {
+            ++buffer;
+            continue;
+          }
           const auto name_end = NameEnd(buffer + 1, end);
           const auto action = LookupPossibleTag(buffer + 1, name_end);
 
@@ -243,8 +269,12 @@ class html_parser {
               break;
             case DesiredAction::Embed: {
               buffer = name_end;
-              while (*buffer != '>') {
-                int i;  // href="
+              while (buffer < end && *buffer != '>') {
+                if (buffer + 5 >= end) {
+                  buffer = end;
+                  continue;
+                }
+                int i; // href="
                 for (i = 0; i < 5; ++i) {
                   if (buffer[i] != "src=\""[i])
                     break;
@@ -252,8 +282,13 @@ class html_parser {
 
                 if (i == 5) {
                   auto ep = buffer + 5;
-                  while (*ep != '\"')
+                  while (ep < end && *ep != '\"')
                     ++ep;
+
+                  if (ep >= end) {
+                    buffer = end;
+                    break;
+                  }
                   fast::string link = fast::string(buffer + 5, ep);
                   links.push_back(Link(link));
                   buffer = ep;
@@ -266,17 +301,27 @@ class html_parser {
             } break;
             case DesiredAction::Anchor:
               buffer = name_end;
-              while (*buffer != '>') {
-                int i;  // href="
+              while (buffer < end && *buffer != '>') {
+                if (buffer + 6 >= end) {
+                  buffer = end;
+                  continue;
+                }
+                int i; // href="
                 for (i = 0; i < 6; ++i) {
                   if (buffer[i] != "href=\""[i])
                     break;
+                  ++buffer;
                 }
 
                 if (i == 6) {
                   auto ep = buffer + 6;
-                  while (*ep != '\"')
+                  while (ep < end && *ep != '\"')
                     ++ep;
+
+                  if (ep >= end) {
+                    buffer = end;
+                    break;
+                  }
                   fast::string link = fast::string(buffer + 6, ep);
                   links.push_back(Link(link));
                   buffer = ep;
@@ -290,7 +335,11 @@ class html_parser {
               start = buffer;
               break;
             case DesiredAction::Comment:
-              while (true) {
+              while (buffer < end) {
+                if (buffer + 3 >= end) {
+                  buffer = end;
+                  break;
+                }
                 int i;
                 for (i = 0; i < 3; ++i) {
                   if (buffer[i] != "-->"[i])

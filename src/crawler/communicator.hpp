@@ -12,18 +12,19 @@
 #include <csignal>
 #include <cstdint>
 #include <cstring>
-#include <iostream>
-#include <stdexcept>
+//#include <stdexcept>
 #include "html_file.hpp"
 
-static const char* pattern = "content-type: text/html";
+static const char *text_html_pattern = "content-type: text/html";
+static const char *en_pattern = "lang=\"en\"";
 static constexpr uint16_t MAX_PACKET_SIZE = 10240;
 static constexpr uint16_t MAX_MESSAGE_SIZE = 8192;
 static constexpr uint8_t REQUEST_TYPE_LEN = 16;
 static constexpr uint8_t HOST_LEN = 6;
 static constexpr uint8_t USER_AGENT_LEN = 38;
 static constexpr uint8_t HTML_TAIL_LEN = 61;
-static constexpr uint8_t PATTERN_LEN = 23;
+static constexpr uint8_t TEXT_HTML_PATTERN_LEN = 23;
+static constexpr uint8_t LANG_EN_PATTERN_LEN = 9;
 
 namespace fast::crawler {
 
@@ -56,10 +57,10 @@ class communicator {
   }
 
  public:
-  communicator(SSL_CTX* ctx, char* host_, char* port_, char* path_)
-      : host(new char[strlen(host_ ? host_ : "") + 1]),
-        port(new char[strlen(port_ ? port_ : "") + 1]),
-        path(new char[strlen(path_ ? path_ : "") + 1]) {
+  communicator(SSL_CTX* ctx, const char* host_, const char* port_, const char* path_)
+    : host(new char[strlen(host_ ? host_ : "") + 1]),
+      port(new char[strlen(port_ ? port_ : "") + 1]),
+      path(new char[strlen(path_ ? path_ : "") + 1]) {
 
     strcpy(host, host_ ? host_ : "");
     strcpy(port, port_ ? port_ : "");
@@ -145,7 +146,7 @@ class communicator {
     int ssl_connect_result = SSL_connect(ssl);
     if (ssl_connect_result != 1) {
       int ssl_error = SSL_get_error(ssl, ssl_connect_result);
-      char error_buffer[256];
+      char error_buffer[256]; // NOLINT
       snprintf(error_buffer, sizeof(error_buffer),
                "SSL_connect failed with error code: %d", ssl_error);
 
@@ -228,6 +229,7 @@ class communicator {
     int header_match_pos = 0;
     bool found_header_end = false;
     bool invalid_html = false;
+    uint8_t checked_for_en_twice = 0;
 
     while (true) {
       if (!ssl || invalid_html || (shutdown_flag && *shutdown_flag)) {
@@ -261,8 +263,12 @@ class communicator {
               if (header.size()) {
                 header.add(buffer, i + 1);
               }
-              if (!check_data_is_html(header.size() ? header.html : buffer,
-                                      header.size() ? header.size() : bytes)) {
+              if (!find_pattern_in_buffer(
+                header.size() ? header.html : buffer,
+                header.size() ? header.size() : bytes,
+                text_html_pattern,
+                TEXT_HTML_PATTERN_LEN
+              )) {
                 invalid_html = true;
                 break;
               }
@@ -280,6 +286,13 @@ class communicator {
       } else {
         html.add(buffer, bytes);
       }
+
+      if (found_header_end && checked_for_en_twice < 2 && html.size()) {
+        if (!find_pattern_in_buffer(html.html, html.size(), en_pattern, LANG_EN_PATTERN_LEN)) {
+          break;
+        }
+        ++checked_for_en_twice;
+      }
     }
 
     if (ssl) {
@@ -288,7 +301,7 @@ class communicator {
     }
   }
 
-  static bool check_data_is_html(const char* buffer, size_t bytes) {
+  static bool find_pattern_in_buffer(const char *buffer, size_t bytes, const char *pattern, const uint8_t PATTERN_LEN) {
     uint8_t pattern_index = 0;
 
     for (size_t i = 0; i < bytes; ++i) {
