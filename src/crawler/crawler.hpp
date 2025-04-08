@@ -19,7 +19,6 @@
 #include "vector.hpp"
 
 static constexpr int THREAD_COUNT = 1;
-static constexpr int LINK_COUNT = 1000000;  // ONE MILLION
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 12'500'000;
@@ -116,18 +115,18 @@ class crawler {
   /*std::unordered_map<fast::string, std::unordered_set<fast::string>>*/
   pthread_t thread_pool[THREAD_COUNT]{};
   // just for testing
-  fast::string blacklist[150] = {
+  static const inline fast::string blacklist[150] = {
     "login", "signin", "signup", "account", "password", "admin", "profile",
     "cart", "checkout", "buy", "purchase", "register", "payment", "shop", "order",
     "cdn", "static", "assets", "media", "content", "cache", 
 
     "fr", "es", "de", "it", "ru", "ja", "zh", "ko", "ar", "pt", "nl", "pl", "tr",
-    "bg", "cs", "da", "el", "fi", "he", "hi", "hu", "id", "no", "ro", "sk", "sl",
-    "sv", "th", "uk", "vi", "hr", "ca", "et", "fa", "lt", "lv", "ms", "sr", "sw",
+    "bg", "cs", "da", "el", "fi", "he", "hi", "hu", "no", "ro", "sk", "sl",
+    "sv", "th", "vi", "hr", "ca", "et", "fa", "lt", "lv", "ms", "sr", "sw",
     "tl", "ur", "bn", "bs", "cy", "eo", "eu", "gl", "hy", "is", "ka", "kk", "km",
     "kn", "ky", "lo", "mk", "ml", "mn", "mr", "mt", "my", "ne", "si", "sq", "ta",
     "te", "uz", "zu", "cn", "jp", "kr", "ru", "tw", "hk", "br", "mx", "ar", "cl", "pe", "ve", "za",
-    "ae", "sa", "sg", "in", "pk", "ph", "vn", "th", "my", "id", "il", "tr", "ir",
+    "ae", "sa", "sg", "in", "pk", "ph", "vn", "th", "my", "il", "tr", "ir",
 
     "baidu", "weibo", "qq", "taobao", "yandex", "vk", "mail.ru", "rambler", 
     "naver", "daum", "yahoo.co.jp", "goo.ne.jp", "mercadolibre",
@@ -421,8 +420,10 @@ class crawler {
     std::cout << "Successfully wrote blob to " << path.begin() << '\n';
     increment_chunk_count();
   }
+  
+public:
 
-  bool is_blacklisted(fast::string &url) {
+  static bool is_blacklisted(const fast::string &url) {
     const char* word_start = nullptr;
     const char* url_end = url.begin() + url.size();
 
@@ -436,10 +437,9 @@ class crawler {
         if (word_start && p > word_start) {
           size_t word_len = p - word_start;
 
-          if (word_len > 1) { // skip single letters
+          if (word_len > 1) {
             for (const auto& banned : blacklist) {
-              if (banned.size() == word_len && 
-                strncmp(word_start, banned.begin(), word_len) == 0) {
+              if (banned == fast::string_view(word_start, word_len)) {
                 return true;
               }
             }
