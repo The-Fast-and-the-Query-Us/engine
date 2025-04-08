@@ -18,6 +18,7 @@ class url_sender {
   int connect_fd;
   vector<string> ips;
   pthread_t accept_thread;
+
   const std::function<void(string&)> callback;
 
   static constexpr unsigned PORT = 8090;
@@ -124,10 +125,13 @@ public:
     if (connect(peer_fd, (sockaddr *) &addr, sizeof(addr)) < 0) {
       perror("send_link::connect");
       close(peer_fd);
+      return;
     }
 
     if (!send_all(peer_fd, url)) {
       perror("send_link::fail to send to peer"); // this is recoverable
+    } else {
+      std::cout << "Exported link\n";
     }
 
     close(peer_fd);
