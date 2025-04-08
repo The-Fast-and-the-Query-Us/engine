@@ -411,7 +411,7 @@ class crawler {
 
   void add_url(string& url) {
     if (!visited_urls.contains(url)) {
-      std::cout << "ADDING LINK: " << url.begin() << '\n';
+      visited_urls.insert(url);
       crawl_frontier.insert(url);
     }
   }
