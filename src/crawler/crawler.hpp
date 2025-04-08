@@ -1,10 +1,10 @@
 #pragma once
 
-#include <cctype>
 #include <pthread.h>
 #include <sys/fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <cctype>
 #include <csignal>
 #include <cstdint>
 #include <cstdio>
@@ -17,14 +17,15 @@
 #include "frontier.hpp"
 #include "html_parser.hpp"
 #include "url_parser.hpp"
-#include "vector.hpp"
 #include "url_sender.hpp"
+#include "vector.hpp"
 
-static constexpr int THREAD_COUNT = 1;
+static constexpr int THREAD_COUNT = 100;
+static constexpr int LINK_COUNT = 1000000;  // ONE MILLION
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 12'500'000;
-static const char *IP_PATH = "./ips.txt";
+static const char* IP_PATH = "./ips.txt";
 
 namespace fast::crawler {
 class crawler {
@@ -39,8 +40,9 @@ class crawler {
         crawl_frontier(get_frontier_path().begin(),
                        get_seedlist_path().begin()),
         word_bank(new fast::hashtable),
-        link_sender(IP_PATH, std::bind(&crawler::add_url, this, std::placeholders::_1))
-  {}
+        link_sender(IP_PATH,
+                    std::bind(&crawler::add_url, this, std::placeholders::_1)) {
+  }
 
   void run() {
     OPENSSL_init_ssl(
@@ -121,24 +123,39 @@ class crawler {
   pthread_t thread_pool[THREAD_COUNT]{};
   // just for testing
   static const inline fast::string blacklist[150] = {
-    "login", "signin", "signup", "account", "password", "admin", "profile",
-    "cart", "checkout", "buy", "purchase", "register", "payment", "shop", "order",
-    "cdn", "static", "assets", "media", "content", "cache", 
+      "login",       "signin",    "signup",       "account",  "password",
+      "admin",       "profile",   "cart",         "checkout", "buy",
+      "purchase",    "register",  "payment",      "shop",     "order",
+      "cdn",         "static",    "assets",       "media",    "content",
+      "cache",
 
-    "fr", "es", "de", "it", "ru", "ja", "zh", "ko", "ar", "pt", "nl", "pl", "tr",
-    "bg", "cs", "da", "el", "fi", "he", "hi", "hu", "no", "ro", "sk", "sl",
-    "sv", "th", "vi", "hr", "ca", "et", "fa", "lt", "lv", "ms", "sr", "sw",
-    "tl", "ur", "bn", "bs", "cy", "eo", "eu", "gl", "hy", "is", "ka", "kk", "km",
-    "kn", "ky", "lo", "mk", "ml", "mn", "mr", "mt", "my", "ne", "si", "sq", "ta",
-    "te", "uz", "zu", "cn", "jp", "kr", "ru", "tw", "hk", "br", "mx", "ar", "cl", "pe", "ve", "za",
-    "ae", "sa", "sg", "in", "pk", "ph", "vn", "th", "my", "il", "tr", "ir",
+      "fr",          "es",        "de",           "it",       "ru",
+      "ja",          "zh",        "ko",           "ar",       "pt",
+      "nl",          "pl",        "tr",           "bg",       "cs",
+      "da",          "el",        "fi",           "he",       "hi",
+      "hu",          "no",        "ro",           "sk",       "sl",
+      "sv",          "th",        "vi",           "hr",       "ca",
+      "et",          "fa",        "lt",           "lv",       "ms",
+      "sr",          "sw",        "tl",           "ur",       "bn",
+      "bs",          "cy",        "eo",           "eu",       "gl",
+      "hy",          "is",        "ka",           "kk",       "km",
+      "kn",          "ky",        "lo",           "mk",       "ml",
+      "mn",          "mr",        "mt",           "my",       "ne",
+      "si",          "sq",        "ta",           "te",       "uz",
+      "zu",          "cn",        "jp",           "kr",       "ru",
+      "tw",          "hk",        "br",           "mx",       "ar",
+      "cl",          "pe",        "ve",           "za",       "ae",
+      "sa",          "sg",        "in",           "pk",       "ph",
+      "vn",          "th",        "my",           "il",       "tr",
+      "ir",
 
-    "baidu", "weibo", "qq", "taobao", "yandex", "vk", "mail.ru", "rambler", 
-    "naver", "daum", "yahoo.co.jp", "goo.ne.jp", "mercadolibre",
-    "allegro", "coccoc", "onet", "interia", "wp", "sohu", "sina", 
-    "alipay", "tencent", "bilibili", "youku", "tudou", "dmm", "kakao", "line",
-    "mixi", "nicovideo", "pixiv", "qzone", "renren", "wechat", "weixin"
-  };
+      "baidu",       "weibo",     "qq",           "taobao",   "yandex",
+      "vk",          "mail.ru",   "rambler",      "naver",    "daum",
+      "yahoo.co.jp", "goo.ne.jp", "mercadolibre", "allegro",  "coccoc",
+      "onet",        "interia",   "wp",           "sohu",     "sina",
+      "alipay",      "tencent",   "bilibili",     "youku",    "tudou",
+      "dmm",         "kakao",     "line",         "mixi",     "nicovideo",
+      "pixiv",       "qzone",     "renren",       "wechat",   "weixin"};
 
   url_sender link_sender;
 
@@ -169,7 +186,7 @@ class crawler {
     }
     fast::string res{};
     while (x > 0) {
-      int d = x %= 10;
+      int d = x % 10;
       x /= 10;
       res.insert(0, '0' + d);
     }
@@ -262,8 +279,8 @@ class crawler {
       }
 
       //if (url == "https://whereis.mit.edu/") {
-        //crawl_frontier.notify_crawled(url);
-        //continue;
+      //crawl_frontier.notify_crawled(url);
+      //continue;
       //}
 
       fast::crawler::url_parser url_parts(url.begin());
@@ -359,8 +376,8 @@ class crawler {
       bool self_domain_seen = false;
       for (auto& link : parser.links) {
         if (link.URL[0] == '/' || link.URL[0] == '#' ||
-          !(link.URL.starts_with("http://") ||
-          link.URL.starts_with("https://"))) {
+            !(link.URL.starts_with("http://") ||
+              link.URL.starts_with("https://"))) {
 
           fast::string new_link{};
           new_link += url_parts.service;
@@ -370,8 +387,10 @@ class crawler {
           link.URL = new_link;
         }
         if (!visited_urls.contains(link.URL)) {
-          if (is_blacklisted(link.URL)) continue;
-          fast::string link_hostname = fast::crawler::frontier::extract_hostname(link.URL);
+          if (is_blacklisted(link.URL))
+            continue;
+          fast::string link_hostname =
+              fast::crawler::frontier::extract_hostname(link.URL);
           if (link_hostname == url_parts.host) {
             if (!self_domain_seen) {
               link_sender.send_link(link.URL);
@@ -390,7 +409,7 @@ class crawler {
     return nullptr;
   }
 
-  void add_url(string &url) {
+  void add_url(string& url) {
     if (!visited_urls.contains(url)) {
       std::cout << "ADDING LINK: " << url.begin() << '\n';
       crawl_frontier.insert(url);
@@ -432,18 +451,17 @@ class crawler {
     std::cout << "Successfully wrote blob to " << path.begin() << '\n';
     increment_chunk_count();
   }
-  
-public:
 
-  static bool is_blacklisted(const fast::string &url) {
+ public:
+  static bool is_blacklisted(const fast::string& url) {
     const char* word_start = nullptr;
     const char* url_end = url.begin() + url.size();
 
     for (const char* p = url.begin(); p <= url_end; ++p) {
-      bool is_delimiter = (p == url_end) || 
-        (*p == '/') || (*p == '.') || (*p == '#') || 
-        (*p == '?') || (*p == '&') || (*p == '=') || 
-        (*p == '-') || (*p == '_') || (*p == ':');
+      bool is_delimiter = (p == url_end) || (*p == '/') || (*p == '.') ||
+                          (*p == '#') || (*p == '?') || (*p == '&') ||
+                          (*p == '=') || (*p == '-') || (*p == '_') ||
+                          (*p == ':');
 
       if (is_delimiter) {
         if (word_start && p > word_start) {
@@ -467,9 +485,7 @@ public:
     return false;
   }
 
-  static bool is_alphabet(char c) {
-    return isalnum(c);
-  }
+  static bool is_alphabet(char c) { return isalnum(c); }
 
   static void lower(fast::string& word) {
     for (char& c : word) {
