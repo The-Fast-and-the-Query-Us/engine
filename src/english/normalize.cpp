@@ -18,9 +18,9 @@ void fast::english::normalize_text(fast::string &word) {
       case '\'':
       case '\"':
         word.pop_back();
-      default:
-        break;
+        continue;
     }
+    break;
   }
 
   size_t ptr = 0;
@@ -36,10 +36,10 @@ void fast::english::normalize_text(fast::string &word) {
       case '\'':
       case '\"':
         ++ptr;
-      default:
-        break;
+        continue;
     }
+    break;
   }
 
-  word = word.substr(ptr, word.size() - 1);
+  word = word.substr(ptr, word.size() - ptr);
 }
