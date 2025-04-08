@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cctype>
 #include <pthread.h>
 #include <sys/fcntl.h>
 #include <sys/mman.h>
@@ -17,11 +18,13 @@
 #include "html_parser.hpp"
 #include "url_parser.hpp"
 #include "vector.hpp"
+#include "url_sender.hpp"
 
 static constexpr int THREAD_COUNT = 1;
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 12'500'000;
+static const char *IP_PATH = "./ips.txt";
 
 namespace fast::crawler {
 class crawler {
@@ -35,7 +38,9 @@ class crawler {
                                              get_bloomfilter_path().begin())),
         crawl_frontier(get_frontier_path().begin(),
                        get_seedlist_path().begin()),
-        word_bank(new fast::hashtable) {}
+        word_bank(new fast::hashtable),
+        link_sender(IP_PATH, std::bind(&crawler::add_url, this, std::placeholders::_1))
+  {}
 
   void run() {
     OPENSSL_init_ssl(
@@ -134,6 +139,8 @@ class crawler {
     "alipay", "tencent", "bilibili", "youku", "tudou", "dmm", "kakao", "line",
     "mixi", "nicovideo", "pixiv", "qzone", "renren", "wechat", "weixin"
   };
+
+  url_sender link_sender;
 
   // static constexpr const char* BLOOM_FILE_PATH = getenv("HOME");
   // static constexpr const char* FRONTIER_PATH = "frontier_dump.dat";
@@ -307,7 +314,7 @@ class crawler {
           if (word.size() == 0) {
             break;
           }
-          word = word.substr(0, word.size() - 1);
+          word.pop_back();
         }
         if (word.size() == 0) {
           continue;
@@ -363,17 +370,17 @@ class crawler {
           link.URL = new_link;
         }
         if (!visited_urls.contains(link.URL)) {
-          if (!is_blacklisted(link.URL)) continue;
+          if (is_blacklisted(link.URL)) continue;
           fast::string link_hostname = fast::crawler::frontier::extract_hostname(link.URL);
           if (link_hostname == url_parts.host) {
             if (!self_domain_seen) {
               //std::cout << "INSERTING FIRST SAME-DOMAIN LINK: " << link.URL.begin() << '\n';
-              crawl_frontier.insert(link.URL);
+              link_sender.send_link(link.URL);
               self_domain_seen = true;
             }
           } else {
             //std::cout << "INSERTING EXTERNAL LINK: " << link.URL.begin() << '\n';
-            crawl_frontier.insert(link.URL);
+            link_sender.send_link(link.URL);
           }
         }
       }
@@ -383,6 +390,12 @@ class crawler {
 
     std::cout << "Worker " << pthread_self() << " returning\n";
     return nullptr;
+  }
+
+  void add_url(string &url) {
+    if (!visited_urls.contains(url)) {
+      crawl_frontier.insert(url);
+    }
   }
 
   void write_blob() {
@@ -455,14 +468,12 @@ public:
   }
 
   static bool is_alphabet(char c) {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+    return isalnum(c);
   }
 
   static void lower(fast::string& word) {
     for (char& c : word) {
-      if (is_alphabet(c) && c <= 'Z' && c >= 'A') {
-        c = c + 32;  // NOLINT
-      }
+      c = tolower(c);
     }
   }
 };

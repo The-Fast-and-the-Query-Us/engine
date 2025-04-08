@@ -18,7 +18,7 @@ class url_sender {
   int connect_fd;
   vector<string> ips;
   pthread_t accept_thread;
-  const std::function<void(const string&)> callback;
+  const std::function<void(string&)> callback;
 
   static constexpr unsigned PORT = 8090;
 
@@ -42,7 +42,7 @@ class url_sender {
   }
 
 public:
-  url_sender(const fast::string &ip_path, std::function<void(const string&)> callback) : callback(callback) {
+  url_sender(const fast::string &ip_path, std::function<void(string&)> callback) : callback(callback) {
     connect_fd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (connect_fd < 0) {
