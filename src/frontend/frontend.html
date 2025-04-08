@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Fast and the Query-Us</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background-color: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+    }
+    .search-container {
+      max-width: 600px;
+      margin: 0 auto;
+      display: flex;
+      gap: 10px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .results {
+      max-width: 600px;
+      margin: 30px auto 0;
+    }
+    .result {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
+    }
+    .result-title {
+      color: #1a0dab;
+      font-size: 18px;
+      text-decoration: none;
+    }
+    .result-url {
+      font-size: 14px;
+      color: #006621;
+    }
+    .result-snippet {
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>The Fast and the Query-Us</h1>
+  <div class="search-container">
+    <input type="text" id="searchInput" placeholder="Enter your search query...">
+    <button onclick="performSearch()">Search</button>
+  </div>
+
+  <div class="results" id="results"></div>
+
+  <script>
+    function performSearch() {
+      const query = document.getElementById('searchInput').value.trim();
+      const resultsContainer = document.getElementById('results');
+      resultsContainer.innerHTML = '';
+
+      if (!query) return;
+
+      for (let i = 1; i <= 10; i++) {
+        const result = document.createElement('div');
+        result.className = 'result';
+
+        const title = document.createElement('a');
+        title.className = 'result-title';
+        title.href = `https://example.com/result-${i}`;
+        title.target = '_blank';
+        title.textContent = `Result ${i} for "${query}"`;
+
+        const url = document.createElement('div');
+        url.className = 'result-url';
+        url.textContent = `https://example.com/result-${i}`;
+
+        const snippet = document.createElement('div');
+        snippet.className = 'result-snippet';
+        snippet.textContent = `This is a short description for result ${i}.`;
+
+        result.appendChild(title);
+        result.appendChild(url);
+        result.appendChild(snippet);
+
+        resultsContainer.appendChild(result);
+      }
+    }
+  </script>
+
+</body>
+</html>
