@@ -127,7 +127,7 @@ class crawler {
       "admin",       "profile",   "cart",         "checkout", "buy",
       "purchase",    "register",  "payment",      "shop",     "order",
       "cdn",         "static",    "assets",       "media",    "content",
-      "cache",
+      "cache",       "archive",
 
       "fr",          "es",        "de",           "it",       "ru",
       "ja",          "zh",        "ko",           "ar",       "pt",
