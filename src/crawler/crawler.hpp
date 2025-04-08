@@ -359,8 +359,8 @@ class crawler {
       bool self_domain_seen = false;
       for (auto& link : parser.links) {
         if (link.URL[0] == '/' || link.URL[0] == '#' ||
-          !link.URL.starts_with("http://") ||
-          !link.URL.starts_with("https://")) {
+          !(link.URL.starts_with("http://") &&
+          link.URL.starts_with("https://"))) {
 
           fast::string new_link{};
           new_link += url_parts.service;
