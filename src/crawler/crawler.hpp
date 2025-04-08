@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstring>
 #include <pthread.h>
 #include <sys/fcntl.h>
 #include <sys/mman.h>
@@ -19,9 +20,9 @@
 #include "url_parser.hpp"
 #include "url_sender.hpp"
 #include "vector.hpp"
+#include <english.hpp>
 
 static constexpr int THREAD_COUNT = 100;
-static constexpr int LINK_COUNT = 1000000;  // ONE MILLION
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 12'500'000;
@@ -38,10 +39,28 @@ class crawler {
                                              BLOOM_FILTER_FPR,
                                              get_bloomfilter_path().begin())),
         crawl_frontier(get_frontier_path().begin(),
-                       get_seedlist_path().begin()),
+                       nullptr),
         word_bank(new fast::hashtable),
         link_sender(IP_PATH,
                     std::bind(&crawler::add_url, this, std::placeholders::_1)) {
+
+    const auto seed_path = get_seedlist_path();
+
+    const auto fd = fopen(seed_path.c_str(), "r");
+    if (fd != NULL) {
+      std::cout << "Loading seedlist" << std::endl;
+      char buffer[2000];
+
+      while (fgets(buffer, 2000, fd) != NULL) {
+        buffer[strcspn(buffer, "\n\r")] = 0; // remove \r and \n
+        link_sender.send_link(buffer);
+      }
+
+      std::cout << "Loaded seedlist" << std::endl;
+
+    } else {
+      std::cout << "No seedlist found" << std::endl;
+    }
   }
 
   void run() {
@@ -316,53 +335,20 @@ class crawler {
       bank_mtx.lock();
 
       for (fast::string& word : parser.words) {
-        if (word.size() == 0) {
-          continue;
+        english::normalize_text(word);
+
+        if (word.size() > 0) {
+          word_bank->add(word);
         }
-        while (!is_alphabet(word[0])) {
-          if (word.size() == 0) {
-            break;
-          }
-          word = word.substr(1, word.size() - 1);
-        }
-        if (word.size() == 0) {
-          continue;
-        }
-        while (!is_alphabet(word[word.size() - 1])) {
-          if (word.size() == 0) {
-            break;
-          }
-          word.pop_back();
-        }
-        if (word.size() == 0) {
-          continue;
-        }
-        lower(word);
-        word_bank->add(word);
       }
 
       for (fast::string& word : parser.titleWords) {
-        if (word.size() == 0) {
-          continue;
+        english::normalize_text(word);
+
+        if (word.size() > 0) {
+          word += '#';
+          word_bank->add(word);
         }
-        while (!is_alphabet(word[0])) {
-          if (word.size() == 0) {
-            break;
-          }
-          word = word.substr(1, word.size() - 1);
-        }
-        while (!is_alphabet(word[word.size() - 1])) {
-          if (word.size() == 0) {
-            break;
-          }
-          word = word.substr(0, word.size() - 1);
-        }
-        if (word.size() == 0) {
-          continue;
-        }
-        lower(word);
-        word += '#';
-        word_bank->add(word);
       }
 
       ++doc_count;
@@ -387,6 +373,7 @@ class crawler {
           new_link += link.URL;
           link.URL = new_link;
         }
+
         if (is_blacklisted(link.URL))
           continue;
         fast::string link_hostname =
@@ -408,6 +395,7 @@ class crawler {
     return nullptr;
   }
 
+  // call back function for recving urls to crawl
   void add_url(string& url) {
     if (!visited_urls.contains(url)) {
       visited_urls.insert(url);
