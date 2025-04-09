@@ -4,12 +4,14 @@
 
 namespace fast::english {
 
-// not done yet
+
+// Todo
 void trim_puntuation(fast::string &word);
 
 // using 1980s original algorithm
 // should probably add modern optimizations before using
 void porter_stem(fast::string &word);
+
 
 void normalize_text(fast::string &word);
 

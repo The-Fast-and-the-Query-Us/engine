@@ -379,12 +379,17 @@ static void porter_step_5(fast::string &word) {
   }
 }
 
+static void porter_step_1c(fast::string &word) {
+  if (word.ends_with("y") && v_star(fast::string_view(word).trim_suffix(1))) {
+    word[word.size() - 1] = 'i';
+  }
+}
+
 void fast::english::porter_stem(fast::string &word) {
+  if (word.size() == 0) return;
   porter_step_1a(word);
   porter_step_1b(word);
-
-  // step 1c, could be optimized
-  if (word.ends_with("y")) word[word.size() - 1] = 'i';
+  porter_step_1c(word);
 
   porter_step_2(word);
   porter_step_3(word);
