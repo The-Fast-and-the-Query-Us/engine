@@ -21,6 +21,8 @@ namespace fast::crawler {
 
 class crawler;
 
+static constexpr size_t MAX_LINKS = 500'000;
+
 // TODO:
 //  - Add blacklist?
 //  - How do we manage data and communication across all our latpops?
@@ -51,10 +53,13 @@ class frontier {
     if (pri_level < 0)
       return;
 
-    priorities[pri_level].push(url);
+    if (priorities[pri_level].size() < MAX_LINKS) {
 
-    ++num_links;
-    cv.signal();
+      priorities[pri_level].push(url);
+      ++num_links;
+      cv.signal();
+
+    }
   }
 
   void insert(fast::string& url) {
