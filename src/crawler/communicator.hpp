@@ -297,7 +297,6 @@ class communicator {
 
     if (ssl) {
       SSL_shutdown(ssl);
-      ssl = nullptr;
     }
   }
 
