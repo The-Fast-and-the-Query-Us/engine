@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstring>
 #include <pthread.h>
 #include <sys/fcntl.h>
 #include <sys/mman.h>
@@ -10,6 +9,8 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <english.hpp>
 #include <hashblob.hpp>
 #include <hashtable.hpp>
 #include <stdexcept>
@@ -20,7 +21,6 @@
 #include "url_parser.hpp"
 #include "url_sender.hpp"
 #include "vector.hpp"
-#include <english.hpp>
 
 static constexpr int THREAD_COUNT = 100;
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
@@ -38,8 +38,7 @@ class crawler {
                 : bloom_filter<fast::string>(BLOOM_FILTER_SIZE,
                                              BLOOM_FILTER_FPR,
                                              get_bloomfilter_path().begin())),
-        crawl_frontier(get_frontier_path().begin(),
-                       nullptr),
+        crawl_frontier(get_frontier_path().begin(), nullptr),
         word_bank(new fast::hashtable),
         link_sender(IP_PATH,
                     std::bind(&crawler::add_url, this, std::placeholders::_1)) {
@@ -52,7 +51,7 @@ class crawler {
       char buffer[2000];
 
       while (fgets(buffer, 2000, fd) != NULL) {
-        buffer[strcspn(buffer, "\n\r")] = 0; // remove \r and \n
+        buffer[strcspn(buffer, "\n\r")] = 0;  // remove \r and \n
         link_sender.send_link(buffer);
       }
 
@@ -358,6 +357,8 @@ class crawler {
       word_bank->add_doc(url);
 
       if (word_bank->tokens() > BLOB_THRESHOLD) {
+        visited_urls.save();
+        crawl_frontier.save();
         write_blob();
       }
 
