@@ -1,103 +1,355 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>The Fast and the Query-Us</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FAST & FURIOUS SEARCH</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Racing+Sans+One&display=swap');
+
+    :root {
+      --neon-blue: #00f3ff;
+      --engine-red: #ff1a1a;
+      --nitro-purple: #9d00ff;
+      --carbon: #111;
+      --chrome: #e0e0e0;
+      --dodge-orange: #ff8c00;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      margin: 40px;
-      background-color: #f9f9f9;
+      margin: 0;
+      font-family: 'Racing Sans One', sans-serif;
+      background: 
+        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23000"/><path d="M0 0 L100 100 M100 0 L0 100" stroke="%23111" stroke-width="1"/></svg>'),
+        linear-gradient(135deg, #000, #111);
+      color: var(--chrome);
+      min-height: 100vh;
+      overflow-x: hidden;
     }
-    h1 {
+
+    /* ===== RACING STRIPES ===== */
+    .racing-stripe {
+      height: 4px;
+      background: linear-gradient(90deg, 
+        transparent 0%, 
+        var(--engine-red) 20%, 
+        var(--dodge-orange) 30%,
+        var(--neon-blue) 50%,
+        var(--dodge-orange) 70%,
+        var(--engine-red) 80%,
+        transparent 100%
+      );
+      margin: 10px auto;
+      width: 80%;
+      box-shadow: 0 0 10px var(--neon-blue);
+    }
+
+    /* ===== HEADER WITH DOM'S CHARGER ===== */
+    .header {
       text-align: center;
+      padding: 30px 0;
+      position: relative;
+      background: rgba(0,0,0,0.7);
+      border-bottom: 2px solid var(--nitro-purple);
     }
+
+    h1 {
+      font-size: 4.5rem;
+      text-transform: uppercase;
+      background: linear-gradient(45deg, var(--dodge-orange), var(--neon-blue), var(--nitro-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 20px var(--neon-blue);
+      margin: 0;
+      letter-spacing: 5px;
+    }
+
+    .header::before {
+      content: "“I LIVE MY LIFE A QUARTER SEARCH AT A TIME”";
+      display: block;
+      color: var(--chrome);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+    }
+
+    .logo-container {
+      text-align: center;
+      margin: 20px auto 30px;
+      padding-top: 20px;
+    }
+
+    .logo-img {
+      height: 120px; /* Adjust based on your logo's aspect ratio */
+      width: auto;
+      filter: drop-shadow(0 0 10px var(--neon-blue));
+      transition: all 0.3s ease;
+    }
+
+    .logo-img:hover {
+      transform: scale(1.05);
+      filter: drop-shadow(0 0 15px var(--dodge-orange));
+    }
+
+    /* ===== SEARCH BAR (STREET RACING STYLE) ===== */
     .search-container {
-      max-width: 600px;
-      margin: 0 auto;
-      display: flex;
-      gap: 10px;
+      max-width: 800px;
+      margin: 40px auto;
+      position: relative;
     }
-    input[type="text"] {
-      flex: 1;
-      padding: 10px;
-      font-size: 16px;
+
+    #searchInput {
+      width: 100%;
+      padding: 20px 150px 20px 30px;
+      font-size: 1.5rem;
+      background: rgba(10, 10, 10, 0.9);
+      border: 3px solid var(--dodge-orange);
+      border-radius: 50px;
+      color: var(--neon-blue);
+      text-transform: uppercase;
+      box-shadow: 0 0 20px var(--dodge-orange);
+      font-family: 'Racing Sans One', sans-serif;
     }
+
+    #searchInput::placeholder {
+      color: #555;
+      font-style: italic;
+    }
+
     button {
-      padding: 10px 20px;
-      font-size: 16px;
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 15px 30px;
+      font-size: 1.3rem;
+      background: linear-gradient(45deg, var(--engine-red), var(--nitro-purple));
+      color: white;
+      border: none;
+      border-radius: 30px;
       cursor: pointer;
+      text-transform: uppercase;
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 2px;
+      box-shadow: 0 0 20px var(--engine-red);
+      transition: all 0.3s ease;
     }
+
+    button:hover {
+      background: linear-gradient(45deg, var(--nitro-purple), var(--engine-red));
+      box-shadow: 0 0 30px var(--nitro-purple);
+      letter-spacing: 3px;
+    }
+
+    /* ===== RESULTS (STREET RACING STYLE) ===== */
     .results {
-      max-width: 600px;
-      margin: 30px auto 0;
+      max-width: 800px;
+      margin: 0 auto;
     }
+
     .result {
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      margin-bottom: 15px;
+      background: rgba(10, 10, 10, 0.9);
+      border-left: 5px solid var(--dodge-orange);
+      margin-bottom: 25px;
+      padding: 25px;
+      position: relative;
+      transition: all 0.3s ease;
+      clip-path: polygon(0 0, 100% 0, 97% 100%, 3% 100%);
     }
+
+    .result:hover {
+      transform: translateX(20px) skewY(-1deg);
+      box-shadow: 10px 0 30px var(--nitro-purple);
+    }
+
     .result-title {
-      color: #1a0dab;
-      font-size: 18px;
+      color: var(--neon-blue);
+      font-size: 1.8rem;
       text-decoration: none;
+      display: block;
+      margin-bottom: 10px;
+      font-family: 'Bebas Neue', sans-serif;
     }
+
+    .result-title::before {
+      content: "🏁 ";
+      filter: drop-shadow(0 0 5px var(--neon-blue));
+    }
+
     .result-url {
-      font-size: 14px;
-      color: #006621;
+      color: var(--dodge-orange);
+      font-size: 1rem;
+      margin-bottom: 10px;
+      font-family: 'Courier New', monospace;
     }
+
     .result-snippet {
-      font-size: 15px;
+      color: #aaa;
+      font-size: 1.1rem;
+      line-height: 1.5;
+    }
+
+    /* ===== NITRO GAUGE (BOTTOM HUD) ===== */
+    .nitro-gauge {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      width: 200px;
+      height: 20px;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 2px solid var(--nitro-purple);
+    }
+
+    .nitro-fill {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--nitro-purple), var(--neon-blue));
+      transform-origin: left;
+      transform: scaleX(0.7);
+      transition: transform 0.3s ease;
+    }
+
+    /* ===== NOS BLAST ANIMATION ===== */
+    @keyframes nosBlast {
+      0% { opacity: 0; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.5); }
+      100% { opacity: 0; transform: scale(2); }
+    }
+
+    .nos-effect {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: radial-gradient(circle, var(--nitro-purple) 0%, transparent 70%);
+      pointer-events: none;
+      animation: nosBlast 0.5s ease-out;
+      opacity: 0;
+      z-index: 1000;
+    }
+
+    /* ===== FAMILY QUOTE ===== */
+    .family-quote {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      color: var(--chrome);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.2rem;
+      text-align: right;
+    }
+
+    .family-quote::before {
+      content: "“";
+      color: var(--dodge-orange);
+      font-size: 2rem;
+    }
+
+    .family-quote::after {
+      content: "”";
+      color: var(--dodge-orange);
+      font-size: 2rem;
     }
   </style>
 </head>
 <body>
-
-  <h1>The Fast and the Query-Us</h1>
-  <div class="search-container">
-    <input type="text" id="searchInput" placeholder="Enter your search query...">
-    <button onclick="performSearch()">Search</button>
+  <div class="logo-container">
+    <img src="search_engine.png" alt="THE FAST & THE QUERY-US SEARCH" class="logo-img">
+    <div class="racing-stripe"></div>
   </div>
 
+  <!-- HEADER WITH DOM'S QUOTE -->
+  <div class="header">
+    <h1>THE FAST & THE QUERY-US SEARCH</h1>
+    <div class="racing-stripe"></div>
+  </div>
+
+  <!-- SEARCH BAR -->
+  <div class="search-container">
+    <input type="text" id="searchInput" placeholder="ENTER YOUR QUERY... (10-SECOND RACE)" />
+    <button onclick="performSearch()">ENGAGE NOS!</button>
+  </div>
+
+  <!-- NITRO GAUGE -->
+  <div class="nitro-gauge">
+    <div class="nitro-fill" id="nitroFill"></div>
+  </div>
+
+  <!-- FAMILY QUOTE -->
+  <div class="family-quote">
+    WE DON'T JUST SEARCH<br>WE FAMILY
+  </div>
+
+  <!-- RESULTS CONTAINER -->
   <div class="results" id="results"></div>
 
   <script>
+    // ===== NOS BLAST EFFECT =====
+    function createNosEffect() {
+      const nos = document.createElement('div');
+      nos.className = 'nos-effect';
+      document.body.appendChild(nos);
+      setTimeout(() => nos.remove(), 500);
+    }
+
+    // ===== FAST & FURIOUS SEARCH =====
     function performSearch() {
+      createNosEffect(); // NOS BLAST!
+
       const query = document.getElementById('searchInput').value.trim();
       const resultsContainer = document.getElementById('results');
       resultsContainer.innerHTML = '';
 
       if (!query) return;
 
-      for (let i = 1; i <= 10; i++) {
+      // === FAST & FURIOUS CARS ===
+      const fastCars = [
+        { name: "1970 Dodge Charger R/T", driver: "Dominic Toretto" },
+        { name: "1995 Toyota Supra MK4", driver: "Brian O'Conner" },
+        { name: "1999 Nissan Skyline GT-R R34", driver: "Brian O'Conner" },
+        { name: "1970 Plymouth Road Runner", driver: "Dominic Toretto" },
+        { name: "2009 Nissan 370Z", driver: "Han Lue" },
+        { name: "2000 Honda S2000", driver: "Roman Pearce" },
+        { name: "2002 Mitsubishi Lancer Evo VII", driver: "Brian O'Conner" },
+        { name: "2014 Dodge Charger SRT8", driver: "Dominic Toretto" },
+        { name: "2015 Dodge Challenger SRT Hellcat", driver: "Letty Ortiz" },
+        { name: "1969 Ford Mustang Fastback", driver: "Dominic Toretto" }
+      ];
+
+      for (let i = 0; i < 10; i++) {
+        const car = fastCars[i];
         const result = document.createElement('div');
         result.className = 'result';
 
         const title = document.createElement('a');
         title.className = 'result-title';
-        title.href = `https://example.com/result-${i}`;
+        title.href = `https://fastsearch.com/${car.name.replace(/ /g, '-')}`;
         title.target = '_blank';
-        title.textContent = `Result ${i} for "${query}"`;
+        title.textContent = `${car.name} - ${query.toUpperCase()}`;
 
         const url = document.createElement('div');
         url.className = 'result-url';
-        url.textContent = `https://example.com/result-${i}`;
+        url.textContent = `fastsearch.com/${car.driver.replace(/ /g, '-')}/${query.replace(/ /g, '-')}`;
 
         const snippet = document.createElement('div');
         snippet.className = 'result-snippet';
-        snippet.textContent = `This is a short description for result ${i}.`;
+        snippet.textContent = 
+          `Approved by ${car.driver}. This result delivers ${Math.floor(Math.random() * 1000 + 500)}HP ` +
+          `with ${Math.floor(Math.random() * 6 + 3)}-speed transmission. ` +
+          `Family rating: ${Math.floor(Math.random() * 10 + 1)}/10. ` +
+          `"${['Live fast.', 'Ride or die.', 'No matter what.', 'For family.'][Math.floor(Math.random() * 4)]}"`;
 
-        result.appendChild(title);
-        result.appendChild(url);
-        result.appendChild(snippet);
-
+        result.append(title, url, snippet);
         resultsContainer.appendChild(result);
       }
+
+      // Update nitro gauge randomly
+      document.getElementById('nitroFill').style.transform = `scaleX(${Math.random()})`;
     }
   </script>
-
 </body>
 </html>
