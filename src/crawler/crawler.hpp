@@ -369,6 +369,10 @@ class crawler {
       sender_mutex.lock();
 
       for (auto& link : parser.links) {
+
+        if (link.URL.size() == 0) 
+          continue;
+
         if (link.URL[0] == '/' || link.URL[0] == '#' ||
             !(link.URL.starts_with("http://") ||
               link.URL.starts_with("https://"))) {
