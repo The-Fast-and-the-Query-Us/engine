@@ -22,7 +22,9 @@ struct html_file {
     if (size_ + bytes >= cap) {
       size_t new_cap = cap * SIZE_MULTIPLIER;
       char* new_buffer = new char[new_cap];
-      memcpy(new_buffer, html, cap);
+      memcpy(new_buffer, html, cap); // should be size_?
+      delete []html;
+
       html = new_buffer;
       cap = new_cap;
     }
