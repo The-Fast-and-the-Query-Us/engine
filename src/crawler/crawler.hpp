@@ -22,7 +22,7 @@
 #include "url_sender.hpp"
 #include "vector.hpp"
 
-static constexpr int THREAD_COUNT = 100;
+static constexpr int THREAD_COUNT = 500;
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 12'500'000;
@@ -55,6 +55,7 @@ class crawler {
         link_sender.send_link(buffer);
       }
 
+      fclose(fd);
       link_sender.flush(0);
 
       std::cout << "Loaded seedlist" << std::endl;
@@ -311,7 +312,7 @@ class crawler {
         crawl_frontier.notify_crawled(url);
         continue;
       }
-      std::cout << "OG: " << url.begin() << '\n';
+      // std::cout << "OG: " << url.begin() << '\n';
 
       ssl_mtx.lock();
       SSL_CTX* ctx_cpy = g_ssl_ctx;
@@ -470,7 +471,7 @@ class crawler {
           if (word_len > 1) {
             for (const auto& banned : blacklist) {
               if (banned == fast::string_view(word_start, word_len)) {
-                std::cout << "Blacklist: " << banned.begin() << std::endl;
+                // std::cout << "Blacklist: " << banned.begin() << std::endl;
                 return true;
               }
             }
