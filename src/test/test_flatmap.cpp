@@ -1,11 +1,16 @@
+#include <cstddef>
+#include <flat_map.hpp>
+#include <chrono>
 #include <cassert>
-#include <iostream>
-#include "bloom_filter.hpp"
-#include "string.hpp"
+#include <string>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+using namespace fast;
+using namespace std::chrono;
 
-constexpr size_t NUM_WORDS = 4573;
-
-static const fast::string DICT[NUM_WORDS] = {
+// static const char *filename = "map.dat";
+static const string DICT[4573] = {
     "ability", "able", "about", "above", "abroad", "absence", "absolute", "absolutely",
     "absorb", "abuse", "academic", "accept", "acceptable", "access", "accident", "accompany",
     "accomplish", "according", "account", "accurate", "accuse", "achieve", "achievement", "acid",
@@ -579,21 +584,161 @@ static const fast::string DICT[NUM_WORDS] = {
     "yesterday", "yet", "yield", "yogurt", "you", "young", "youngster", "your",
     "yours", "yourself", "youth", "zone", "zoo"
 };
+constexpr size_t DICT_SIZE = sizeof(DICT) / sizeof(DICT[0]);
 
-int main() {
-  fast::crawler::bloom_filter<fast::string> bf(3 * NUM_WORDS, 0.0001);
+void test_flat_map() {
+  const char* filename = "map.dat";
+  
+  auto start = high_resolution_clock::now();
+  
+  flat_map<string, int> map;
+  
+  int fd = open(filename, O_RDONLY);
+  if (fd >= 0) {
+    bool load_success = map.load(fd);
+    close(fd);
+    std::cout << "Loading existing map: " << (load_success ? "success" : "failed") << "\n";
+    std::cout << "Loaded entries: " << map.count() << "\n";
+    std::cout << "Verifying entries...\n";
+    size_t verified = 0;
+    size_t errors = 0;
+    for (size_t i = 0; i < DICT_SIZE; i += 50) {  // Check every 50th entry
+      int* value = map.find(DICT[i]);
+      int expected = (i % 2 == 0);
+      if (!value) {
+        std::cout << "Error: Missing entry for " << DICT[i].begin() << "\n";
+        errors++;
+      } else if (*value != expected) {
+        std::cout << "Error: Wrong value for " << DICT[i].begin() 
+          << ", got '" << *value << "', expected '" << expected
+          << "' iter " << i << '\n';
+        errors++;
+      }
+      verified++;
+    }
+    std::cout << "Verified " << verified << " entries with " << errors << " errors\n";
+    std::cout << DICT_SIZE << '\n';
+  } else {
+    std::cout << "No existing map found, will create new one\n";
+    // Fill map with dictionary words
+    std::cout << "Filling map with dictionary words...\n";
+    auto fill_start = high_resolution_clock::now();
+    for (size_t i = 0; i < DICT_SIZE; ++i) {
+      map.insert(DICT[i], i % 2 == 0);
+      if (i % 50 == 0) {
+        std::cout << DICT[i].begin() << ": " << (i % 2 == 0) << '\n';
+        std::cout << *map.find(DICT[i]) << '\n';
+      }
 
-  bf.insert("hello");
+    }
+    auto fill_end = high_resolution_clock::now();
+    std::cout << "Filled with " << map.count() << " entries in " 
+      << duration_cast<microseconds>(fill_end - fill_start).count() << " μs\n";
+  }
+  // Save map to file
+  std::cout << "Saving map...\n";
+  auto save_start = high_resolution_clock::now();
+  fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (fd < 0) {
+    std::cout << "Failed to open file for writing\n";
+    return;
+  }
+  bool save_success = map.save(fd);
+  close(fd);
+  auto save_end = high_resolution_clock::now();
+  std::cout << "Save " << (save_success ? "successful" : "failed") 
+            << " in " << duration_cast<microseconds>(save_end - save_start).count() << " μs\n";
+  
+  //map.print();
+  
+  // auto load_start = high_resolution_clock::now();
+  // fd = open(filename, O_RDONLY);
+  // if (fd < 0) {
+    // std::cout << "Failed to open file for reading\n";
+    // return;
+  // }
+  // bool reload_success = map.load(fd);
+  // close(fd);
+  // auto load_end = high_resolution_clock::now();
+  // std::cout << "Reload " << (reload_success ? "successful" : "failed") 
+            // << " in " << duration_cast<microseconds>(load_end - load_start).count() << " μs\n";
+  // std::cout << "Map size after reload: " << map.count() << "\n";
+  
+  // Verify some entries
+  
+  // Report total time
+  auto end = high_resolution_clock::now();
+  std::cout << "Total test time: " << duration_cast<milliseconds>(end - start).count() << " ms\n";
+}
 
-  std::cout << "here\n";
-  assert(bf.contains("hello"));
-  assert(!bf.contains("hell"));
-  std::cout << "PASS string basic" << std::endl << std::endl;
+void test_save_load() {
+  flat_map<string, int> map;
 
-  for (size_t i = 0; i < NUM_WORDS; ++i) {
-    bf.insert(DICT[i]);
-    assert(bf.contains(DICT[i]));
+  const int INSERTIONS = 1000;
+  for (int i = 0; i < INSERTIONS; ++i) {
+    map.insert(DICT[i], i);
   }
 
-  std::cout << "PASS string many" << std::endl << std::endl;
+  for (int i = 0; i < INSERTIONS; ++i) {
+    int* value = map.find(DICT[i]);
+    assert(value != nullptr);
+    assert(*value == i);
+  }
+
+  const char* filename = "test_save_load.dat";
+
+  int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  assert(fd >= 0);
+  assert(map.save(fd));
+  close(fd);
+
+  flat_map<string, int> map2;
+
+
+  fd = open(filename, O_RDONLY);
+  assert(fd >= 0);
+  map2.load(fd);
+  close(fd);
+
+  static constexpr uint8_t EMPTY = 0x80;
+  static constexpr uint8_t DELETED = 0xFE;
+
+  for (size_t i = 0; i < map.cap; ++i) {
+    if (map.meta[i] == EMPTY || map.meta[i] == DELETED) {
+      continue;
+    }
+    assert(map.meta[i] == map2.meta[i]);
+    std::cout << "map key at " << i << ": " << map.data[i].key.begin() << '\n';
+    std::cout << "map2 key at " << i << ": " << map2.data[i].key.begin() << '\n';
+    assert(map.data[i].key == map2.data[i].key);
+    std::cout << "map value at " << i << ": " << map.data[i].value << '\n';
+    std::cout << "map2 value at " << i << ": " << map2.data[i].value << '\n';
+    assert(map.data[i].value == map2.data[i].value);
+  }
+
+  for (int i = 0; i < INSERTIONS; ++i) {
+    int* value = map2.find(DICT[i]);
+    assert(value != nullptr);
+    assert(*value == i);
+  }
+}
+
+void test_basic() {
+  flat_map<string, int> map;
+  const int INSERTIONS = 1000;
+  for (int i = 0; i < INSERTIONS; ++i) {
+    map.insert(DICT[i], i);
+  }
+
+  for (int i = 0; i < INSERTIONS; ++i) {
+    assert(*map.find(DICT[i]) == i);
+  }
+}
+
+int main() {
+  test_basic();
+  test_save_load();
+  test_flat_map();
+  test_flat_map();
+  return 0;
 }
