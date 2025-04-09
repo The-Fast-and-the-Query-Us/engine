@@ -1,56 +1,93 @@
 #pragma once
 
-#include "../lib/condition_variable.hpp"
-#include "../lib/queue.hpp"
-#include "../lib/scoped_lock.hpp"
-#include "../lib/string.hpp"
-#include "../lib/vector.hpp"
+#include "condition_variable.hpp"
+#include "flat_map.hpp"
+#include "queue.hpp"
+#include "scoped_lock.hpp"
+#include "string.hpp"
+#include "vector.hpp"
 
-#include <cstdint>
-#include <iostream>
 #include <sys/fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <unistd.h>
-#include <unordered_map>
+#include <csignal>
+#include <cstdint>
+#include <cstdio>
+#include <iostream>
 #include <vector>
 
-namespace fast {
-namespace crawler {
+namespace fast::crawler {
+
+class crawler;
+
+static constexpr size_t MAX_LINKS = 500'000;
 
 // TODO:
 //  - Add blacklist?
 //  - How do we manage data and communication across all our latpops?
 //  - redirects
 class frontier {
-public:
-  frontier(const char *_save_path) : save_path(_save_path) {
-    num_links = 0;
-    priorities.reserve(4);
+ public:
+  frontier(const char* _save_path, const char* seed_list = nullptr)
+      : save_path(_save_path == nullptr ? nullptr : strdup(_save_path)) {
+    assert(save_path != nullptr);
+    if (access(save_path, F_OK) == 0) {
+      load();
+      return;
+    }
+    priorities.resize(4);
+    if (seed_list != nullptr) {
+      load_seed_list(seed_list);
+    }
   }
 
-  void insert(fast::string &url) {
-    fast::scoped_lock lock(&mtx);
-
-    fast::string hostname = extract_hostname(url);
-
-    priorities[calc_priority(hostname)].push(url);
-
-    ++num_links;
-    cv.signal();
+  ~frontier() {
+    if (save_path != nullptr) {
+      free(save_path);
+    }
   }
 
-  fast::string next() {
+  void insert_no_mutex(fast::string& url) {
+    int pri_level = calc_priority(url);
+    if (pri_level < 0)
+      return;
+
+    if (priorities[pri_level].size() < MAX_LINKS) {
+
+      priorities[pri_level].push(url);
+      ++num_links;
+      cv.signal();
+
+    }
+  }
+
+  void insert(fast::string& url) {
+    fast::scoped_lock lock(&mtx);
+    insert_no_mutex(url);
+  }
+
+  fast::string next(volatile sig_atomic_t* shutdown_flag = nullptr) {
     fast::scoped_lock lock(&mtx);
 
-    while (num_links == 0)
+    while (num_links == 0 &&
+           (shutdown_flag == nullptr || *shutdown_flag != 1)) {
       cv.wait(&mtx);
+    }
 
-    for (size_t i = 0; i < priorities.size(); ++i) {
-      fast::queue<fast::string> &curr_pri = priorities[i];
+    if (shutdown_flag != nullptr && *shutdown_flag == 1) {
+      return "";
+    }
+
+    for (int64_t i = priorities.size() - 1; i >= 0; --i) {
+      fast::queue<fast::string>& curr_pri = priorities[i];
 
       if (!curr_pri.empty()) {
-
         const size_t n = curr_pri.size();
         for (size_t j = 0; j < n; ++j) {
+          if (shutdown_flag != nullptr && *shutdown_flag == 1) {
+            return "";
+          }
 
           fast::string url = curr_pri.front();
           fast::string curr_hostname = extract_hostname(url);
@@ -59,7 +96,7 @@ public:
           if (crawl_cnt[curr_hostname] <= CRAWL_LIM) {
             ++crawl_cnt[curr_hostname];
             --num_links;
-            return curr_hostname;
+            return url;
           }
 
           curr_pri.push(url);
@@ -70,7 +107,46 @@ public:
     return "";
   }
 
-  void notify_crawled(fast::string &url) {
+  void load_seed_list(const char* fp) {
+    fast::scoped_lock lock(&mtx);
+    int fd = open(fp, O_RDONLY);
+    if (fd == -1) {
+      perror("failed to open seedlist");
+      return;
+    }
+
+    struct stat sb;
+    if (fstat(fd, &sb) == -1) {
+      perror("fstat");
+      close(fd);
+      exit(EXIT_FAILURE);
+    }
+    size_t length = sb.st_size;
+
+    char* file =
+        static_cast<char*>(mmap(NULL, length, PROT_READ, MAP_PRIVATE, fd, 0));
+    if (file == MAP_FAILED) {
+      perror("mmap");
+      return;
+    }
+    close(fd);
+
+    char* end = file + length;
+    while (file < end) {
+      fast::string url{};
+      while (file < end && *file != '\n') {
+        url += *file++;
+      }
+      file++;
+
+      insert_no_mutex(url);
+    }
+    // mtx.unlock();
+    munmap(file, length);
+    std::cout << "Succesfully loaded seed_list from " << fp << '\n';
+  }
+
+  void notify_crawled(fast::string& url) {
     fast::scoped_lock lock(&mtx);
     fast::string hostname = extract_hostname(url);
     --crawl_cnt[hostname];
@@ -79,9 +155,10 @@ public:
   int save() {
     fast::scoped_lock lock(&mtx);
 
-    int fd = open(save_path, O_WRONLY | O_CREAT | O_TRUNC);
+    int fd = open(save_path, O_RDWR | O_CREAT | O_TRUNC, 0777);
     if (fd == -1) {
-      std::cerr << "Failed to open file in frontier save()\n";
+      perror("Failed to open file in frontier save():");
+      std::cerr << "save_path: " << save_path << '\n';
       return -1;
     }
 
@@ -93,10 +170,19 @@ public:
       return -1;
     }
 
-    int total_priority_bytes = 0;
-    for (size_t i = 0; i < priorities.size(); ++i) {
+    size_t num_priorities = priorities.size();
+    ssize_t num_priorities_written = write(fd, &num_priorities, sizeof(size_t));
 
-      size_t pri_sz = priorities[i].size();
+    if (num_priorities_written == -1) {
+      std::cerr << "Failed writing member num_priorities in frontier save()\n";
+      close(fd);
+      return -1;
+    }
+
+    int total_priority_bytes = 0;
+    for (auto& level : priorities) {
+
+      size_t pri_sz = level.size();
       ssize_t pri_sz_written = write(fd, &pri_sz, sizeof(size_t));
 
       if (pri_sz_written == -1) {
@@ -107,7 +193,7 @@ public:
       }
 
       total_priority_bytes += pri_sz_written;
-      fast::queue<fast::string> t_q = priorities[i];
+      fast::queue<fast::string> t_q = level;
 
       for (size_t j = 0; j < pri_sz; ++j) {
         fast::string f = t_q.front();
@@ -123,7 +209,7 @@ public:
         }
         total_priority_bytes += link_len_written;
 
-        ssize_t link_written = write(fd, f.c_str(), f.size());
+        ssize_t link_written = write(fd, f.c_str(), f_len);
 
         if (link_written == -1) {
           std::cerr << "Failed writing an element of priority queue in "
@@ -136,6 +222,7 @@ public:
       }
     }
     close(fd);
+    std::cout << "Succesfully saved frontier to " << save_path << '\n';
     return num_links_written + total_priority_bytes;
   }
 
@@ -157,8 +244,19 @@ public:
     }
     tbr += num_links_read;
 
-    for (size_t i = 0; i < priorities.size(); ++i) {
-      size_t pri_sz;
+    size_t num_priorities{};
+    ssize_t num_priorities_read = read(fd, &num_priorities, sizeof(size_t));
+
+    if (num_priorities_read == -1) {
+      std::cerr << "Failed writing member num_priorities in frontier save()\n";
+      close(fd);
+      return -1;
+    }
+
+    priorities.resize(num_priorities);
+
+    for (auto& level : priorities) {
+      size_t pri_sz{};
       ssize_t num_pri_sz_read = read(fd, &pri_sz, sizeof(size_t));
       if (num_pri_sz_read == -1) {
         std::cerr << "failed reading pri_sz in frontier load()";
@@ -178,23 +276,44 @@ public:
         tbr += num_l_len_read;
 
         fast::string l;
-        l.reserve(l_len);
-        ssize_t num_l_read = read(fd, &l[0], l_len);
+        l.resize(l_len);
+        ssize_t num_l_read = read(fd, l.begin(), l_len);
         if (num_l_read == -1) {
           std::cerr << "failed to read an element in frontier load()";
           close(fd);
           return -1;
         }
         tbr += num_l_read;
-        priorities[i].push(l);
+        level.push(l);
       }
     }
 
     close(fd);
+    std::cout << "Succesfully loaded frontier from " << save_path << '\n';
     return tbr;
   }
 
-private:
+  static fast::string extract_hostname(fast::string& url) {
+    fast::string hostname;
+    size_t start_pos = 0;
+    if (url.size() >= 7 && url.substr(0, 7) == "http://") {
+      start_pos = 7;
+    }
+    else if (url.size() >= 8 && url.substr(0, 8) == "https://") {
+      start_pos = 8;
+    }
+    for (size_t i = start_pos; i < url.size(); ++i) {
+      if (url[i] == '/' || url[i] == '#') {
+        break;
+      }
+      hostname += url[i];
+    }
+    return hostname;
+  }
+
+ private:
+  friend class crawler;
+
   static constexpr uint8_t GOOD_LEN = 25;
 
   static constexpr uint8_t CRAWL_LIM = 3;
@@ -205,40 +324,45 @@ private:
 
   fast::condition_variable cv;
 
-  uint64_t num_links;
+  uint64_t num_links{0};
 
-  const char *save_path;
+  char* save_path;
 
   fast::vector<fast::queue<fast::string>> priorities;
 
-  std::unordered_map<fast::string, uint8_t> crawl_cnt;
+  // Need to finish fast::hashmap
+  // std::map<fast::string, uint8_t> crawl_cnt;
+  fast::flat_map<fast::string, uint8_t> crawl_cnt;
 
+  // How to initialise this with fast::vector
   std::vector<fast::string> good_tld = {"com", "org", "gov", "net", "edu"};
+  std::vector<fast::string> blacklist = {"signup", "signin", "login"};
 
-  fast::string extract_hostname(fast::string &url) {
-    fast::string hostname;
-    uint8_t slash_cnt = 0;
-    for (size_t i = 0; i < url.size(); ++i) {
-      if (url[i] == '/' && ++slash_cnt == 3) {
-        break;
-      }
-      hostname += url[i];
-    }
-    return hostname;
-  }
+  int8_t calc_priority(fast::string& url) {
+    fast::string hostname = extract_hostname(url);
 
-  uint8_t calc_priority(fast::string hostname) {
     uint8_t score = 0;
+
+    for (auto kywrd : blacklist) {
+      if (kywrd.size() > url.size())
+        continue;
+
+      for (size_t i = 0; i <= (url.size() - kywrd.size()); ++i) {
+        if (url[i] == kywrd[0] && url.substr(i, kywrd.size()) == kywrd) {
+          return -1;
+        }
+      }
+    }
 
     // +1 point for good length
     score += hostname.size() <= GOOD_LEN;
 
-    size_t idx = 0;
+    ssize_t idx = 0;
 
     // +1 point for secure protocol
     fast::string protocol;
-    while (idx < hostname.size() && hostname[idx] != ':')
-      protocol += hostname[idx];
+    while (static_cast<size_t>(idx) < hostname.size() && hostname[idx] != ':')
+      protocol += hostname[idx++];
 
     score += protocol == "https";
 
@@ -248,8 +372,11 @@ private:
     // +1 point for tld
     fast::string tld;
     while (idx > 0 && hostname[idx] != '.')
-      tld += hostname[idx];
+      tld += hostname[idx--];
 
+    if (tld.size() == 0) {
+      return score;
+    }
     tld.reverse(0, tld.size() - 1);
 
     for (auto d : good_tld) {
@@ -263,5 +390,4 @@ private:
   }
 };
 
-} // namespace crawler
-} // namespace fast
+}  // namespace fast::crawler

@@ -64,7 +64,7 @@ class isr_word : public isr {
       ++sync_start;
     }
 
-    while (buff != end && acc < offset) next();
+    while (buff < end && acc < offset) next();
   }
 
   Offset offset() override {

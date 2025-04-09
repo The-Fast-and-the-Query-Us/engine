@@ -16,7 +16,8 @@ public:
   queue(const queue &other)
       : sz(other.sz), cap(other.cap), l(other.l), r(other.r),
         buf(new T[other.cap]) {
-    std::memcpy(buf, other.buf, sz);
+    for (size_t i = l; i < r; i = (i + 1) % cap)
+      buf[i] = other.buf[i];
   }
 
   queue(queue &&other)
@@ -26,14 +27,15 @@ public:
   }
 
   queue &operator=(const queue &other) {
-    if (!other.buf == buf) {
+    if (other.buf != buf) {
       sz = other.sz;
       cap = other.cap;
       l = other.l;
       r = other.r;
       delete[] buf;
       buf = new T[cap];
-      std::memcpy(buf, other.buf, sz);
+      for (size_t i = l; i < r; i = (i + 1) % cap)
+        buf[i] = other.buf[i];
     }
     return *this;
   }
@@ -61,27 +63,44 @@ public:
   T &back() {
     if (!sz)
       throw(fast::exception("Front on empty queue\n"));
-    return buf[r];
+    return buf[(r + cap - 1) % cap];
   }
 
   void push(const T &e) {
     if (cap == sz) {
       grow();
-      l = 0, r = sz - 1;
     }
-    r = (r + 1) % sz;
     buf[r] = e;
+    r = (r + 1) % cap;
     ++sz;
   }
 
   void pop() {
-    r = (r - 1 + sz) % sz;
+    l = (l + 1) % cap;
     --sz;
   }
 
-  inline size_t size() { return sz; }
+  size_t size() { return sz; }
 
   inline bool empty() { return sz == 0; }
+
+  void print() {
+    std::cout << "index:\t";
+    for (size_t i = 0; i < cap; ++i) {
+      std::cout << i << "\t";
+    }
+    std::cout << '\n';
+    std::cout << "value:\t";
+    for (size_t i = 0; i < cap; ++i) {
+      std::cout << buf[i] << "\t";
+    }
+    std::cout << '\n';
+    std::cout << "l/r: \t";
+    for (size_t i = 0; i < cap; ++i) {
+      std::cout << (i == l ? 'l' : (i == r ? 'r' : ' ')) << "\t";
+    }
+    std::cout << '\n';
+  }
 
 private:
   size_t sz, cap, l, r;
@@ -92,11 +111,20 @@ private:
   }
 
   void grow() {
+    size_t first_part = cap - l;
     cap = grow_sz(cap);
+
     T *newbuf = new T[cap];
-    size_t tmp = sz - l;
-    std::memcpy(newbuf, buf + l, tmp);
-    std::memcpy(newbuf + tmp - 1, buf, l);
+
+    for (size_t i = 0; i < first_part; ++i) {
+      newbuf[i] = buf[l + i];
+    }
+    for (size_t i = 0; i < r; ++i) {
+      newbuf[first_part + i] = buf[i];
+    }
+
+    l = 0;
+    r = sz;
 
     delete[] buf;
     buf = newbuf;
