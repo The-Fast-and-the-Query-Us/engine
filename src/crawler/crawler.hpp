@@ -56,7 +56,7 @@ class crawler {
       }
 
       fclose(fd);
-      link_sender.flush(0);
+      link_sender.flush(0); // wont reach threshold for first sender
 
       std::cout << "Loaded seedlist" << std::endl;
 
