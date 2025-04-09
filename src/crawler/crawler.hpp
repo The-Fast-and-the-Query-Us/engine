@@ -55,6 +55,7 @@ class crawler {
         link_sender.send_link(buffer);
       }
 
+      fclose(fd);
       link_sender.flush(0);
 
       std::cout << "Loaded seedlist" << std::endl;
