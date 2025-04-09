@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.30)
-set(CMAKE_CXX_COMPILER /usr/bin/g++-10)
 project(FastAndQueryUs)
 
 # Set C++ standard
