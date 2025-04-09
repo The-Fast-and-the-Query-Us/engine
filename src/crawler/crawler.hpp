@@ -311,7 +311,7 @@ class crawler {
         crawl_frontier.notify_crawled(url);
         continue;
       }
-      std::cout << "OG: " << url.begin() << '\n';
+      // std::cout << "OG: " << url.begin() << '\n';
 
       ssl_mtx.lock();
       SSL_CTX* ctx_cpy = g_ssl_ctx;
@@ -470,7 +470,7 @@ class crawler {
           if (word_len > 1) {
             for (const auto& banned : blacklist) {
               if (banned == fast::string_view(word_start, word_len)) {
-                std::cout << "Blacklist: " << banned.begin() << std::endl;
+                // std::cout << "Blacklist: " << banned.begin() << std::endl;
                 return true;
               }
             }
