@@ -307,7 +307,7 @@ class communicator {
     for (size_t i = 0; i < bytes; ++i) {
       if (lowercase(buffer[i]) == pattern[pattern_index]) {
         ++pattern_index;
-        for (; pattern_index < PATTERN_LEN && i < bytes; ++pattern_index) {
+        for (; pattern_index < PATTERN_LEN && i + pattern_index < bytes; ++pattern_index) {
           if (lowercase(buffer[i + pattern_index]) != pattern[pattern_index]) {
             i += pattern_index - 1;
             pattern_index = 0;
