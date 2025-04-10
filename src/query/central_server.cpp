@@ -24,6 +24,7 @@
 #include <netdb.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <stdio.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -31,18 +32,14 @@
 
 #include <cassert>
 #include <cstring>
-#include <iostream>
-#include <string>
-
-using std::cerr;
-using std::cout;
-using std::endl;
-using std::string;
+#include <string.hpp>
 
 // The constructor for any plugin should set Plugin = this so that
 // LinuxTinyServer knows it exists and can call it.
 
 #include "plugin.hpp"
+
+namespace fast {
 PluginObject *Plugin = nullptr;
 
 // Root directory for the website, taken from argv[ 2 ].
@@ -192,7 +189,7 @@ const MimetypeMap MimeTable[] = {
     ".zip",
     "application/zip"};
 
-const char *Mimetype(const string filename) {
+const char *Mimetype(const string &filename) {
   // TO DO: if a matching a extentsion is found return the corresponding
   // MIME type.
 
@@ -285,7 +282,7 @@ void AccessDenied(int talkSocket) {
       "Content-Length: 0\r\n"
       "Connection: close\r\n\r\n";
 
-  cout << accessDenied;
+  // cout << accessDenied;
   send(talkSocket, accessDenied, sizeof(accessDenied) - 1, 0);
 }
 
@@ -295,7 +292,7 @@ void FileNotFound(int talkSocket) {
       "Content-Length: 0\r\n"
       "Connection: close\r\n\r\n";
 
-  cout << fileNotFound;
+  // cout << fileNotFound;
   send(talkSocket, fileNotFound, sizeof(fileNotFound) - 1, 0);
 }
 
@@ -314,7 +311,7 @@ void *Talk(void *talkSocket) {
   char c;
 
   while (recv(fd, &c, 1, 0)) {
-    request.push_back(c);
+    request += c;
     if (request.size() >= 4) {
       int i;
       for (i = 0; i < 4; ++i) {
@@ -351,7 +348,7 @@ void *Talk(void *talkSocket) {
   // If it isn't intercepted, action must be "GET" and
   // the path must be safe.
   else if (method == "GET" && SafePath(path.c_str())) {
-    path.insert(0, RootDirectory);
+    // path.insert(0, RootDirectory); //ADD push_front
     const auto file = open(path.c_str(), O_RDONLY);
     if (file < 0) {
       FileNotFound(fd);
@@ -397,7 +394,7 @@ void *Talk(void *talkSocket) {
 
 int main(int argc, char **argv) {
   if (argc != 3) {
-    cerr << "Usage:  " << argv[0] << " port rootdirectory" << endl;
+    // cerr << "Usage:  " << argv[0] << " port rootdirectory" << endl;
     return 1;
   }
 
@@ -519,3 +516,4 @@ int main(int argc, char **argv) {
 
   close(listenSocket);
 }
+}  // namespace fast

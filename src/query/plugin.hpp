@@ -2,14 +2,15 @@
 
 // Plugin interface for the LinuxTinyServer.
 
-#include <string>
+#include <string.hpp>
 
+namespace fast {
 class PluginObject {
  public:
   // MagicPath returns true if this is a path the plugin
   // intercepts.
 
-  virtual bool MagicPath(const std::string path) = 0;
+  virtual bool MagicPath(const string path) = 0;
 
   // The request passed to ProcessRequest is the raw contents
   // of the HTTP request as read from the socket (up to the
@@ -29,7 +30,7 @@ class PluginObject {
   // socket for a ProcessRequest routine that needs more than
   // just the initial 10K or wants to do its own writing.)
 
-  virtual std::string ProcessRequest(std::string request) = 0;
+  virtual string ProcessRequest(string request) = 0;
 
   virtual ~PluginObject() {}
 };
@@ -38,3 +39,4 @@ class PluginObject {
 // so that LinuxTinyServer knows it exists and can call it.
 
 extern PluginObject *Plugin;
+}
