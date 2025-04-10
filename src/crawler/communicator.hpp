@@ -297,28 +297,24 @@ class communicator {
 
     if (ssl) {
       SSL_shutdown(ssl);
-      ssl = nullptr;
     }
   }
 
   static bool find_pattern_in_buffer(const char *buffer, size_t bytes, const char *pattern, const uint8_t PATTERN_LEN) {
-    uint8_t pattern_index = 0;
+    if (bytes < PATTERN_LEN) return false;
 
-    for (size_t i = 0; i < bytes; ++i) {
-      if (lowercase(buffer[i]) == pattern[pattern_index]) {
-        ++pattern_index;
-        for (; pattern_index < PATTERN_LEN && i + pattern_index < bytes; ++pattern_index) {
-          if (lowercase(buffer[i + pattern_index]) != pattern[pattern_index]) {
-            i += pattern_index - 1;
-            pattern_index = 0;
-            break;
-          }
+    for (size_t i = 0; i <= bytes - PATTERN_LEN; ++i) {
+      bool match = true;
+      for (size_t j = 0; j < PATTERN_LEN; ++j) {
+        if (lowercase(buffer[i + j]) != pattern[j]) {
+          match = false;
+          break;
         }
-        if (pattern_index == PATTERN_LEN)
-          return true;
+      }
+      if (match) {
+        return true;
       }
     }
-
     return false;
   }
 
