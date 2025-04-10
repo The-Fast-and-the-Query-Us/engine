@@ -1,0 +1,10 @@
+https://www.bomberbot.com/programming/coding-from-a-meteorologists-perspective/
+https://www.abstractapi.com/guides/other/best-weather-apis
+https://windy.app/blog/where-and-why-to-compare-weather.html
+https://thelinuxcode.com/coding-from-a-meteorologists-perspective-leveraging-programming-to-advance-atmospheric-science/
+https://www.meteomatics.com/en/weather-api/best-weather-apis/
+https://zylalabs.com/blog/weather-api-vs-forecast-api-pros-cons-and-which-one-to-choose
+https://www.xtool.com/blogs/education/coding-vs-programming-is-there-any-difference
+https://www.freecodecamp.org/news/coding-from-a-meteorologist-s-perspective-3c81aa9c1160/
+https://entri.app/blog/the-best-programming-languages-for-meteorology/
+https://gosford-high-school.gitbook.io/preliminary-software-engineering/unit-1-programming-fundamentals/5-assessment-task-1/data-science-project/examples-of-api-usage/starter-code-weather-app

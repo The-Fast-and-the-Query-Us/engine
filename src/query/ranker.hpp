@@ -2,11 +2,18 @@
 
 #include <array.hpp>
 #include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <functional>
 #include <hashblob.hpp>
 #include <isr.hpp>
 #include <map>
 #include <string.hpp>
+#include <sys/fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <vector.hpp>
+#include <sys/mman.h>
 
 #include "constants.hpp"
 #include "isr.hpp"
@@ -494,24 +501,285 @@ class ranker {
   isr** title_isrs;
 };
 
-void blob_rank(
-    const fast::hashblob* blob, const fast::string& query,
-    fast::array<fast::query::Result, fast::query::MAX_RESULTS>& results) {
-  auto query_stream = fast::query::query_stream(query);
-  auto constraints =
-      fast::query::contraint_parser::parse_contraint(query_stream, blob);
+// tuning parameters
+namespace Params {
+  enum {
+    Title = 0,
+    OrderedDouble,
+    Double,
+    OrderedTriple,
+    Triple,
+    Decay,
+    Span,
+    ShortUrl,
+    DomainHit,
+    UrlHit,
+  };
 
-  if (!constraints)
-    return;
+  static double FACTORS[] = {
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.2,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+  };
+};
 
-  fast::vector<fast::string_view> flattened;
+enum url_location {
+  None,
+  Domain,
+  Any,
+};
 
-  auto rank_stream = fast::query::query_stream(query);
-  fast::query::rank_parser::parse_query(rank_stream, &flattened, blob);
-  fast::query::ranker(blob, flattened, constraints, results);
+static url_location find_in_url(const string_view &url, const string_view &word) {
+  bool slash = false;
 
-  delete constraints;
+  for (size_t i = 9; i <= url.size() - word.size(); ++i) {
+    bool good = true;
+    for (size_t j = 0; j < word.size() && good; ++j) {
+      if (url[i + j] == '/') slash = true;
+      if (url[i + j] != word[j]) good = false;
+    }
+
+    if (good) {
+      if (slash) return Any;
+      else       return Domain;
+    }
+  }
+
+  return None;
+}
+
+// maybe prioritize rare word?
+static double url_rank(const string_view &url, const vector<string_view> &words, size_t rare) {
+  double score = 0;
+  score += Params::FACTORS[Params::ShortUrl] / url.size(); // maybe squre this?
+  
+  for (const auto word : words) {
+    const auto hit = find_in_url(url, word);
+
+    if (hit == Domain) {
+      score += Params::FACTORS[Params::DomainHit];
+    } else if (hit == Any) {
+      score += Params::FACTORS[Params::UrlHit];
+    }
+  }
+  return score;
+}
+
+/*
+* Brain storm:
+*   Maybe square the width
+*   Calc proportion of document that is query words
+*/
+static double rank_isrs(const vector<isr*> words, Offset start, Offset end, size_t rare) {
+  for (const auto isr : words) {
+    isr->seek(start);
+  }
+
+  vector<Offset> last(words.size(), MAX_OFFSET);
+  vector<size_t> counts(words.size(), 0);
+
+  double score = 0;
+
+  while (!words[rare]->is_end() && words[rare]->offset() < end) {
+    counts[rare]++;
+    last[rare] = words[rare]->offset();
+
+    // get as close as possible
+    for (size_t i = 0; i < words.size(); ++i) {
+      if (i != rare) {
+        while (!words[i]->is_end() && words[i]->offset() < last[rare]) {
+          counts[i]++;
+          last[i] = words[i]->offset();
+          words[i]->next();
+        }
+
+        if (!words[i]->is_end() && words[i]->offset() < end && (last[i] == MAX_OFFSET || last[rare] - last[i] > words[i]->offset() - last[rare])) {
+            last[i] = words[i]->offset();
+        }
+      }
+    }
+
+    const auto decay = pow(Params::FACTORS[Params::Decay], last[rare]);
+
+    size_t word_in_span = 1;
+    Offset span_begin = last[rare], span_end = last[rare];
+
+    for (size_t i = 0; i < words.size(); ++i) {
+      if (last[i] == MAX_OFFSET || i == rare) continue;
+
+      ++word_in_span;
+      span_begin = min(span_begin, last[i]);
+      span_end = max(span_end, last[i]);
+
+      const auto width = max(last[i], last[rare]) - min(last[i], last[rare]);
+      const auto ordered_double = (
+        (i < rare && last[i] <= last[rare]) ||
+        (i > rare && last[i] >= last[rare])
+      );
+
+      if (ordered_double) {
+        score += Params::FACTORS[Params::OrderedDouble] / width / decay;
+      } else {
+        score += Params::FACTORS[Params::Double] / width / decay;
+      }
+      
+      for (size_t j = i + 1; j < words.size(); ++j) {
+        if (last[j] == MAX_OFFSET || j == rare) continue;
+        
+        const auto width = max(last[i], max(last[j], last[rare])) - 
+                           min(last[i], min(last[j], last[rare]));
+
+        const auto ordered_trip = (
+          (j < rare && last[j] <= last[rare] && last[i] <= last[j]) ||
+          (j > rare && last[j] >= last[rare] && ordered_double)
+        );
+
+        if (ordered_trip) {
+          score += Params::FACTORS[Params::OrderedTriple] / width / decay;
+        } else {
+          score += Params::FACTORS[Params::Triple] / width / decay;
+        }
+
+      }
+    } // for(i < words.size())
+
+    if (span_begin < span_end && word_in_span == words.size()) {
+      const auto width = span_end - span_begin;
+      score += Params::FACTORS[Params::Span] / width / decay;
+    }
+
+    words[rare]->next();
+  }
+
+  return score;
+}
+
+static void rank(const hashblob *blob, const vector<string_view> &flat, isr_container *matches, std::function<void(const Result&)> call_back) {
+  if (flat.size() == 0) return;
+
+  vector<isr*> body;
+  vector<isr*> title;
+  size_t rare_idx = 0;
+  size_t rare_count = 0;
+
+  for (const auto word : flat) {
+    auto pl = blob->get(word);
+    if (pl) {
+      body.push_back(pl->get_isr());
+      if (rare_count == 0 || rare_count > pl->words()) {
+        rare_count = pl->words();
+        rare_idx = body.size() - 1;
+      }
+    } else {
+      body.push_back(new isr_null);
+    }
+
+    pl = blob->get(string(word) + "#");
+    if (pl) {
+      title.push_back(pl->get_isr());
+    } else {
+      title.push_back(new isr_null);
+    }
+  }
+
+  while (!matches->is_end()) {
+    const auto body_score = rank_isrs(body, matches->get_doc_start(), matches->get_doc_end(), rare_idx);
+    const auto title_score = rank_isrs(title, matches->get_doc_start(), matches->get_doc_end(), rare_idx);
+    
+    const auto url = matches->get_doc_url();
+    auto score = body_score + title_score * Params::FACTORS[Params::Title] 
+      + url_rank(url, flat, rare_idx);
+
+    call_back({score, url});
+
+    matches->next();
+  }
+
+  for (const auto isr : body) {
+    delete isr;
+  }
+
+  for (const auto isr : title) {
+    delete isr;
+  }
+
   return;
+}
+
+void rank_all(const fast::string &query, std::function<void(const Result&)> call_back) {
+  auto qs = query_stream(query);
+  vector<string_view> flattened;
+  rank_parser::parse_query(qs, &flattened);
+
+  string chunk_count_path = getenv("HOME");
+  chunk_count_path += "/.local/share/crawler/chunk_count.bin";
+
+  const auto fd = open(chunk_count_path.c_str(), O_RDONLY);
+  if (fd < 0) {
+    perror("fail to find chunk count");
+    exit(1);
+  }
+
+  uint64_t chunk_count;
+  assert(read(fd, &chunk_count, sizeof(chunk_count)) == sizeof(chunk_count) && "invalid chunk_count");
+  close(fd);
+
+  string base = getenv("HOME");
+  base += "/.local/share/crawler/index/";
+
+  for (uint64_t chunk_num = 0; chunk_num < chunk_count; ++chunk_num) {
+    const auto chunk_path = base + to_string(chunk_num);
+    const auto chunk_fd = open(chunk_path.c_str(), O_RDONLY);
+
+    if (chunk_fd < 0) {
+      perror("unable to open chunk");
+      exit(1);
+    }
+
+    struct stat sb;
+    if (fstat(chunk_fd, &sb) < 0) {
+      perror("fail to get size");
+      close(chunk_fd);
+      exit(1);
+    }
+
+    const size_t chunk_size = sb.st_size;
+    const auto map_ptr = mmap(nullptr, chunk_size, PROT_READ, MAP_PRIVATE, chunk_fd, 0);
+
+    if (map_ptr == MAP_FAILED) [[unlikely]] {                                                                                                                      
+      close(chunk_fd);
+      perror("Fail to mmap index chunk");                                                                                                                          
+      exit(1);                                                                                                                                                     
+    }                                                                                                                                                              
+    
+    close(chunk_fd);
+    
+    auto blob = reinterpret_cast<const fast::hashblob*>(map_ptr);
+
+    if (!blob->is_good()) {
+      perror("blob not good!");
+    }
+
+    auto qs = query_stream(query);
+    auto constraints = contraint_parser::parse_contraint(qs, blob);
+
+    if (constraints) {
+      rank(blob, flattened, constraints, call_back);
+    }
+
+    delete constraints;
+
+    if (munmap(map_ptr, chunk_size) < 0) {
+      perror("Fail to unmap");
+    }
+  }
 }
 
 }  // namespace fast::query

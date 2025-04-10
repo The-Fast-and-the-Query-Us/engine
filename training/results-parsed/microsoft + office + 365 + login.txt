@@ -1,0 +1,10 @@
+http://www.office.com/signin
+https://www.office.com/
+https://admin.microsoft365.com/
+https://myaccount.microsoft.com/login
+https://outlook.office.com/mail/
+https://account.microsoft.com/account
+https://www.microsoft.com/en-us/microsoft-365/outlook/log-in
+https://onedrive.live.com/login/en-us/
+https://www.microsoft.com/en-us/microsoft-365/free-office-online-for-the-web
+https://outlook.office365.com/

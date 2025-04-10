@@ -1,0 +1,9 @@
+https://accounts.google.com/InteractiveLogin?service=cl
+https://workspace.google.com/products/calendar/
+https://support.google.com/calendar/answer/2465776?hl=en&co=GENIE.Platform%3DDesktop
+https://support.google.com/calendar/?hl=en
+https://support.google.com/calendar/answer/37082?hl=en
+https://play.google.com/store/apps/details?id=com.google.android.calendar&hl=en
+https://apps.apple.com/us/app/google-calendar-get-organized/id909319292
+https://support.google.com/calendar/answer/37095?hl=en
+https://www.calendar.com/google-calendar-guide/

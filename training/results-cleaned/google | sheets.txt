@@ -1,0 +1,8 @@
+https://www.google.com/sheets/about/
+https://docs.google.com/spreadsheets/u/0/
+https://apps.apple.com/us/app/google-sheets/id842849113
+https://support.google.com/a/users/answer/9282959?hl=en
+https://en.wikipedia.org/wiki/Google_Sheets
+https://play.google.com/store/apps/details?id=com.google.android.apps.docs.editors.sheets&hl=en-US
+https://workspace.google.com/products/docs/
+https://developers.google.com/workspace/sheets/api/guides/concepts
