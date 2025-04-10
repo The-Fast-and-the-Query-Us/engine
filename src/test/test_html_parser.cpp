@@ -13,16 +13,16 @@ int main() {
   int fd = open("nyt.html", O_RDONLY);
   if (fd == -1) return 1;
 
-  auto *buffer = new char[1'000'000]; // NOLINT
   ssize_t bytes{};
   struct stat st{};
   if (fstat(fd, &st) < 0) {
     perror("fstat");
     close(fd);
-    delete[] buffer;
     return 1;
   }
+
   off_t file_size = st.st_size;
+  auto *buffer = new char[file_size];
 
   bytes = read(fd, buffer, file_size);
   if (bytes < 0) {
