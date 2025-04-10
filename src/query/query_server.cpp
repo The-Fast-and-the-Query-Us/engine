@@ -69,7 +69,7 @@ void *worker(void*) {
         uint32_t buf;
         memcpy(&buf, &rank, sizeof(buf));
 
-        std::cout << r.second.c_str() << std::endl;
+        std::cout << "Sending " << r.second.c_str() << " with rank: " << r.first << std::endl;
 
         fast::send_all(client, buf);
         fast::send_all(client, r.second);
