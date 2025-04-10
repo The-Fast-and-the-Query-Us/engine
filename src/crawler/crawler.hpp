@@ -279,7 +279,6 @@ class crawler {
 
     while (!shutdown_flag) {
       fast::string url = "";
-      // TODO: How do we get our start list to the right computers?
       int attempts = 0;
       while (url == "" && attempts < 3 && !shutdown_flag) {
         url = crawl_frontier.next(&shutdown_flag);
@@ -316,7 +315,7 @@ class crawler {
 
       ssl_mtx.lock();
       SSL_CTX* ctx_cpy = g_ssl_ctx;
-      ssl_mtx.unlock();
+      ssl_mtx.unlock(); // maybe get rid of this
 
       if (!ctx_cpy)
         continue;
