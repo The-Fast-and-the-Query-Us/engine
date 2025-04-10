@@ -33,18 +33,8 @@ const char *get_type(const fast::string &file) {
   }
 }
 
-void serve_client(const int fd) {
+void serve_file(const int fd, const fast::string &path) {
   char buffer[1 << 10]{};
-  const auto header = recv(fd, buffer, sizeof(buffer), 0);
-
-  size_t start = 0;
-  while (start < header && buffer[start++] != '/');
-
-  size_t end = start;
-  while (end < header && buffer[end] != ' ') ++end;
-
-  const fast::string path(buffer + start, buffer + end);
-
   const int file = open(path.c_str(), O_RDONLY);
 
   if (file < 0) {
@@ -70,6 +60,27 @@ void serve_client(const int fd) {
     }
 
     close(file);
+  }
+}
+
+void serve_client(const int fd) {
+  char buffer[1 << 12]{}; // 4KB
+  const auto header = recv(fd, buffer, sizeof(buffer), 0);
+
+  size_t start = 0;
+  while (start < header && buffer[start++] != '/');
+
+  size_t end = start;
+  while (end < header && buffer[end] != ' ') ++end;
+
+  const fast::string path(buffer + start, buffer + end);
+
+  if (path == "api") { // todo
+    // fan query
+  } else if (path.size() == 0) {
+    serve_file(fd, "frontend.html");
+  } else if (path == "img") {
+    serve_file(fd, "search_engine.png");
   }
 }
 
