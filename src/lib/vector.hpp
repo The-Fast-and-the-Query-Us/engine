@@ -76,6 +76,17 @@ class vector {
     if (newCapacity > cap_) grow(newCapacity);
   }
 
+  void resize(size_t newSize) {
+    if (newSize > size_) {
+      grow(newSize);
+
+      for (size_t i = 0; i < cap_; i++)
+        new (elts + i) T();
+
+      size_ = newSize;
+    }
+  }
+
   size_t size() const { return size_; }
 
   size_t capacity() const { return cap_; }
