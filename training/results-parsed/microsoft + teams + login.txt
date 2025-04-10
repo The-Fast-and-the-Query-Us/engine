@@ -1,0 +1,10 @@
+https://www.microsoft.com/en-us/microsoft-teams/log-in
+https://teams.microsoft.com/v2/?skipauthstrap=1
+https://www.office.com/
+https://www.microsoft.com/en-us/microsoft-teams/download-app
+https://support.microsoft.com/en-us/office/how-to-log-in-to-microsoft-teams-ea4b1443-d11b-4791-8ae1-9977e7723055
+https://support.microsoft.com/en-us/office/use-microsoft-teams-on-the-web-33f84aa9-2e8b-47ac-8676-02033454e385
+https://support.microsoft.com/en-us/office/sign-in-sign-up-sign-out-and-add-a-new-account-in-microsoft-teams-free-4c3734a1-f4ac-4da7-bd7d-5b69d6e3a9a3
+https://dod.teams.microsoft.us/convene/
+https://teams.microsoft.com/edustart
+https://answers.microsoft.com/en-us/msteams/forum/all/how-can-i-sign-in-to-work-microsoft-teams/2435caed-3d27-4ef8-a51e-797f81642b9b

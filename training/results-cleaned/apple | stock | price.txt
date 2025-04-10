@@ -1,0 +1,8 @@
+https://finance.yahoo.com/quote/AAPL/
+https://www.google.com/finance/quote/AAPL:NASDAQ
+https://www.marketwatch.com/investing/stock/aapl
+https://investor.apple.com/stock-price/default.aspx
+https://markets.businessinsider.com/stocks/aapl-stock?op=1
+https://www.cnbc.com/quotes/aapl
+https://www.wsj.com/market-data/quotes/AAPL
+https://stockanalysis.com/stocks/aapl/
