@@ -1,3 +1,4 @@
+#include "array.hpp"
 #include "condition_variable.hpp"
 #include "mutex.hpp"
 #include "network.hpp"
@@ -69,9 +70,16 @@ void serve_file(const int fd, const fast::string &path) {
 }
 
 void serve_query(const int fd, const fast::string_view &query) {
-  (void)fd;
-  (void)query;
-  std::cout << query.begin() << std::endl;
+  fast::string arr = "[\"abc\", \"xyz\"]";
+
+  fast::string response = "HTTP/1.1 200 OK\r\n"
+                           "Content-Type: application/json\r\n";
+
+  response = response + "Content-Length: " + fast::to_string(arr.size()) + "\r\n\r\n";
+
+  fast::send_all(fd, response.c_str(), response.size());
+
+  fast::send_all(fd, arr.c_str(), arr.size());
 }
 
 void serve_not_found(const int fd) {
@@ -93,7 +101,6 @@ void serve_client(const int fd) {
 
   if (path.starts_with("api?q=")) {
     serve_query(fd, path.view().trim_prefix(6));
-    serve_not_found(fd);
   } else if (path.size() == 0) {
     serve_file(fd, "frontend.html");
   } else if (path == "img") {
