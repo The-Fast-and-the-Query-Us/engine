@@ -100,7 +100,7 @@
     }
 
     #searchInput {
-      width: 100%;
+      width: 78%;
       padding: 20px 150px 20px 30px;
       font-size: 1.5rem;
       background: rgba(10, 10, 10, 0.9);
@@ -142,7 +142,6 @@
       letter-spacing: 3px;
     }
 
-    /* ===== RESULTS (STREET RACING STYLE) ===== */
     .results {
       max-width: 800px;
       margin: 0 auto;
@@ -212,7 +211,6 @@
       transition: transform 0.3s ease;
     }
 
-    /* ===== NOS BLAST ANIMATION ===== */
     @keyframes nosBlast {
       0% { opacity: 0; transform: scale(1); }
       50% { opacity: 1; transform: scale(1.5); }
@@ -268,30 +266,28 @@
     <div class="racing-stripe"></div>
   </div>
 
-  <!-- SEARCH BAR -->
+  <!--search bar-->
   <div class="search-container">
     <input type="text" id="searchInput" placeholder="ENTER YOUR QUERY... (10-SECOND RACE)" />
     <button onclick="performSearch()">ENGAGE NOS!</button>
   </div>
 
-  <!-- NITRO GAUGE -->
   <div class="nitro-gauge">
     <div class="nitro-fill" id="nitroFill"></div>
   </div>
 
-  <!-- FAMILY QUOTE -->
   <div class="family-quote">
     WE DON'T JUST SEARCH<br>WE FAMILY
   </div>
 
-  <!-- RESULTS CONTAINER -->
   <div class="results" id="results"></div>
 
   <script>
+    // on enter press
     const input = document.getElementById("searchInput");
     input.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
-        e.preventDefault(); // Prevent default form submission (if in a form)
+        e.preventDefault();
         performSearch();
       }
     });
@@ -303,9 +299,9 @@
       setTimeout(() => nos.remove(), 500);
     }
 
-    // ===== ACTUAL SEARCH FUNCTION =====
+    // search function
     async function performSearch() {
-      createNosEffect(); // NOS BLAST!
+      createNosEffect();
 
       const query = document.getElementById('searchInput').value.trim();
       const resultsContainer = document.getElementById('results');
@@ -352,7 +348,9 @@
       } catch (err) {
         resultsContainer.innerHTML = `<div class="result"><div class="result-snippet">Error: ${err.message}</div></div>`;
       }
+      document.getElementById('nitroFill').style.transform = `scaleX(${Math.random()})`;
     }
+
   </script>
 
 
