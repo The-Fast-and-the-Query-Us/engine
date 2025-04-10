@@ -2,9 +2,11 @@
 #include "condition_variable.hpp"
 #include "mutex.hpp"
 #include "network.hpp"
+#include "pair.hpp"
 #include "queue.hpp"
 #include "string.hpp"
 #include "vector.hpp"
+#include <arpa/inet.h>
 #include <cassert>
 #include <csignal>
 #include <cstdio>
@@ -19,6 +21,8 @@
 #include <pthread.h>
 
 constexpr unsigned PORT = 80;
+constexpr unsigned QUERY_PORT = 8081;
+
 constexpr size_t THREAD_COUNT = 20;
 
 volatile bool quit = false;
@@ -72,9 +76,10 @@ void serve_file(const int fd, const fast::string &path) {
   }
 }
 
-void serve_query(const int fd, const fast::string_view &query) {
+void serve_query(const int fd, const fast::string_view &query, const fast::vector<int> servers) {
   fast::string translated;
   translated.reserve(query.size());
+
   for (const auto c : query) {
     translated += c;
     if (translated.ends_with("%20")) {
@@ -83,10 +88,48 @@ void serve_query(const int fd, const fast::string_view &query) {
     }
   }
 
-  std::cout << translated.begin() << std::endl;
+  for (const auto s : servers) {
+    fast::send_all(s, translated);
+  }
 
-  // mock response
-  fast::string arr = "[\"abc\", \"xyz\"]";
+  fast::array<fast::pair<fast::string, float>, 10> results;
+
+  for (const auto s : servers) {
+    uint32_t count;
+    fast::recv_all(s, count);
+
+    while (count--) {
+      uint32_t rank;
+      fast::string url;
+
+      fast::recv_all(s, rank);
+      fast::recv_all(s, url);
+
+      float casted;
+      memcpy(&casted, &rank, sizeof(casted));
+
+      if (casted > results[9].second) {
+        results[9] = {url, casted};
+
+        for (size_t i = 9; i > 0; --i) {
+          if (results[i].second > results[i - 1].second) {
+            fast::swap(results[i], results[i - 1]);
+          } else {
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  fast::string arr = "[";
+
+  for (const auto &p : results) {
+    if (p.first.size() == 0) continue;
+    arr = arr + ((arr.size() == 1) ? "" : ", ") + "\"" + p.first + "\"";
+  }
+  arr += "]";
+
   fast::string response = "HTTP/1.1 200 OK\r\n"
                            "Content-Type: application/json\r\n";
 
@@ -101,7 +144,7 @@ void serve_not_found(const int fd) {
   fast::send_all(fd, response.c_str(), response.size());
 }
 
-void serve_client(const int fd) {
+void serve_client(const int fd, const fast::vector<int> &servers) {
   char buffer[1 << 10]{}; // 4KB
   const auto header = recv(fd, buffer, sizeof(buffer), 0);
 
@@ -114,7 +157,7 @@ void serve_client(const int fd) {
   const fast::string path(buffer + start, buffer + end);
 
   if (path.starts_with("api?q=")) {
-    serve_query(fd, path.view().trim_prefix(6));
+    serve_query(fd, path.view().trim_prefix(6), servers);
   } else if (path.size() == 0) {
     serve_file(fd, "frontend.html");
   } else if (path == "img") {
@@ -125,6 +168,35 @@ void serve_client(const int fd) {
 }
 
 void *worker(void*) {
+  fast::vector<int> servers;
+
+  for (const auto &ip : ips) {
+    const auto sock = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (sock < 0) {
+      perror("worker::socket");
+      exit(1);
+    }
+
+    struct sockaddr_in addr{};
+    addr.sin_port = htons(QUERY_PORT);
+    addr.sin_family = AF_INET;
+
+    if (inet_pton(AF_INET, ip.c_str(), &addr.sin_addr) < 0) {
+      perror("inet pton");
+      close(sock);
+      exit(1);
+    }
+
+    if (connect(sock, (sockaddr*) &addr, sizeof(addr)) < 0) {
+      perror("Server unreachable");
+      close(sock);
+      continue;
+    }
+
+    servers.push_back(sock);
+  }
+
   while (true) {
     mtx.lock();
 
@@ -132,6 +204,11 @@ void *worker(void*) {
 
     if (quit)  {
       mtx.unlock();
+
+      for (const auto s : servers) {
+        close(s);
+      }
+
       return NULL;
     }
 
@@ -139,7 +216,7 @@ void *worker(void*) {
     clients.pop();
     mtx.unlock();
 
-    serve_client(client);
+    serve_client(client, servers);
     close(client);
   }
 }
