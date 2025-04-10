@@ -288,7 +288,14 @@
   <div class="results" id="results"></div>
 
   <script>
-    // ===== NOS BLAST EFFECT =====
+    const input = document.getElementById("searchInput");
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault(); // Prevent default form submission (if in a form)
+        performSearch();
+      }
+    });
+  
     function createNosEffect() {
       const nos = document.createElement('div');
       nos.className = 'nos-effect';
