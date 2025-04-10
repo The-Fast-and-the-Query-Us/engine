@@ -9,6 +9,7 @@
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <netinet/in.h>
 #include <sys/fcntl.h>
 #include <sys/signal.h>
@@ -25,7 +26,9 @@ fast::mutex mtx;
 fast::condition_variable cv;
 fast::queue<int> clients;
 
-// no needed
+fast::vector<fast::string> ips;
+
+// not needed
 const char *get_type(const fast::string &file) {
   if (file.ends_with(".html")) {
     return "text/html";
@@ -70,15 +73,26 @@ void serve_file(const int fd, const fast::string &path) {
 }
 
 void serve_query(const int fd, const fast::string_view &query) {
-  fast::string arr = "[\"abc\", \"xyz\"]";
+  fast::string translated;
+  translated.reserve(query.size());
+  for (const auto c : query) {
+    translated += c;
+    if (translated.ends_with("%20")) {
+      translated.pop_back(3);
+      translated += ' ';
+    }
+  }
 
+  std::cout << translated.begin() << std::endl;
+
+  // mock response
+  fast::string arr = "[\"abc\", \"xyz\"]";
   fast::string response = "HTTP/1.1 200 OK\r\n"
                            "Content-Type: application/json\r\n";
 
   response = response + "Content-Length: " + fast::to_string(arr.size()) + "\r\n\r\n";
 
   fast::send_all(fd, response.c_str(), response.size());
-
   fast::send_all(fd, arr.c_str(), arr.size());
 }
 
@@ -132,7 +146,25 @@ void *worker(void*) {
 
 int accept_fd;
 
+
 int main() {
+  const auto ip_file = fopen("ips.txt", "r");
+
+  if (ip_file == NULL) {
+    perror("Cannot find ip file");
+    exit(1);
+  }
+
+  char buffer[40]{}; // should be long enough for any ip addr
+  while (fgets(buffer, sizeof(buffer), ip_file) != NULL) {
+    buffer[strcspn(buffer, "\r\n")] = 0;
+
+    if (buffer[0]) 
+      ips.emplace_back(buffer);
+  }
+
+  fclose(ip_file);
+
   accept_fd = socket(AF_INET, SOCK_STREAM, 0);
 
   if (accept_fd < 0) {
