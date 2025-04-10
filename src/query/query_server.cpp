@@ -36,40 +36,44 @@ void *worker(void*) {
     clients.pop();
     mtx.unlock();
 
-    fast::string query;
-    fast::recv_all(client, query);
+    while (true) {
+      fast::string query;
+      if (!fast::recv_all(client, query)) break;
 
-    fast::array<fast::query::Result, fast::query::MAX_RESULTS> results;
-    std::function<void(const fast::query::Result&)> call_back = [&results](const auto &r) {
-      if (results[fast::query::MAX_RESULTS - 1].first < r.first) {
-        results[fast::query::MAX_RESULTS - 1] = r;
+      fast::array<fast::query::Result, fast::query::MAX_RESULTS> results;
+      std::function<void(const fast::query::Result&)> call_back = [&results](const auto &r) {
+        if (results[fast::query::MAX_RESULTS - 1].first < r.first) {
+          results[fast::query::MAX_RESULTS - 1] = r;
 
-        for (size_t i = fast::query::MAX_RESULTS - 1; i > 0; --i) {
-          if (results[i].first > results[i - 1].first) {
-            swap(results[i], results[i - 1]);
-          } else {
-            break;
+          for (size_t i = fast::query::MAX_RESULTS - 1; i > 0; --i) {
+            if (results[i].first > results[i - 1].first) {
+              swap(results[i], results[i - 1]);
+            } else {
+              break;
+            }
           }
         }
+      };
+
+      fast::query::rank_all(query, call_back);
+
+      uint32_t count = 0;
+      for (const auto &r : results) {
+        if (r.second.size() > 0) ++count;
       }
-    };
 
-    fast::query::rank_all(query, call_back);
+      fast::send_all(client, count);
 
-    uint32_t count = 0;
-    for (const auto &r : results) {
-      if (r.second.size() > 0) ++count;
-    }
+      for (const auto &r : results) {
+        float rank = r.first;
+        uint32_t buf;
+        memcpy(&buf, &rank, sizeof(buf));
 
-    fast::send_all(client, count);
+        std::cout << r.second.c_str() << std::endl;
 
-    for (const auto &r : results) {
-      float rank = r.first;
-      uint32_t buf;
-      memcpy(&buf, &rank, sizeof(buf));
-
-      fast::send_all(client, buf);
-      fast::send_all(client, r.second);
+        fast::send_all(client, buf);
+        fast::send_all(client, r.second);
+      }
     }
 
     close(client);

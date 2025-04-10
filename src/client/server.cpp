@@ -105,6 +105,8 @@ void serve_query(const int fd, const fast::string_view &query, const fast::vecto
       fast::recv_all(s, rank);
       fast::recv_all(s, url);
 
+      std::cout << url.c_str() << std::endl;
+
       float casted;
       memcpy(&casted, &rank, sizeof(casted));
 
