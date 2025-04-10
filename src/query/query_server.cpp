@@ -13,6 +13,7 @@
 #include <sys/fcntl.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <signal.h>
 
 constexpr unsigned PORT = 8081;
 constexpr size_t THREAD_COUNT = 20;
