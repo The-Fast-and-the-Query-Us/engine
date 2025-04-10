@@ -8,6 +8,7 @@ namespace fast {
 
 class isr {
   public:
+
   // jump forward one post
   virtual void next() = 0;
 
@@ -64,7 +65,7 @@ class isr_word : public isr {
       ++sync_start;
     }
 
-    while (buff != end && acc < offset) next();
+    while (buff < end && acc < offset) next();
   }
 
   Offset offset() override {

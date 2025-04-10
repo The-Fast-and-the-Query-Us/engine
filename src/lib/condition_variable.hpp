@@ -7,7 +7,7 @@ namespace fast {
 
 class condition_variable {
 public:
-  condition_variable() = default;
+  condition_variable() { pthread_cond_init(&cv, nullptr); }
 
   ~condition_variable() { pthread_cond_destroy(&cv); }
 
@@ -18,7 +18,7 @@ public:
   void broadcast() { pthread_cond_broadcast(&cv); }
 
 private:
-  pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
+  pthread_cond_t cv;
 };
 
 } // namespace fast

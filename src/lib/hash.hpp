@@ -16,7 +16,7 @@ template <HashType hashtype = RollingPoly>
 uint64_t hash(const string_view &word);
 
 
-template <>
+template <> // note that this will be diferent for words that contains a null character
 inline uint64_t hash<RollingPoly>(const char *word) {
   const uint64_t P = 101; 
 
