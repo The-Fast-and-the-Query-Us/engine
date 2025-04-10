@@ -31,7 +31,7 @@ int main() {
     return 1;
   }
 
-  html_parser parser(buffer, bytes);
+  html_parser parser(buffer, file_size);
   std::cout << "Titles: " << '\n';
   for (const auto &title : parser.titleWords) {
     std::cout << title.begin() << '\n';
