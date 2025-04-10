@@ -32,6 +32,8 @@ fast::queue<int> clients;
 
 fast::vector<fast::string> ips;
 
+bool logging = true;
+
 // not needed
 const char *get_type(const fast::string &file) {
   if (file.ends_with(".html")) {
@@ -88,8 +90,20 @@ void serve_query(const int fd, const fast::string_view &query, const fast::vecto
     }
   }
 
+  for (auto &c : translated) {
+    c = tolower(c);
+  }
+
+  if (logging) {
+    std::cout << "Forwarding request: " << translated.c_str() << std::endl;
+  }
+
   for (const auto s : servers) {
-    fast::send_all(s, translated);
+    if (!fast::send_all(s, translated)) {
+      if (logging) {
+        std::cout << "Fail to send to query server" << std::endl;
+      }
+    }
   }
 
   fast::array<fast::pair<fast::string, float>, 10> results;
@@ -105,10 +119,12 @@ void serve_query(const int fd, const fast::string_view &query, const fast::vecto
       fast::recv_all(s, rank);
       fast::recv_all(s, url);
 
-      std::cout << url.c_str() << std::endl;
 
       float casted;
       memcpy(&casted, &rank, sizeof(casted));
+
+      if (logging)
+        std::cout << url.c_str() << " with rank: " << casted << std::endl;
 
       if (casted > results[9].second) {
         results[9] = {url, casted};
