@@ -4,11 +4,13 @@
 #include "queue.hpp"
 #include "string.hpp"
 #include "vector.hpp"
+#include <cassert>
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <netinet/in.h>
 #include <sys/fcntl.h>
+#include <sys/signal.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -18,11 +20,11 @@ constexpr unsigned PORT = 80;
 constexpr size_t THREAD_COUNT = 20;
 
 volatile bool quit = false;
-
 fast::mutex mtx;
 fast::condition_variable cv;
 fast::queue<int> clients;
 
+// no needed
 const char *get_type(const fast::string &file) {
   if (file.ends_with(".html")) {
     return "text/html";
@@ -33,9 +35,12 @@ const char *get_type(const fast::string &file) {
   }
 }
 
+// make this more efficient by reading in file to start
 void serve_file(const int fd, const fast::string &path) {
   char buffer[1 << 10]{};
+
   const int file = open(path.c_str(), O_RDONLY);
+  assert(file > -1);
 
   if (file < 0) {
 
@@ -63,24 +68,38 @@ void serve_file(const int fd, const fast::string &path) {
   }
 }
 
+void serve_query(const int fd, const fast::string_view &query) {
+  (void)fd;
+  (void)query;
+  std::cout << query.begin() << std::endl;
+}
+
+void serve_not_found(const int fd) {
+  fast::string response = "HTTP/1.1 404 Not Found\r\n\r\nFile not found";
+  fast::send_all(fd, response.c_str(), response.size());
+}
+
 void serve_client(const int fd) {
-  char buffer[1 << 12]{}; // 4KB
+  char buffer[1 << 10]{}; // 4KB
   const auto header = recv(fd, buffer, sizeof(buffer), 0);
 
   size_t start = 0;
-  while (start < header && buffer[start++] != '/');
+  while (start < header && buffer[start++] != '/'); // maybe check for GET?
 
   size_t end = start;
   while (end < header && buffer[end] != ' ') ++end;
 
   const fast::string path(buffer + start, buffer + end);
 
-  if (path == "api") { // todo
-    // fan query
+  if (path.starts_with("api?q=")) {
+    serve_query(fd, path.view().trim_prefix(6));
+    serve_not_found(fd);
   } else if (path.size() == 0) {
     serve_file(fd, "frontend.html");
   } else if (path == "img") {
     serve_file(fd, "search_engine.png");
+  } else {
+    serve_not_found(fd);
   }
 }
 
@@ -157,7 +176,10 @@ int main() {
     const auto client = accept(accept_fd, NULL, NULL);
 
     if (client < 0) {
+
+      perror("accept");
       break;
+
     } else {
 
       mtx.lock();

@@ -296,8 +296,8 @@
       setTimeout(() => nos.remove(), 500);
     }
 
-    // ===== FAST & FURIOUS SEARCH =====
-    function performSearch() {
+    // ===== ACTUAL SEARCH FUNCTION =====
+    async function performSearch() {
       createNosEffect(); // NOS BLAST!
 
       const query = document.getElementById('searchInput').value.trim();
@@ -306,50 +306,48 @@
 
       if (!query) return;
 
-      // === FAST & FURIOUS CARS ===
-      const fastCars = [
-        { name: "1970 Dodge Charger R/T", driver: "Dominic Toretto" },
-        { name: "1995 Toyota Supra MK4", driver: "Brian O'Conner" },
-        { name: "1999 Nissan Skyline GT-R R34", driver: "Brian O'Conner" },
-        { name: "1970 Plymouth Road Runner", driver: "Dominic Toretto" },
-        { name: "2009 Nissan 370Z", driver: "Han Lue" },
-        { name: "2000 Honda S2000", driver: "Roman Pearce" },
-        { name: "2002 Mitsubishi Lancer Evo VII", driver: "Brian O'Conner" },
-        { name: "2014 Dodge Charger SRT8", driver: "Dominic Toretto" },
-        { name: "2015 Dodge Challenger SRT Hellcat", driver: "Letty Ortiz" },
-        { name: "1969 Ford Mustang Fastback", driver: "Dominic Toretto" }
-      ];
+      try {
+        const response = await fetch(`/api?q=${query}`);
+        if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+        
+        const urls = await response.json();
 
-      for (let i = 0; i < 10; i++) {
-        const car = fastCars[i];
-        const result = document.createElement('div');
-        result.className = 'result';
+        if (!Array.isArray(urls) || urls.length === 0) {
+          resultsContainer.innerHTML = `<div class="result"><div class="result-snippet">No results found.</div></div>`;
+          return;
+        }
 
-        const title = document.createElement('a');
-        title.className = 'result-title';
-        title.href = `https://fastsearch.com/${car.name.replace(/ /g, '-')}`;
-        title.target = '_blank';
-        title.textContent = `${car.name} - ${query.toUpperCase()}`;
+        urls.forEach((url, index) => {
+          const result = document.createElement('div');
+          result.className = 'result';
 
-        const url = document.createElement('div');
-        url.className = 'result-url';
-        url.textContent = `fastsearch.com/${car.driver.replace(/ /g, '-')}/${query.replace(/ /g, '-')}`;
+          const title = document.createElement('a');
+          title.className = 'result-title';
+          title.href = url;
+          title.target = '_blank';
+          title.textContent = `Result ${index + 1}`;
 
-        const snippet = document.createElement('div');
-        snippet.className = 'result-snippet';
-        snippet.textContent = 
-          `Approved by ${car.driver}. This result delivers ${Math.floor(Math.random() * 1000 + 500)}HP ` +
-          `with ${Math.floor(Math.random() * 6 + 3)}-speed transmission. ` +
-          `Family rating: ${Math.floor(Math.random() * 10 + 1)}/10. ` +
-          `"${['Live fast.', 'Ride or die.', 'No matter what.', 'For family.'][Math.floor(Math.random() * 4)]}"`;
+          const urlDiv = document.createElement('div');
+          urlDiv.className = 'result-url';
+          urlDiv.textContent = url;
 
-        result.append(title, url, snippet);
-        resultsContainer.appendChild(result);
+          const snippet = document.createElement('div');
+          snippet.className = 'result-snippet';
+          snippet.textContent = `This is a high-octane link to ${url}. Buckle up.`;
+
+          result.appendChild(title);
+          result.appendChild(urlDiv);
+          result.appendChild(snippet);
+
+          resultsContainer.appendChild(result);
+        });
+
+      } catch (err) {
+        resultsContainer.innerHTML = `<div class="result"><div class="result-snippet">Error: ${err.message}</div></div>`;
       }
-
-      // Update nitro gauge randomly
-      document.getElementById('nitroFill').style.transform = `scaleX(${Math.random()})`;
     }
   </script>
+
+
 </body>
 </html>
