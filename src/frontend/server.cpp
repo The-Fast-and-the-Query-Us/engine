@@ -1,4 +1,9 @@
+#include "condition_variable.hpp"
+#include "mutex.hpp"
+#include "queue.hpp"
+#include "scoped_lock.hpp"
 #include "vector.hpp"
+#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <netinet/in.h>
@@ -6,15 +11,43 @@
 #include <sys/socket.h>
 #include <pthread.h>
 
-static constexpr unsigned PORT = 80;
-static constexpr size_t THREAD_COUNT = 20;
+constexpr unsigned PORT = 80;
+constexpr size_t THREAD_COUNT = 20;
 
-static volatile bool kill = false;
+volatile bool quit = false;
 
-void *handle_client(void *args);
+fast::mutex mtx;
+fast::condition_variable cv;
+fast::queue<int> clients;
+
+void serve_client(const int fd) {
+  send(fd, "hello", 6, 0);
+}
+
+void *worker(void*) {
+  while (true) {
+    mtx.lock();
+
+    while (!quit && clients.empty())  cv.wait(&mtx);
+
+    if (quit)  {
+      mtx.unlock();
+      return NULL;
+    }
+
+    const auto client = clients.front();
+    clients.pop();
+    mtx.unlock();
+
+    serve_client(client);
+    close(client);
+  }
+}
+
+int accept_fd;
 
 int main() {
-  const auto accept_fd = socket(AF_INET, SOCK_STREAM, 0);
+  accept_fd = socket(AF_INET, SOCK_STREAM, 0);
 
   if (accept_fd < 0) {
     perror("socket()");
@@ -46,9 +79,17 @@ int main() {
     exit(1);
   }
 
-  // init worker threads
   fast::vector<pthread_t> thread_pool(THREAD_COUNT);
-  // TODO
+  for (auto &t : thread_pool) {
+    if (pthread_create(&t, NULL, worker, NULL) != 0) {
+      perror("Fail to create thread"); // should we exit here?
+    }
+  }
+
+  signal(SIGINT, [](const int){
+    shutdown(accept_fd, 0);
+    close(accept_fd);
+  });
 
   printf("Server listening on %d\n", PORT);
 
@@ -56,15 +97,24 @@ int main() {
     const auto client = accept(accept_fd, NULL, NULL);
 
     if (client < 0) {
+
       perror("accept");
-      close(accept_fd);
       break;
+      
     } else {
-      // send to thread
+
+      mtx.lock();
+      clients.push(client);
+      mtx.unlock();
+      cv.signal();
+
     }
   }
 
+  quit = true;
+  cv.broadcast();
+
   for (const auto &t : thread_pool) {
-    pthread_join();
+    pthread_join(t, NULL);
   }
 }
