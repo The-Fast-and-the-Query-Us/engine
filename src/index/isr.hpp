@@ -8,6 +8,7 @@ namespace fast {
 
 class isr {
   public:
+
   // jump forward one post
   virtual void next() = 0;
 

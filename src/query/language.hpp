@@ -53,7 +53,6 @@ class query_stream {
     switch (c) {
       case ' ':
       case '"':
-      case '[':
       case ']':
         return true;
       default:
@@ -75,7 +74,6 @@ class query_stream {
     return (pos < query.size() && c == query[pos]);
   }
 
-  // enforce ws?
   bool match(char c) {
     skip_ws();
     if (pos == query.size() || query[pos] != c) return false;
@@ -86,7 +84,7 @@ class query_stream {
   string_view get_word() {
     skip_ws();
     auto start = query.begin() + pos;
-    while (pos < query.size() && query[pos] != ' ') ++pos;
+    while (pos < query.size() && !word_break(query[pos])) ++pos;
     auto res = string_view(start, query.begin() + pos);
     return res;
   }
@@ -94,8 +92,7 @@ class query_stream {
 
 class contraint_parser {
  public:
-  static isr_container *parse_contraint(query_stream &query,
-                                        const hashblob *blob) {
+  static isr_container *parse_contraint(query_stream &query, const hashblob *blob) {
     auto left = parse_base_contraint(query, blob);
 
     if (!left) return nullptr;
@@ -166,85 +163,83 @@ class contraint_parser {
       auto ans = new isr_phrase;
       while (!query.match('"')) {
         auto word = query.get_word();
-        if (query.is_end()) {
+        if (query.is_end()) { // invalid query
           delete ans;
           return nullptr;
         }
-
-        auto pl = blob->get(word);
-
-        if (pl) {
-          ans->add_stream(pl->get_isr());
-        } else {
-          delete ans;
-          return new isr_null;
-        }
+        ans->add_stream(get_body_or_title(word, blob));
       }
 
-      // maybe ans->seek(0) to init but container should call that
       return ans;
 
     } else {
       auto word = query.get_word();
-      auto pl = blob->get(word);
-
-      if (pl) {
-        return pl->get_isr();
-      } else {
-        return new isr_null;
-      }
+      return get_body_or_title(word, blob);
     }
-    return nullptr;
+  }
+
+  static isr *get_body_or_title(string word, const hashblob *blob) {
+    auto ans = new isr_or; 
+    auto pl = blob->get(word);
+    if (pl) {
+      ans->add_stream(pl->get_isr());
+    } else {
+      ans->add_stream(new isr_null);
+    }
+
+    word += '#';
+    pl = blob->get(word);
+
+    if (pl) {
+      ans->add_stream(pl->get_isr());
+    } else {
+      ans->add_stream(new isr_null);
+    }
+
+    return ans;
   }
 };
 
 class rank_parser {
  public:
-  static void parse_query(query_stream &query, vector<string_view> *words,
-                          const hashblob *blob) {
-    parse_base_query(query, words, blob);
+  static void parse_query(query_stream &query, vector<string_view> *words) {
+    parse_base_query(query, words);
 
     while (1) {
       if (query.match('+')) {
-        parse_base_query(query, words, blob);
+        parse_base_query(query, words);
       } else if (query.match('-')) {
-        parse_base_query(query, nullptr, blob);
+        parse_base_query(query, nullptr);
       } else {
         return;
       }
     }
   }
 
-  static void parse_base_query(query_stream &query, vector<string_view> *words,
-                               const hashblob *blob) {
-    parse_simple_query(query, words, blob);
+  static void parse_base_query(query_stream &query, vector<string_view> *words) {
+    parse_simple_query(query, words);
 
     while (query.match('|')) {
-      parse_simple_query(query, words, blob);
+      parse_simple_query(query, words);
     }
   }
 
-  static void parse_simple_query(query_stream &query,
-                                 vector<string_view> *words,
-                                 const hashblob *blob) {
+  static void parse_simple_query(query_stream &query, vector<string_view> *words) {
     if (query.match('[')) {
-      parse_query(query, words, blob);
+      parse_query(query, words);
+      query.match(']');
     } else if (query.match('"')) {
       while (!query.match('"')) {
         if (query.is_end()) return;
         auto word = query.get_word();
         if (words) {
-          if (blob->get(word)) {
-            words->push_back(word);
-          }
+          words->push_back(word);
         };
       }
     } else {
       auto word = query.get_word();
       if (words) {
-        if (blob->get(word)) {
-          words->push_back(word);
-        }
+        words->push_back(word);
       }
     }
   }

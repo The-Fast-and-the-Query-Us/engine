@@ -1,0 +1,10 @@
+https://gamedevacademy.org/how-to-code-a-game/
+https://microstudio.dev/
+https://hackr.io/blog/how-to-code-a-game
+https://www.freecodecamp.org/news/how-to-make-a-video-game-create-your-own-game-from-scratch-tutorial/
+https://www.idtech.com/blog/how-to-code-a-game-for-beginners
+https://www.codewizardshq.com/code-a-game/
+https://dev.to/lovelacecoding/how-to-build-your-first-python-game-a-step-by-step-guide-to-creating-a-simple-shooter-with-pygame-f0k
+https://www.twilio.com/en-us/blog/how-to-code-video-games
+https://www.codeavail.com/blog/how-to-code-a-game-a-comprehensive-guide/
+https://www.askpython.com/resources/python-game-development-create-your-own-game

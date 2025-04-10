@@ -121,6 +121,14 @@ class vector {
 
   T *end() { return elts + size_; }
 
+  const T *begin() const {
+    return elts;
+  }
+
+  const T *end() const {
+    return elts + size_;
+  }
+
   void clear() {
     for (auto i = 0u; i < size_; ++i) elts[i].~T();
     size_ = 0;

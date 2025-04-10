@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common.hpp"
 #include "flat_map.hpp"
 #include "string_view.hpp"
 
@@ -211,5 +212,22 @@ class string {
     return this->view() <=> cstr;
   }
 };
+
+inline string to_string(uint64_t num) {
+  string res;
+
+  if (num == 0) return "0";
+
+  while (num) {
+    res += '0' + (num % 10);
+    num /= 10;
+  }
+
+  for (size_t i = 0; i < res.size() / 2; ++i) {
+    swap(res[i], res[res.size() - 1 - i]);
+  }
+
+  return res;
+}
 
 }  // namespace fast
