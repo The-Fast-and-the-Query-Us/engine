@@ -1,0 +1,18 @@
+[Unit]
+    Description=Crawler
+
+[Service]
+    Type=simple
+    PIDFile=/run/crawler.pid
+    ExecStart=/home/cnrose/engine/src/build/crawler/crawler
+    KillSignal=SIGINT
+    User=cnrose
+    Group=cnrose
+    WorkingDirectory=/home/cnrose/engine
+    CPUSchedulingPolicy=rr
+    CPUSchedulingPriority=99
+    IOSchedulingClass=realtime
+    Nice=-20
+
+[Install]
+    WantedBy=multi-user.target
