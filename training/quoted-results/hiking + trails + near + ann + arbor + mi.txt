@@ -1,0 +1,5 @@
+https://www.yelp.com/search?find_desc=Hiking+Trails&find_loc=Ann+Arbor%2C+MI
+https://myhikes.org/trails-near/ann-arbor-mi?q[by_nearby_radius]=100&q[by_nearby_address]=Ann+Arbor%2C+MI
+https://stepoutside.org/ann-arbor-mi/hiking/
+https://www.alltrails.com/us/michigan/ann-arbor/trail-running
+https://myhikes.org/trails-near/ann-arbor-mi?q[by_nearby_address]=Ann+Arbor%2C+MI&q[by_nearby_radius]=100
