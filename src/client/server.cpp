@@ -1,12 +1,15 @@
 #include "condition_variable.hpp"
 #include "mutex.hpp"
+#include "network.hpp"
 #include "queue.hpp"
-#include "scoped_lock.hpp"
+#include "string.hpp"
 #include "vector.hpp"
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <netinet/in.h>
+#include <sys/fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <pthread.h>
@@ -20,8 +23,54 @@ fast::mutex mtx;
 fast::condition_variable cv;
 fast::queue<int> clients;
 
+const char *get_type(const fast::string &file) {
+  if (file.ends_with(".html")) {
+    return "text/html";
+  } else if (file.ends_with(".png")) {
+    return "image/png";
+  } else {
+    return ""; // TODO
+  }
+}
+
 void serve_client(const int fd) {
-  send(fd, "hello", 6, 0);
+  char buffer[1 << 10]{};
+  const auto header = recv(fd, buffer, sizeof(buffer), 0);
+
+  size_t start = 0;
+  while (start < header && buffer[start++] != '/');
+
+  size_t end = start;
+  while (end < header && buffer[end] != ' ') ++end;
+
+  const fast::string path(buffer + start, buffer + end);
+
+  const int file = open(path.c_str(), O_RDONLY);
+
+  if (file < 0) {
+
+    fast::string response = "HTTP/1.1 404 Not Found\r\n\r\nFile not found";
+    fast::send_all(fd, response.c_str(), response.size());
+
+  } else {
+
+    struct stat sb;
+    fstat(file, &sb);
+
+    fast::string response = "HTTP/1.1 200 OK\r\n";
+    response = response + "Content-Type: " + get_type(path) + "\r\n";
+    response = response + "Content-Length: " + fast::to_string(sb.st_size) + "\r\n";
+    response += "\r\n";
+
+    fast::send_all(fd, response.c_str(), response.size());
+    
+    int red;
+    while ((red = read(file, buffer, sizeof(buffer))) && red > 0) {
+      fast::send_all(fd, buffer, red);
+    }
+
+    close(file);
+  }
 }
 
 void *worker(void*) {
@@ -97,10 +146,7 @@ int main() {
     const auto client = accept(accept_fd, NULL, NULL);
 
     if (client < 0) {
-
-      perror("accept");
       break;
-      
     } else {
 
       mtx.lock();
