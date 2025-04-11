@@ -296,18 +296,23 @@ class frontier {
   static fast::string extract_hostname(fast::string& url) {
     fast::string hostname;
     size_t start_pos = 0;
-    if (url.size() >= 7 && url.substr(0, 7) == "http://") {
+    if (url.starts_with("http://")) {
       start_pos = 7;
-    }
-    else if (url.size() >= 8 && url.substr(0, 8) == "https://") {
+    } else if (url.starts_with("https://")) {
       start_pos = 8;
     }
+
     for (size_t i = start_pos; i < url.size(); ++i) {
       if (url[i] == '/' || url[i] == '#') {
         break;
       }
       hostname += url[i];
     }
+
+    if (hostname.starts_with("www.")) {
+      hostname = hostname.substr(4, hostname.size() - 4);
+    }
+
     return hostname;
   }
 
