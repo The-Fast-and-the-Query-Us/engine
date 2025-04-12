@@ -25,17 +25,15 @@ fast::queue<int> clients;
 fast::mutex mtx;
 fast::condition_variable cv;
 
-fast::string replace_spaces(fast::string &query) {
-  fast::string result;
-  result.reserve(query.size());
+void replace_spaces(fast::string &query, fast::string &new_query) {
+  new_query.reserve(query.size());
   for (size_t i = 0; i < query.size(); ++i) {
     if (query[i] == ' ') {
-      result += " + ";
+      new_query += " + ";
     } else {
-      result += query[i];
+      new_query += query[i];
     }
   }
-  return result;
 }
 
 void *worker(void *) {
@@ -56,7 +54,8 @@ void *worker(void *) {
       fast::string query;
       if (!fast::recv_all(client, query)) break;
 
-      replace_spaces(query);
+      fast::string translated_query;
+      replace_spaces(query, translated_query);
 
       fast::array<fast::query::Result, fast::query::MAX_RESULTS> results;
       std::function<void(const fast::query::Result &)> call_back =
@@ -74,7 +73,7 @@ void *worker(void *) {
             }
           };
 
-      fast::query::rank_all(query, call_back);
+      fast::query::rank_all(translated_query, call_back);
 
       uint32_t count = 0;
       for (const auto &r : results) {
