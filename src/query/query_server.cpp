@@ -1,3 +1,13 @@
+#include <netinet/in.h>
+#include <pthread.h>
+#include <signal.h>
+#include <sys/fcntl.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+#include <cstring>
+#include <functional>
+
 #include "array.hpp"
 #include "condition_variable.hpp"
 #include "constants.hpp"
@@ -6,14 +16,6 @@
 #include "queue.hpp"
 #include "ranker.hpp"
 #include "string.hpp"
-#include <cstring>
-#include <functional>
-#include <netinet/in.h>
-#include <pthread.h>
-#include <sys/fcntl.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#include <signal.h>
 
 constexpr unsigned PORT = 8081;
 constexpr size_t THREAD_COUNT = 20;
@@ -23,7 +25,20 @@ fast::queue<int> clients;
 fast::mutex mtx;
 fast::condition_variable cv;
 
-void *worker(void*) {
+fast::string replace_spaces(fast::string &query) {
+  fast::string result;
+  result.reserve(query.size());
+  for (size_t i = 0; i < query.size(); ++i) {
+    if (query[i] == ' ') {
+      result += " + ";
+    } else {
+      result += query[i];
+    }
+  }
+  return result;
+}
+
+void *worker(void *) {
   while (true) {
     mtx.lock();
     while (!die && clients.empty()) cv.wait(&mtx);
@@ -41,20 +56,23 @@ void *worker(void*) {
       fast::string query;
       if (!fast::recv_all(client, query)) break;
 
-      fast::array<fast::query::Result, fast::query::MAX_RESULTS> results;
-      std::function<void(const fast::query::Result&)> call_back = [&results](const auto &r) {
-        if (results[fast::query::MAX_RESULTS - 1].first < r.first) {
-          results[fast::query::MAX_RESULTS - 1] = r;
+      replace_spaces(query);
 
-          for (size_t i = fast::query::MAX_RESULTS - 1; i > 0; --i) {
-            if (results[i].first > results[i - 1].first) {
-              swap(results[i], results[i - 1]);
-            } else {
-              break;
+      fast::array<fast::query::Result, fast::query::MAX_RESULTS> results;
+      std::function<void(const fast::query::Result &)> call_back =
+          [&results](const auto &r) {
+            if (results[fast::query::MAX_RESULTS - 1].first < r.first) {
+              results[fast::query::MAX_RESULTS - 1] = r;
+
+              for (size_t i = fast::query::MAX_RESULTS - 1; i > 0; --i) {
+                if (results[i].first > results[i - 1].first) {
+                  swap(results[i], results[i - 1]);
+                } else {
+                  break;
+                }
+              }
             }
-          }
-        }
-      };
+          };
 
       fast::query::rank_all(query, call_back);
 
@@ -70,7 +88,8 @@ void *worker(void*) {
         uint32_t buf;
         memcpy(&buf, &rank, sizeof(buf));
 
-        std::cout << "Sending " << r.second.c_str() << " with rank: " << r.first << std::endl;
+        std::cout << "Sending " << r.second.c_str() << " with rank: " << r.first
+                  << std::endl;
 
         fast::send_all(client, buf);
         fast::send_all(client, r.second);
@@ -98,7 +117,7 @@ int main() {
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = INADDR_ANY;
 
-  if (bind(accept_fd, (sockaddr*) &addr, sizeof(addr)) < 0) {
+  if (bind(accept_fd, (sockaddr *)&addr, sizeof(addr)) < 0) {
     perror("Bind");
     close(accept_fd);
     exit(1);
@@ -126,17 +145,14 @@ int main() {
     const auto client = accept(accept_fd, NULL, NULL);
 
     if (client < 0) {
-
       perror("accept");
       break;
 
     } else {
-
       mtx.lock();
       clients.push(client);
       mtx.unlock();
       cv.signal();
-
     }
   }
 
