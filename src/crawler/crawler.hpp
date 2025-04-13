@@ -22,7 +22,7 @@
 #include "url_sender.hpp"
 #include "vector.hpp"
 
-static constexpr int THREAD_COUNT = 1;
+static constexpr int THREAD_COUNT = 20;
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 12'500'000;
@@ -56,7 +56,7 @@ class crawler {
       }
 
       fclose(fd);
-      link_sender.flush(0); // wont reach threshold for first sender
+      link_sender.flush(0);  // wont reach threshold for first sender
 
       std::cout << "Loaded seedlist" << std::endl;
 
@@ -315,7 +315,7 @@ class crawler {
 
       ssl_mtx.lock();
       SSL_CTX* ctx_cpy = g_ssl_ctx;
-      ssl_mtx.unlock(); // maybe get rid of this
+      ssl_mtx.unlock();  // maybe get rid of this
 
       if (!ctx_cpy)
         continue;
@@ -370,7 +370,7 @@ class crawler {
 
       for (auto& link : parser.links) {
 
-        if (link.URL.size() == 0) 
+        if (link.URL.size() == 0)
           continue;
 
         if (link.URL[0] == '/' || link.URL[0] == '#' ||
