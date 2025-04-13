@@ -65,7 +65,7 @@ class query_stream {
   }
 
  public:
-  query_stream(const string &query) : query(query), pos(0) {};
+  query_stream(const string &query) : query(query), pos(0){};
 
   bool is_end() const { return pos == query.size(); }
 
@@ -92,7 +92,8 @@ class query_stream {
 
 class contraint_parser {
  public:
-  static isr_container *parse_contraint(query_stream &query, const hashblob *blob) {
+  static isr_container *parse_contraint(query_stream &query,
+                                        const hashblob *blob) {
     auto left = parse_base_contraint(query, blob);
 
     if (!left) return nullptr;
@@ -163,7 +164,7 @@ class contraint_parser {
       auto ans = new isr_phrase;
       while (!query.match('"')) {
         auto word = query.get_word();
-        if (query.is_end()) { // invalid query
+        if (query.is_end()) {  // invalid query
           delete ans;
           return nullptr;
         }
@@ -179,7 +180,7 @@ class contraint_parser {
   }
 
   static isr *get_body_or_title(string word, const hashblob *blob) {
-    auto ans = new isr_or; 
+    auto ans = new isr_or;
     auto pl = blob->get(word);
     if (pl) {
       ans->add_stream(pl->get_isr());
@@ -216,7 +217,8 @@ class rank_parser {
     }
   }
 
-  static void parse_base_query(query_stream &query, vector<string_view> *words) {
+  static void parse_base_query(query_stream &query,
+                               vector<string_view> *words) {
     parse_simple_query(query, words);
 
     while (query.match('|')) {
@@ -224,7 +226,8 @@ class rank_parser {
     }
   }
 
-  static void parse_simple_query(query_stream &query, vector<string_view> *words) {
+  static void parse_simple_query(query_stream &query,
+                                 vector<string_view> *words) {
     if (query.match('[')) {
       parse_query(query, words);
       query.match(']');

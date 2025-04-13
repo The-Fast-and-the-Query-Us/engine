@@ -25,17 +25,6 @@ fast::queue<int> clients;
 fast::mutex mtx;
 fast::condition_variable cv;
 
-void replace_spaces(fast::string &query, fast::string &new_query) {
-  new_query.reserve(query.size());
-  for (size_t i = 0; i < query.size(); ++i) {
-    if (query[i] == ' ') {
-      new_query += " + ";
-    } else {
-      new_query += query[i];
-    }
-  }
-}
-
 void *worker(void *) {
   while (true) {
     mtx.lock();
@@ -54,9 +43,6 @@ void *worker(void *) {
       fast::string query;
       if (!fast::recv_all(client, query)) break;
 
-      fast::string translated_query;
-      replace_spaces(query, translated_query);
-
       fast::array<fast::query::Result, fast::query::MAX_RESULTS> results;
       std::function<void(const fast::query::Result &)> call_back =
           [&results](const auto &r) {
@@ -73,7 +59,7 @@ void *worker(void *) {
             }
           };
 
-      fast::query::rank_all(translated_query, call_back);
+      fast::query::rank_all(query, call_back);
 
       uint32_t count = 0;
       for (const auto &r : results) {
@@ -110,7 +96,7 @@ int main() {
     exit(1);
   }
 
-  struct sockaddr_in addr{};
+  struct sockaddr_in addr {};
 
   addr.sin_port = htons(PORT);
   addr.sin_family = AF_INET;
