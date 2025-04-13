@@ -1,3 +1,18 @@
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <pthread.h>
+#include <sys/fcntl.h>
+#include <sys/signal.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include <cassert>
+#include <csignal>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
 #include "array.hpp"
 #include "condition_variable.hpp"
 #include "mutex.hpp"
@@ -6,19 +21,6 @@
 #include "queue.hpp"
 #include "string.hpp"
 #include "vector.hpp"
-#include <arpa/inet.h>
-#include <cassert>
-#include <csignal>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <netinet/in.h>
-#include <sys/fcntl.h>
-#include <sys/signal.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <pthread.h>
 
 constexpr unsigned PORT = 80;
 constexpr unsigned QUERY_PORT = 8081;
@@ -41,7 +43,7 @@ const char *get_type(const fast::string &file) {
   } else if (file.ends_with(".png")) {
     return "image/png";
   } else {
-    return ""; // TODO
+    return "";  // TODO
   }
 }
 
@@ -53,22 +55,21 @@ void serve_file(const int fd, const fast::string &path) {
   assert(file > -1);
 
   if (file < 0) {
-
     fast::string response = "HTTP/1.1 404 Not Found\r\n\r\nFile not found";
     fast::send_all(fd, response.c_str(), response.size());
 
   } else {
-
     struct stat sb;
     fstat(file, &sb);
 
     fast::string response = "HTTP/1.1 200 OK\r\n";
     response = response + "Content-Type: " + get_type(path) + "\r\n";
-    response = response + "Content-Length: " + fast::to_string(sb.st_size) + "\r\n";
+    response =
+        response + "Content-Length: " + fast::to_string(sb.st_size) + "\r\n";
     response += "\r\n";
 
     fast::send_all(fd, response.c_str(), response.size());
-    
+
     int red;
     while ((red = read(file, buffer, sizeof(buffer))) && red > 0) {
       fast::send_all(fd, buffer, red);
@@ -78,7 +79,8 @@ void serve_file(const int fd, const fast::string &path) {
   }
 }
 
-void serve_query(const int fd, const fast::string_view &query, const fast::vector<int> servers) {
+void serve_query(const int fd, const fast::string_view &query,
+                 const fast::vector<int> servers) {
   fast::string translated;
   translated.reserve(query.size());
 
@@ -119,7 +121,6 @@ void serve_query(const int fd, const fast::string_view &query, const fast::vecto
       fast::recv_all(s, rank);
       fast::recv_all(s, url);
 
-
       float casted;
       memcpy(&casted, &rank, sizeof(casted));
 
@@ -148,10 +149,12 @@ void serve_query(const int fd, const fast::string_view &query, const fast::vecto
   }
   arr += "]";
 
-  fast::string response = "HTTP/1.1 200 OK\r\n"
-                           "Content-Type: application/json\r\n";
+  fast::string response =
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: application/json\r\n";
 
-  response = response + "Content-Length: " + fast::to_string(arr.size()) + "\r\n\r\n";
+  response =
+      response + "Content-Length: " + fast::to_string(arr.size()) + "\r\n\r\n";
 
   fast::send_all(fd, response.c_str(), response.size());
   fast::send_all(fd, arr.c_str(), arr.size());
@@ -163,11 +166,11 @@ void serve_not_found(const int fd) {
 }
 
 void serve_client(const int fd, const fast::vector<int> &servers) {
-  char buffer[1 << 10]{}; // 4KB
+  char buffer[1 << 10]{};  // 4KB
   const auto header = recv(fd, buffer, sizeof(buffer), 0);
 
   size_t start = 0;
-  while (start < header && buffer[start++] != '/'); // maybe check for GET?
+  while (start < header && buffer[start++] != '/');  // maybe check for GET?
 
   size_t end = start;
   while (end < header && buffer[end] != ' ') ++end;
@@ -185,7 +188,7 @@ void serve_client(const int fd, const fast::vector<int> &servers) {
   }
 }
 
-void *worker(void*) {
+void *worker(void *) {
   fast::vector<int> servers;
 
   for (const auto &ip : ips) {
@@ -196,7 +199,7 @@ void *worker(void*) {
       exit(1);
     }
 
-    struct sockaddr_in addr{};
+    struct sockaddr_in addr {};
     addr.sin_port = htons(QUERY_PORT);
     addr.sin_family = AF_INET;
 
@@ -206,7 +209,7 @@ void *worker(void*) {
       exit(1);
     }
 
-    if (connect(sock, (sockaddr*) &addr, sizeof(addr)) < 0) {
+    if (connect(sock, (sockaddr *)&addr, sizeof(addr)) < 0) {
       perror("Server unreachable");
       close(sock);
       continue;
@@ -218,9 +221,9 @@ void *worker(void*) {
   while (true) {
     mtx.lock();
 
-    while (!quit && clients.empty())  cv.wait(&mtx);
+    while (!quit && clients.empty()) cv.wait(&mtx);
 
-    if (quit)  {
+    if (quit) {
       mtx.unlock();
 
       for (const auto s : servers) {
@@ -241,7 +244,6 @@ void *worker(void*) {
 
 int accept_fd;
 
-
 int main() {
   const auto ip_file = fopen("ips.txt", "r");
 
@@ -250,12 +252,11 @@ int main() {
     exit(1);
   }
 
-  char buffer[40]{}; // should be long enough for any ip addr
+  char buffer[40]{};  // should be long enough for any ip addr
   while (fgets(buffer, sizeof(buffer), ip_file) != NULL) {
     buffer[strcspn(buffer, "\r\n")] = 0;
 
-    if (buffer[0]) 
-      ips.emplace_back(buffer);
+    if (buffer[0]) ips.emplace_back(buffer);
   }
 
   fclose(ip_file);
@@ -274,13 +275,13 @@ int main() {
     exit(1);
   }
 
-  struct sockaddr_in addr{};
+  struct sockaddr_in addr {};
 
   addr.sin_port = htons(PORT);
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = INADDR_ANY;
 
-  if (bind(accept_fd, (const sockaddr *) &addr, sizeof(addr)) < 0) {
+  if (bind(accept_fd, (const sockaddr *)&addr, sizeof(addr)) < 0) {
     perror("bind()");
     close(accept_fd);
     exit(1);
@@ -295,11 +296,11 @@ int main() {
   fast::vector<pthread_t> thread_pool(THREAD_COUNT);
   for (auto &t : thread_pool) {
     if (pthread_create(&t, NULL, worker, NULL) != 0) {
-      perror("Fail to create thread"); // should we exit here?
+      perror("Fail to create thread");  // should we exit here?
     }
   }
 
-  signal(SIGINT, [](const int){
+  signal(SIGINT, [](const int) {
     shutdown(accept_fd, 0);
     close(accept_fd);
   });
@@ -310,17 +311,14 @@ int main() {
     const auto client = accept(accept_fd, NULL, NULL);
 
     if (client < 0) {
-
       perror("accept");
       break;
 
     } else {
-
       mtx.lock();
       clients.push(client);
       mtx.unlock();
       cv.signal();
-
     }
   }
 

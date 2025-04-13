@@ -107,6 +107,8 @@ class contraint_parser {
         exclude = false;
       } else if (query.match('-')) {
         exclude = true;
+      } else if (!query.is_end()) {
+        exclude = false;
       } else {
         ans->seek(0);  // init
         return ans;
