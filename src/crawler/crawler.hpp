@@ -22,7 +22,7 @@
 #include "url_sender.hpp"
 #include "vector.hpp"
 
-static constexpr int THREAD_COUNT = 20;
+static constexpr int THREAD_COUNT = 100;
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 12'500'000;
