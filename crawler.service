@@ -9,9 +9,6 @@
     User=<USERNAME>
     Group=<USERNAME>
     WorkingDirectory=/home/<USERNAME>/engine
-    CPUSchedulingPolicy=rr
-    CPUSchedulingPriority=99
-    IOSchedulingClass=realtime
     Nice=-20
 
 [Install]
