@@ -1,3 +1,5 @@
+#!/bin/bash
+
 ./reset_index.sh
 cd src/build
 make crawler
