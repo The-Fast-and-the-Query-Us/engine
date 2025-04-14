@@ -9,7 +9,7 @@ using namespace fast::crawler;
 std::counting_semaphore<10> cs(0);
 
 void test(const fast::string &url) {
-  assert(url == "james lu");
+  assert(url == "https://james lu");
   cs.release();
 }
 
@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
   fast::vector<Link> fl;
 
   for (auto i = 0; i < 10; ++i) {
-    fl.emplace_back("james lu");
+    fl.emplace_back(fast::string("https://james lu"));
   }
 
   sender.add_links(fl);
@@ -30,4 +30,6 @@ int main(int argc, char **argv) {
   for (auto i = 0; i < 10; ++i) {
     cs.acquire();
   }
+
+  std::cout << "Pass" << std::endl;
 }
