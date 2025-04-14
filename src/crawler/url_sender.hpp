@@ -17,6 +17,7 @@
 namespace fast::crawler {
 
 
+template<size_t MAX_BUFFER = 100>
 class url_sender {
   int connect_fd;
   vector<string> ips;
@@ -32,7 +33,6 @@ class url_sender {
   const std::function<void(string&)> callback;
 
   static constexpr unsigned PORT = 8090;
-  static constexpr size_t   MAX_BUFFER = 100;
 
   /*
    * Call this->callback whenever a string is recieved
