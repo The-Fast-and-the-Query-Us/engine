@@ -659,7 +659,7 @@ static double rank_isrs(const vector<isr*> words, Offset start, Offset end,
   return score;
 }
 
-void insertion_sort(
+bool insertion_sort(
     fast::array<fast::query::Result, fast::query::MAX_RESULTS>& results,
     fast::query::Result r) {
   if (results[fast::query::MAX_RESULTS - 1].first < r.first) {
@@ -672,7 +672,9 @@ void insertion_sort(
         break;
       }
     }
+    return true;
   }
+  return false;
 };
 
 static void rank(
@@ -812,7 +814,7 @@ void* rank_worker(void* args) {
 
 void rank_all(
     const fast::string& query,
-    fast::array<fast::query::Result, fast::query::MAX_RESULTS> call_back) {
+    fast::array<fast::query::Result, fast::query::MAX_RESULTS> results) {
   auto qs = query_stream(query);
   vector<string_view> flattened;
   rank_parser::parse_query(qs, &flattened);
@@ -845,6 +847,14 @@ void rank_all(
   }
 
   // merge all args
+
+  for (size_t i = 0; i < THREAD_COUNT; ++i) {
+    for (size_t j = 0; j < fast::query::MAX_RESULTS; ++j) {
+      if (!insertion_sort(results, args[i]->results[j])) {
+        break;
+      }
+    }
+  }
 
   for (auto& t : thread_pool) {
     pthread_join(t, nullptr);
