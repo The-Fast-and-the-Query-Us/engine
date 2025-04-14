@@ -24,9 +24,7 @@ class crawler;
 static constexpr size_t MAX_LINKS = 500'000;
 
 // TODO:
-//  - Add blacklist?
-//  - How do we manage data and communication across all our latpops?
-//  - redirects
+// - Make next probabilistic to go around our possibly incorrect heuristics
 class frontier {
  public:
   frontier(const char* _save_path, const char* seed_list = nullptr)
@@ -54,11 +52,9 @@ class frontier {
       return;
 
     if (priorities[pri_level].size() < MAX_LINKS) {
-
       priorities[pri_level].push(url);
       ++num_links;
       cv.signal();
-
     }
   }
 

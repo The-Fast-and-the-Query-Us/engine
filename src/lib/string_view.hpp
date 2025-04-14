@@ -56,6 +56,16 @@ class string_view {
     return nullptr;  // no match found
   }
 
+  bool starts_with(const string_view &sv) const {
+    if (sv.size() > size()) return false;
+
+    for (size_t i = 0; i < sv.size(); ++i) {
+      if (start[i] != sv[i]) return false;
+    }
+
+    return true;
+  }
+
   string_view sub_view(size_t start, size_t length) {
     // this should get compiled out in release mode
     assert(start + length <= this->size() && 

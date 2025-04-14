@@ -385,8 +385,10 @@ class crawler {
 
       bank_mtx.unlock();
 
+      uint8_t domain_links = 0;
+      uint32_t all_links = 0;
       for (auto& link : parser.links) {
-        if (link.URL.size() == 0 || link.URL[0] == '#') {
+        if (all_links++ >= 20 || link.URL.size() == 0 || link.URL[0] == '#' || is_blacklisted(link.URL)) {
           link.URL = "";
           continue;
         }
@@ -407,12 +409,14 @@ class crawler {
           link.URL = new_link;
         }
 
-        if (is_blacklisted(link.URL)) {
-          link.URL = "";
+        if (domain_links < 3) {
+          bool same_domain = fast::crawler::frontier::extract_hostname(link.URL) == url_parts.host;
+          if (same_domain) {
+            ++domain_links;
+          } else {
+            link.URL = "";
+          }
         }
-
-        // We add all links regardless of domain
-        // link_sender.send_link(link.URL);
       }
 
       link_sender.add_links(parser.links);
@@ -426,7 +430,7 @@ class crawler {
 
   // call back function for recving urls to crawl
   void add_url(string& url) {
-    fast::string stripped = strip_url_protocol(url);
+    fast::string stripped = fast::english::strip_url_prefix(url);
     if (visited_urls.try_insert(stripped)) {
       crawl_frontier.insert(url);
     }
@@ -499,21 +503,6 @@ class crawler {
     }
 
     return false;
-  }
-
-  static fast::string strip_url_protocol(fast::string& url) {
-    fast::string stripped{};
-    if (url.starts_with("http://")) {
-      stripped = url.substr(7, url.size() - 7);
-    } else if (url.starts_with("https://")) {
-      stripped = url.substr(8, url.size() - 8);
-    }
-
-    if (stripped.starts_with("www.")) {
-      stripped = stripped.substr(4, stripped.size() - 4);
-    }
-
-    return stripped.size() ? stripped : url;
   }
 
   static bool is_alphabet(char c) { return isalnum(c); }
