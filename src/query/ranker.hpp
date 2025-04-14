@@ -659,9 +659,26 @@ static double rank_isrs(const vector<isr*> words, Offset start, Offset end,
   return score;
 }
 
-static void rank(const hashblob* blob, const vector<string_view>& flat,
-                 isr_container* matches,
-                 std::function<void(const Result&)> call_back) {
+void insertion_sort(
+    fast::array<fast::query::Result, fast::query::MAX_RESULTS>& results,
+    fast::query::Result r) {
+  if (results[fast::query::MAX_RESULTS - 1].first < r.first) {
+    results[fast::query::MAX_RESULTS - 1] = r;
+
+    for (size_t i = fast::query::MAX_RESULTS - 1; i > 0; --i) {
+      if (results[i].first > results[i - 1].first) {
+        swap(results[i], results[i - 1]);
+      } else {
+        break;
+      }
+    }
+  }
+};
+
+static void rank(
+    const hashblob* blob, const vector<string_view>& flat,
+    isr_container* matches,
+    fast::array<fast::query::Result, fast::query::MAX_RESULTS>& results) {
   if (flat.size() == 0) return;
 
   vector<isr*> body;
@@ -699,7 +716,7 @@ static void rank(const hashblob* blob, const vector<string_view>& flat,
     auto score = body_score + title_score * Params::FACTORS[Params::Title] +
                  url_rank(url, flat, rare_idx);
 
-    call_back({score, url});
+    insertion_sort(results, {score, url});
 
     matches->next();
   }
@@ -717,7 +734,6 @@ static void rank(const hashblob* blob, const vector<string_view>& flat,
 
 static constexpr int THREAD_COUNT = 100;
 pthread_t thread_pool[THREAD_COUNT]{};
-fast::queue<fast::tuple<Offset, Offset, string_view>> doc_queue;
 bool shutdown = false;
 fast::mutex mtx;
 fast::condition_variable cv;
@@ -728,17 +744,15 @@ struct worker_args {
   fast::string& base;
   const fast::string& query;
   const vector<string_view>& flattened;
-  std::function<void(const Result&)> call_back;
+  fast::array<fast::query::Result, fast::query::MAX_RESULTS> results;
 
-  worker_args(size_t id, uint64_t count, fast::string& b, const fast::string& q,
-              const vector<string_view>& f,
-              std::function<void(const Result&)> cb)
-      : thread_id(id),
-        chunk_count(count),
-        base(b),
-        query(q),
-        flattened(f),
-        call_back(cb) {}
+  worker_args(size_t thread_id, uint64_t chunk_count, fast::string& base,
+              const fast::string& query, const vector<string_view>& flattened)
+      : thread_id(thread_id),
+        chunk_count(chunk_count),
+        base(base),
+        query(query),
+        flattened(flattened) {}
 };
 
 void* rank_worker(void* args) {
@@ -783,7 +797,7 @@ void* rank_worker(void* args) {
     auto constraints = contraint_parser::parse_contraint(qs, blob);
 
     if (constraints) {
-      rank(blob, wargs->flattened, constraints, wargs->call_back);
+      rank(blob, wargs->flattened, constraints, wargs->results);
     }
 
     delete constraints;
@@ -796,8 +810,9 @@ void* rank_worker(void* args) {
   return nullptr;
 }
 
-void rank_all(const fast::string& query,
-              std::function<void(const Result&)> call_back) {
+void rank_all(
+    const fast::string& query,
+    fast::array<fast::query::Result, fast::query::MAX_RESULTS> call_back) {
   auto qs = query_stream(query);
   vector<string_view> flattened;
   rank_parser::parse_query(qs, &flattened);
@@ -819,13 +834,17 @@ void rank_all(const fast::string& query,
   string base = getenv("HOME");
   base += "/.local/share/crawler/index/";
 
+  worker_args* args[THREAD_COUNT];
+
   for (size_t i = 0; i < THREAD_COUNT; ++i) {
-    worker_args args(i, chunk_count, base, query, flattened, call_back);
+    args[i] = new worker_args(i, chunk_count, base, query, flattened);
 
     if (pthread_create(&thread_pool[i], nullptr, rank_worker, &args)) {
       throw std::runtime_error("worker_thread creation failed\n");
     }
   }
+
+  // merge all args
 
   for (auto& t : thread_pool) {
     pthread_join(t, nullptr);
