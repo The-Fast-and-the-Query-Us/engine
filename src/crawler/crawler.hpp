@@ -388,10 +388,12 @@ class crawler {
       uint8_t domain_links = 0;
       uint32_t all_links = 0;
       for (auto& link : parser.links) {
-        if (all_links++ >= 20 || link.URL.size() == 0 || link.URL[0] == '#' || is_blacklisted(link.URL)) {
+        if (all_links >= 20 || link.URL.size() == 0 || link.URL[0] == '#' || is_blacklisted(link.URL)) {
           link.URL = "";
           continue;
         }
+
+        ++all_links;
 
         if (link.URL[0] == '/') {
           fast::string new_link{};
