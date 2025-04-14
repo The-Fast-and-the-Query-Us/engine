@@ -1,6 +1,7 @@
 #pragma once
 
 #include "condition_variable.hpp"
+#include "frontier.hpp"
 #include "html_parser.hpp"
 #include <cstdio>
 #include <cstdlib>
@@ -204,17 +205,8 @@ public:
 
     for (const auto &link : links) {
       if (link.URL.size() == 0) continue;
-
-      size_t ptr = 0;
-      while (ptr < link.URL.size() && link.URL[ptr] != '/') ++ptr;
-
-      if (ptr < link.URL.size() - 3) {
-        ptr += 2;
-
-        const auto hv = hash(link.URL.view().trim_prefix(ptr));
-
-        send_buffers[hv % send_buffers.size()].push_back(link.URL);
-      }
+      
+      // get hash
     }
 
     for (const auto &b : send_buffers) {

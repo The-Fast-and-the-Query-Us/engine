@@ -153,7 +153,7 @@ class string {
     start_[len_] = 0;
   }
 
-  string substr(size_t i, size_t len) { return string{start_ + i, len}; }
+  string substr(size_t i, size_t len) const { return string{start_ + i, len}; }
 
   bool starts_with(const string_view &sv) const {
     if (sv.size() > len_) return false;
