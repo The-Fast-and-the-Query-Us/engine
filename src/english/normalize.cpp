@@ -17,6 +17,7 @@ void fast::english::normalize_text(fast::string &word) {
       case '#':
       case '\'':
       case '\"':
+      case ';':
         word.pop_back();
         continue;
     }
@@ -35,6 +36,7 @@ void fast::english::normalize_text(fast::string &word) {
       case '#':
       case '\'':
       case '\"':
+      case ';':
         ++ptr;
         continue;
     }
