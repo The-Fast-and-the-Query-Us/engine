@@ -61,6 +61,8 @@ class crawler {
         // link_sender.push_back(Link(buffer));
       }
 
+      link_sender.add_links(links);
+
       fclose(fd);
       // link_sender.flush(0);  // wont reach threshold for first sender
 
