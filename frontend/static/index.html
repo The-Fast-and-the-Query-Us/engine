@@ -19,7 +19,7 @@
     body {
       margin: 0;
       font-family: 'Racing Sans One', sans-serif;
-      background: 
+      background:
         url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23000"/><path d="M0 0 L100 100 M100 0 L0 100" stroke="%23111" stroke-width="1"/></svg>'),
         linear-gradient(135deg, #000, #111);
       color: var(--chrome);
@@ -30,9 +30,9 @@
     /* ===== RACING STRIPES ===== */
     .racing-stripe {
       height: 4px;
-      background: linear-gradient(90deg, 
-        transparent 0%, 
-        var(--engine-red) 20%, 
+      background: linear-gradient(90deg,
+        transparent 0%,
+        var(--engine-red) 20%,
         var(--dodge-orange) 30%,
         var(--neon-blue) 50%,
         var(--dodge-orange) 70%,
@@ -291,7 +291,7 @@
         performSearch();
       }
     });
-  
+
     function createNosEffect() {
       const nos = document.createElement('div');
       nos.className = 'nos-effect';
@@ -312,7 +312,7 @@
       try {
         const response = await fetch(`/api?q=${query}`);
         if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
-        
+
         const urls = await response.json();
 
         if (!Array.isArray(urls) || urls.length === 0) {

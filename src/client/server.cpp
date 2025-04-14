@@ -19,8 +19,9 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <pthread.h>
+#include "crawler.hpp"
 
-constexpr unsigned PORT = 80;
+constexpr unsigned PORT = 8082;
 constexpr unsigned QUERY_PORT = 8081;
 
 constexpr size_t THREAD_COUNT = 20;
@@ -65,6 +66,7 @@ void serve_file(const int fd, const fast::string &path) {
     fast::string response = "HTTP/1.1 200 OK\r\n";
     response = response + "Content-Type: " + get_type(path) + "\r\n";
     response = response + "Content-Length: " + fast::to_string(sb.st_size) + "\r\n";
+    response = response + "Access-Control-Allow-Origin: *\r\n";
     response += "\r\n";
 
     fast::send_all(fd, response.c_str(), response.size());
@@ -177,9 +179,15 @@ void serve_client(const int fd, const fast::vector<int> &servers) {
   if (path.starts_with("api?q=")) {
     serve_query(fd, path.view().trim_prefix(6), servers);
   } else if (path.size() == 0) {
-    serve_file(fd, "frontend.html");
+    serve_file(fd, "index.html");
   } else if (path == "img") {
     serve_file(fd, "search_engine.png");
+  } else if (path == "logs") {
+    serve_file(fd, fast::crawler::crawler::get_log_path());
+  } else if (path == "visibility") {
+    serve_file(fd, "visibility.html");
+  } else if (path == "index.js") {
+    serve_file(fd, "index.js");
   } else {
     serve_not_found(fd);
   }

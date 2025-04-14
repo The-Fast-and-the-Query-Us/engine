@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <sys/fcntl.h>
 #include <sys/mman.h>
+#include <time.h>
 #include <unistd.h>
 #include <cctype>
 #include <csignal>
@@ -20,7 +21,8 @@
 #include "html_parser.hpp"
 #include "url_parser.hpp"
 #include "url_sender.hpp"
-#include "vector.hpp"
+
+namespace fast::crawler {
 
 static constexpr int THREAD_COUNT = 200;
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
@@ -28,7 +30,6 @@ static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 12'500'000;
 static const char* IP_PATH = "./ips.txt";
 
-namespace fast::crawler {
 class crawler {
  public:
   crawler()
@@ -40,10 +41,11 @@ class crawler {
                                              get_bloomfilter_path().begin())),
         crawl_frontier(get_frontier_path().begin(), nullptr),
         word_bank(new fast::hashtable),
+        log_fd(open(get_log_path().begin(), O_RDWR | O_CREAT | O_APPEND, 0777)),
         link_sender(IP_PATH,
                     std::bind(&crawler::add_url, this, std::placeholders::_1)) {
-
     const auto seed_path = get_seedlist_path();
+    assert(log_fd >= 0);
 
     const auto fd = fopen(seed_path.c_str(), "r");
     if (fd != NULL) {
@@ -130,6 +132,12 @@ class crawler {
     crawl_frontier.cv.broadcast();
   }
 
+  static fast::string get_log_path() {
+    fast::string path = getenv("HOME");
+    path += "/.local/share/crawler/docs.log";
+    return path;
+  }
+
  private:
   volatile sig_atomic_t shutdown_flag = 0;
   fast::crawler::bloom_filter<fast::string> visited_urls;
@@ -138,6 +146,7 @@ class crawler {
   fast::mutex bank_mtx;
   fast::mutex ssl_mtx;
   fast::mutex sender_mutex;
+  int log_fd;
   SSL_CTX* g_ssl_ctx{};
   uint64_t doc_count{
       0};  // TODO: search dir for next chunk count to continue crawling
@@ -255,7 +264,7 @@ class crawler {
       int fd = open(chunk_count_path.begin(), O_RDWR | O_CREAT | O_TRUNC, 0777);
       assert(fd != 0);
       uint64_t chunk_count{0};
-      std::cout << "createing chunk_count file, setting to " << chunk_count
+      std::cout << "creating chunk_count file, setting to " << chunk_count
                 << '\n';
       assert(write(fd, &chunk_count, sizeof(uint64_t)) == sizeof(uint64_t));
     }
@@ -353,7 +362,17 @@ class crawler {
         }
       }
 
-      ++doc_count;
+      if (++doc_count % 4095 == 0) {
+        struct timespec current_time;
+        long current_time_ms;
+
+        clock_gettime(CLOCK_REALTIME, &current_time);
+
+        current_time_ms =
+            (current_time.tv_sec * 1000) + (current_time.tv_nsec / 1000000);
+        assert(dprintf(log_fd, "%lu\n",
+                       static_cast<unsigned long>(current_time_ms)) >= 0);
+      };
       word_bank->add_doc(url);
 
       if (word_bank->tokens() > BLOB_THRESHOLD) {
@@ -368,7 +387,7 @@ class crawler {
 
       for (auto& link : parser.links) {
 
-        if (link.URL.size() == 0 || link.URL[0] == '#') 
+        if (link.URL.size() == 0 || link.URL[0] == '#')
           continue;
 
         if (link.URL[0] == '/') {
@@ -379,7 +398,7 @@ class crawler {
           new_link += link.URL;
           link.URL = new_link;
         } else if (!(link.URL.starts_with("http://") ||
-                    link.URL.starts_with("https://"))) {
+                     link.URL.starts_with("https://"))) {
           fast::string new_link = url_parts.complete_url;
           while (new_link.back() != '/')
             new_link.pop_back();
@@ -481,7 +500,7 @@ class crawler {
     return false;
   }
 
-  static fast::string strip_url_protocol(fast::string &url) {
+  static fast::string strip_url_protocol(fast::string& url) {
     fast::string stripped{};
     if (url.starts_with("http://")) {
       stripped = url.substr(7, url.size() - 7);
