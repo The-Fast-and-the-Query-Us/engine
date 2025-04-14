@@ -56,7 +56,7 @@ class crawler {
       }
 
       fclose(fd);
-      link_sender.flush(0); // wont reach threshold for first sender
+      link_sender.flush(0);  // wont reach threshold for first sender
 
       std::cout << "Loaded seedlist" << std::endl;
 
@@ -315,7 +315,7 @@ class crawler {
 
       ssl_mtx.lock();
       SSL_CTX* ctx_cpy = g_ssl_ctx;
-      ssl_mtx.unlock(); // maybe get rid of this
+      ssl_mtx.unlock();  // maybe get rid of this
 
       if (!ctx_cpy)
         continue;

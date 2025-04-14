@@ -112,6 +112,13 @@ public:
     send_buffers.resize(ips.size());
 
     pthread_create(&accept_thread, NULL, handle_connections, (void*) this);
+#if defined(__linux__)
+    cpu_set_t cpuset;
+    // pin accept thread to CPU 0
+    CPU_ZERO(&cpuset);
+    CPU_SET(0, &cpuset);
+    pthread_setaffinity_np(accept_thread, sizeof(cpu_set_t), &cpuset);
+#endif
   }
 
   /*
