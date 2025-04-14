@@ -45,6 +45,19 @@ class bloom_filter {
     }
   }
 
+  bool try_insert(const T& val) {
+    auto [h1, h2] = hash(val);
+    fast::scoped_lock lock_guard(&m);
+    for (size_t i = 0; i < num_hash; ++i) {
+      if (!bit_set[double_hash(h1, h2, i)])
+        return false;
+    }
+    for (size_t i = 0; i < num_hash; ++i) {
+      bit_set[double_hash(h1, h2, i)] = 1;
+    }
+    return true;
+  }
+
   bool contains(const T& val) {
     auto [h1, h2] = hash(val);
     fast::scoped_lock lock_guard(&m);

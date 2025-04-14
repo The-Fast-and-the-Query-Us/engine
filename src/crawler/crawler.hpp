@@ -425,8 +425,7 @@ class crawler {
   // call back function for recving urls to crawl
   void add_url(string& url) {
     fast::string stripped = strip_url_protocol(url);
-    if (!visited_urls.contains(stripped)) {
-      visited_urls.insert(stripped);
+    if (visited_urls.try_insert(stripped)) {
       crawl_frontier.insert(url);
     }
   }
