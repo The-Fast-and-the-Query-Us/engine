@@ -2,6 +2,7 @@
 
 #include "condition_variable.hpp"
 #include "frontier.hpp"
+#include "hash.hpp"
 #include "html_parser.hpp"
 #include <cstdio>
 #include <cstdlib>
@@ -14,6 +15,7 @@
 #include <pthread.h>
 #include <network.hpp>
 #include <mutex.hpp>
+#include <english.hpp>
 
 namespace fast::crawler {
 
@@ -206,7 +208,10 @@ public:
     for (const auto &link : links) {
       if (link.URL.size() == 0) continue;
       
-      // get hash
+      const auto trimmed = english::strip_url_prefix(link.URL);
+      const auto hv = hash(trimmed);
+
+      send_buffers[hv % send_buffers.size()].push_back(link.URL);
     }
 
     for (const auto &b : send_buffers) {
