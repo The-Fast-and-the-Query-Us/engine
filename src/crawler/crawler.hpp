@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <sys/fcntl.h>
 #include <sys/mman.h>
+#include <time.h>
 #include <unistd.h>
 #include <cctype>
 #include <csignal>
@@ -40,10 +41,21 @@ class crawler {
                                              get_bloomfilter_path().begin())),
         crawl_frontier(get_frontier_path().begin(), nullptr),
         word_bank(new fast::hashtable),
+        log_fd(open(get_log_path().begin(), O_RDWR | O_CREAT | O_TRUNC, 0777)),
+        last_time(time(nullptr)),
         link_sender(IP_PATH,
                     std::bind(&crawler::add_url, this, std::placeholders::_1)) {
 
+    struct timespec current_time;
+
+    clock_gettime(CLOCK_REALTIME, &current_time);
+
+    last_time = (current_time.tv_sec * 1000) + (current_time.tv_nsec / 1000000);
+
+    dprintf(log_fd, "%u\n", static_cast<unsigned>(last_time));
+
     const auto seed_path = get_seedlist_path();
+    assert(log_fd >= 0);
 
     const auto fd = fopen(seed_path.c_str(), "r");
     if (fd != NULL) {
@@ -138,6 +150,8 @@ class crawler {
   fast::mutex bank_mtx;
   fast::mutex ssl_mtx;
   fast::mutex sender_mutex;
+  int log_fd;
+  time_t last_time;
   SSL_CTX* g_ssl_ctx{};
   uint64_t doc_count{
       0};  // TODO: search dir for next chunk count to continue crawling
@@ -187,6 +201,12 @@ class crawler {
   static fast::string get_bloomfilter_path() {
     fast::string path = getenv("HOME");
     path += "/.local/share/crawler/bloom_filter.bin";
+    return path;
+  }
+
+  static fast::string get_log_path() {
+    fast::string path = getenv("HOME");
+    path += "/.local/share/crawler/docs.log";
     return path;
   }
 
@@ -255,7 +275,7 @@ class crawler {
       int fd = open(chunk_count_path.begin(), O_RDWR | O_CREAT | O_TRUNC, 0777);
       assert(fd != 0);
       uint64_t chunk_count{0};
-      std::cout << "createing chunk_count file, setting to " << chunk_count
+      std::cout << "creating chunk_count file, setting to " << chunk_count
                 << '\n';
       assert(write(fd, &chunk_count, sizeof(uint64_t)) == sizeof(uint64_t));
     }
@@ -353,7 +373,19 @@ class crawler {
         }
       }
 
-      ++doc_count;
+      if (++doc_count % 4095 == 0) {
+        struct timespec current_time;
+        int64_t current_time_ms;
+
+        clock_gettime(CLOCK_REALTIME, &current_time);
+
+        current_time_ms =
+            (current_time.tv_sec * 1000) + (current_time.tv_nsec / 1000000);
+        assert(dprintf(log_fd, "%u\n",
+                       static_cast<unsigned>(current_time_ms - last_time)) >=
+               0);
+        last_time = current_time_ms;
+      };
       word_bank->add_doc(url);
 
       if (word_bank->tokens() > BLOB_THRESHOLD) {
