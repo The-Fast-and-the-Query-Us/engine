@@ -66,6 +66,7 @@ void serve_file(const int fd, const fast::string &path) {
     fast::string response = "HTTP/1.1 200 OK\r\n";
     response = response + "Content-Type: " + get_type(path) + "\r\n";
     response = response + "Content-Length: " + fast::to_string(sb.st_size) + "\r\n";
+    response = response + "Access-Control-Allow-Origin: *\r\n";
     response += "\r\n";
 
     fast::send_all(fd, response.c_str(), response.size());

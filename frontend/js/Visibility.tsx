@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Chart } from "react-google-charts";
 
-const ips = ["34.162.206.198"];
+const ips = [
+  "34.162.206.198",
+  "34.135.72.123",
+];
 
 const options = {
   title: "Crawler performance",
