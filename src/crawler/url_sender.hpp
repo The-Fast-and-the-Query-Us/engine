@@ -1,5 +1,7 @@
 #pragma once
 
+#include "condition_variable.hpp"
+#include "url_parser.hpp"
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
@@ -10,6 +12,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <network.hpp>
+#include <mutex.hpp>
 
 namespace fast::crawler {
 
@@ -18,7 +21,13 @@ class url_sender {
   int connect_fd;
   vector<string> ips;
   vector<vector<string>> send_buffers;
+
   pthread_t accept_thread;
+  pthread_t send_thread;
+
+  fast::condition_variable cv;
+  fast::mutex mtx;
+  volatile bool die = false;
 
   const std::function<void(string&)> callback;
 
@@ -52,6 +61,73 @@ class url_sender {
       
       close(client);
     }
+  }
+
+  static void *handle_send(void *sender) {
+    const auto me = (url_sender*) sender;
+    me->mtx.lock();
+
+    while (1) {
+      while (!me->die && me->get_snd_idx() == -1) me->cv.wait(&me->mtx);
+      if (me->die) {
+        me->mtx.unlock();
+        return NULL;
+      }
+
+      const auto peer_idx = me->get_snd_idx();
+      me->mtx.unlock();
+      const auto &peer = me->ips[peer_idx];
+      
+      const auto peer_fd = socket(AF_INET, SOCK_STREAM, 0);
+      if (peer_fd < 0) {
+        perror("send_link::socket()");
+        exit(1); // maybe dont exit?
+      }
+
+      struct sockaddr_in addr{};
+      addr.sin_family = AF_INET;
+      addr.sin_port = htons(PORT);
+
+      if (inet_pton(AF_INET, peer.c_str(), &addr.sin_addr) <= 0) {
+        perror("send_link::inet_pton");
+        close(peer_fd);
+        exit(1);
+      }
+
+      if (connect(peer_fd, (sockaddr *) &addr, sizeof(addr)) < 0) {
+        perror("send_link::connect");
+        close(peer_fd);
+        me->mtx.lock();
+        continue;
+      }
+
+      me->mtx.lock();
+
+      uint32_t count = me->send_buffers[peer_idx].size();
+      if (send_all(peer_fd, count)) {
+        for (const auto &link : me->send_buffers[peer_idx]) {
+          if (!send_all(peer_fd, link)) {
+            perror("URL_SENDER:: Fail to send link");
+            break;
+          }
+        }
+      } else {
+        perror("URL_SENDER:: Fail to send count");
+      }
+
+      me->send_buffers[peer_idx].clear();
+      close(peer_fd);
+    }
+  }
+
+  // get first idx to send to
+  ssize_t get_snd_idx() const {
+    for (size_t i = 0; i < send_buffers.size(); ++i) {
+      if (send_buffers[i].size() > MAX_BUFFER) {
+        return i;
+      }
+    }
+    return -1;
   }
 
 public:
@@ -119,68 +195,46 @@ public:
     CPU_SET(0, &cpuset);
     pthread_setaffinity_np(accept_thread, sizeof(cpu_set_t), &cpuset);
 #endif
+
+    pthread_create(&send_thread, NULL, handle_send, (void*) this);
   }
 
-  /*
-   * Send all links in buffer to peer, not thread safe
-   */
-  void flush(size_t peer_idx) {
-    const auto &peer = ips[peer_idx];
-    
-    const auto peer_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (peer_fd < 0) {
-      perror("send_link::socket()");
-      exit(1); // maybe dont exit?
-    }
+  void add_links(const fast::vector<fast::string> &links) {
+    mtx.lock();
 
-    struct sockaddr_in addr{};
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(PORT);
+    for (const auto &link : links) {
+      if (link.size() == 0) continue;
 
-    if (inet_pton(AF_INET, peer.c_str(), &addr.sin_addr) <= 0) {
-      perror("send_link::inet_pton");
-      close(peer_fd);
-      exit(1);
-    }
+      size_t ptr = 0;
+      while (ptr < link.size() && link[ptr] != '/') ++ptr;
 
-    if (connect(peer_fd, (sockaddr *) &addr, sizeof(addr)) < 0) {
-      perror("send_link::connect");
-      close(peer_fd);
-      return;
-    }
+      if (ptr < link.size() - 3) {
+        ptr += 2;
 
-    uint32_t count = send_buffers[peer_idx].size();
-    if (send_all(peer_fd, count)) {
-      for (const auto &link : send_buffers[peer_idx]) {
-        if (!send_all(peer_fd, link)) {
-          perror("URL_SENDER:: Fail to send link");
-          break;
-        }
+        const auto hv = hash(link.view().trim_prefix(ptr));
+
+        send_buffers[hv % send_buffers.size()].push_back(link);
       }
-    } else {
-      perror("URL_SENDER:: Fail to send count");
     }
 
-    send_buffers[peer_idx].clear();
-    close(peer_fd);
-  }
-
-  /*
-  * Hash url and send to the appropiate peer
-  * Must be protected with lock
-  */
-  void send_link(const string &url) {
-    const auto peer_idx = hash(url) % ips.size();
-    send_buffers[peer_idx].push_back(url);
-    if (send_buffers[peer_idx].size() >= MAX_BUFFER) {
-      flush(peer_idx);
+    for (const auto &b : send_buffers) {
+      if (b.size() > MAX_BUFFER) {
+        cv.signal();
+        break;
+      }
     }
+
+    mtx.unlock();
   }
 
   ~url_sender() {
     shutdown(connect_fd, SHUT_RDWR);
     close(connect_fd);
     pthread_join(accept_thread, NULL);
+
+    die = true;
+    cv.signal();
+    pthread_join(send_thread, NULL);
   }
 }; // url_sender
 
