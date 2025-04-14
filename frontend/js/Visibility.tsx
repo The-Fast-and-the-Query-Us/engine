@@ -3,12 +3,11 @@ import { Chart } from "react-google-charts";
 
 const ips = [
   "34.162.206.198",
-  "34.135.72.123",
 ];
 
 const options = {
   title: "Crawler performance",
-  curveType: "function",
+  curveType: "line",
   legend: { position: "bottom" },
   hAxis: {
     title: "Date",
@@ -22,39 +21,75 @@ const options = {
 
 type DataPoint = [Date, number, number];
 
+type SpeedStats = {
+  current: number;
+  avg: number;
+};
+
 const Visilibity = () => {
   const [chartData, setChartData] = useState<DataPoint[]>();
   const [selectedIP, setSelectedIP] = useState("ALL");
+  const [allStats, setAllStats] = useState<{
+    overall: SpeedStats;
+    perIP: Record<string, SpeedStats>;
+  } | null>(null);
 
   useEffect(() => {
     const fetchLogs = (ip: string) =>
       fetch(`http://${ip}:8082/logs`)
-        .then((res) => res.ok ? res.text() : Promise.reject(`Failed to fetch from ${ip}`))
+        .then((res) =>
+          res.ok ? res.text() : Promise.reject(`Failed to fetch from ${ip}`)
+        )
         .then((text) =>
-          text.trim().split("\n").map((line) => parseInt(line)).filter((t) => !isNaN(t))
+          text
+            .trim()
+            .split("\n")
+            .map((line) => parseInt(line))
+            .filter((t) => !isNaN(t))
         );
 
     const loadData = async () => {
       try {
         let allTimestamps: number[] = [];
+        let perIPStats: Record<string, SpeedStats> = {};
 
         if (selectedIP === "ALL") {
           const results = await Promise.allSettled(ips.map(fetchLogs));
-          results.forEach((res) => {
-            if (res.status === "fulfilled") {
-              allTimestamps.push(...res.value);
+
+          for (let i = 0; i < results.length; i++) {
+            const ip = ips[i];
+            const result = results[i];
+
+            if (result.status === "fulfilled") {
+              const timestamps = result.value.sort((a, b) => a - b);
+              if (timestamps.length >= 2) {
+                const rawRates: number[] = [];
+                for (let j = 1; j < timestamps.length; j++) {
+                  const delta = timestamps[j] - timestamps[j - 1];
+                  const rate = (4095 / delta) * 1000;
+                  rawRates.push(rate);
+                }
+                const current = rawRates[rawRates.length - 1];
+                const avg =
+                  rawRates.reduce((sum, r) => sum + r, 0) / rawRates.length;
+                perIPStats[ip] = { current, avg };
+                allTimestamps.push(...timestamps);
+              }
             } else {
-              console.warn(res.reason);
+              console.warn(result.reason);
             }
-          });
+          }
         } else {
           const timestamps = await fetchLogs(selectedIP);
           allTimestamps = timestamps;
         }
 
         allTimestamps.sort((a, b) => a - b);
-
-        if (allTimestamps.length < 2) return;
+        if (allTimestamps.length < 2) {
+          setChartData(undefined);
+          setAllStats(null);
+          return;
+        }
 
         const rawRates: number[] = [];
         const times: Date[] = [];
@@ -66,7 +101,9 @@ const Visilibity = () => {
           times.push(new Date(allTimestamps[i]));
         }
 
-        const data: (string | Date | number)[][] = [["Date", "Rate", "Rolling Avg"]];
+        const data: (string | Date | number)[][] = [
+          ["Date", "Rate", "Rolling Avg"],
+        ];
 
         for (let i = 0; i < rawRates.length; i++) {
           const windowStart = Math.max(0, i - 19);
@@ -76,8 +113,18 @@ const Visilibity = () => {
         }
 
         setChartData(data as DataPoint[]);
+
+        if (selectedIP === "ALL") {
+          const current = rawRates[rawRates.length - 1];
+          const avg = rawRates.reduce((sum, r) => sum + r, 0) / rawRates.length;
+          setAllStats({ overall: { current, avg }, perIP: perIPStats });
+        } else {
+          setAllStats(null);
+        }
       } catch (error) {
         console.error("Data loading error:", error);
+        setChartData(undefined);
+        setAllStats(null);
       }
     };
 
@@ -109,12 +156,20 @@ const Visilibity = () => {
             data={chartData}
             options={options}
           />
-          <p>
-            Last speed: {chartData.length > 1
-              ? chartData[chartData.length - 1][1].toFixed(2)
-              : "N/A"}
-            {" "}docs/second
-          </p>
+
+          {selectedIP === "ALL" && allStats && (
+            <div>
+              <hr />
+              <p>
+                <strong>Overall current speed:</strong>{" "}
+                {allStats.overall.current.toFixed(2)} docs/second
+              </p>
+              <p>
+                <strong>Overall average speed:</strong>{" "}
+                {(chartData.length - 1) * 4096 / (chartData[chartData.length - 1][0] - chartData[1][0]) * 1000} docs/second
+              </p>
+            </div>
+          )}
         </>
       ) : (
         <p>Loading...</p>
