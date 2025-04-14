@@ -1,7 +1,7 @@
 #pragma once
 
 #include "condition_variable.hpp"
-#include "url_parser.hpp"
+#include "html_parser.hpp"
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
@@ -199,21 +199,21 @@ public:
     pthread_create(&send_thread, NULL, handle_send, (void*) this);
   }
 
-  void add_links(const fast::vector<fast::string> &links) {
+  void add_links(const fast::vector<Link> &links) {
     mtx.lock();
 
     for (const auto &link : links) {
-      if (link.size() == 0) continue;
+      if (link.URL.size() == 0) continue;
 
       size_t ptr = 0;
-      while (ptr < link.size() && link[ptr] != '/') ++ptr;
+      while (ptr < link.URL.size() && link.URL[ptr] != '/') ++ptr;
 
-      if (ptr < link.size() - 3) {
+      if (ptr < link.URL.size() - 3) {
         ptr += 2;
 
-        const auto hv = hash(link.view().trim_prefix(ptr));
+        const auto hv = hash(link.URL.view().trim_prefix(ptr));
 
-        send_buffers[hv % send_buffers.size()].push_back(link);
+        send_buffers[hv % send_buffers.size()].push_back(link.URL);
       }
     }
 

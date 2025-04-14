@@ -21,6 +21,7 @@
 #include "html_parser.hpp"
 #include "url_parser.hpp"
 #include "url_sender.hpp"
+#include "vector.hpp"
 
 namespace fast::crawler {
 
@@ -28,7 +29,7 @@ static constexpr int THREAD_COUNT = 200;
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 12'500'000;
-static const char* IP_PATH = "./ips.txt";
+static constexpr const char* IP_PATH = "./ips.txt";
 
 class crawler {
  public:
@@ -51,14 +52,17 @@ class crawler {
     if (fd != NULL) {
       std::cout << "Loading seedlist" << std::endl;
       char buffer[2000];
+      fast::vector<Link> links;
 
       while (fgets(buffer, 2000, fd) != NULL) {
         buffer[strcspn(buffer, "\n\r")] = 0;  // remove \r and \n
-        link_sender.send_link(buffer);
+        auto url = fast::string(buffer);
+        links.push_back(Link{url});
+        // link_sender.push_back(Link(buffer));
       }
 
       fclose(fd);
-      link_sender.flush(0);  // wont reach threshold for first sender
+      // link_sender.flush(0);  // wont reach threshold for first sender
 
       std::cout << "Loaded seedlist" << std::endl;
 
@@ -144,8 +148,6 @@ class crawler {
   fast::crawler::frontier crawl_frontier;
   fast::hashtable* word_bank;
   fast::mutex bank_mtx;
-  fast::mutex ssl_mtx;
-  fast::mutex sender_mutex;
   int log_fd;
   SSL_CTX* g_ssl_ctx{};
   uint64_t doc_count{
@@ -322,9 +324,7 @@ class crawler {
       }
       // std::cout << "OG: " << url.begin() << '\n';
 
-      ssl_mtx.lock();
       SSL_CTX* ctx_cpy = g_ssl_ctx;
-      ssl_mtx.unlock();  // maybe get rid of this
 
       if (!ctx_cpy)
         continue;
@@ -383,12 +383,11 @@ class crawler {
 
       bank_mtx.unlock();
 
-      sender_mutex.lock();
-
       for (auto& link : parser.links) {
-
-        if (link.URL.size() == 0 || link.URL[0] == '#')
+        if (link.URL.size() == 0 || link.URL[0] == '#') {
+          link.URL = "";
           continue;
+        }
 
         if (link.URL[0] == '/') {
           fast::string new_link{};
@@ -406,14 +405,15 @@ class crawler {
           link.URL = new_link;
         }
 
-        if (is_blacklisted(link.URL))
-          continue;
+        if (is_blacklisted(link.URL)) {
+          link.URL = "";
+        }
 
         // We add all links regardless of domain
-        link_sender.send_link(link.URL);
+        // link_sender.send_link(link.URL);
       }
 
-      sender_mutex.unlock();
+      link_sender.add_links(parser.links);
 
       crawl_frontier.notify_crawled(url);
     }
