@@ -183,6 +183,10 @@ void serve_client(const int fd, const fast::vector<int> &servers) {
     serve_file(fd, "search_engine.png");
   } else if (path == "logs") {
     serve_file(fd, fast::crawler::crawler::get_log_path());
+  } else if (path == "visibility") {
+    serve_file(fd, "visibility.html");
+  } else if (path == "index.js") {
+    serve_file(fd, "index.js");
   } else {
     serve_not_found(fd);
   }
