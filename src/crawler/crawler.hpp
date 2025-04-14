@@ -243,7 +243,7 @@ class crawler {
       int fd = open(chunk_count_path.begin(), O_RDWR | O_CREAT | O_TRUNC, 0777);
       assert(fd != 0);
       uint64_t chunk_count{0};
-      std::cout << "createing chunk_count file, setting to " << chunk_count
+      std::cout << "creating chunk_count file, setting to " << chunk_count
                 << '\n';
       assert(write(fd, &chunk_count, sizeof(uint64_t)) == sizeof(uint64_t));
       path += "0";
@@ -294,9 +294,7 @@ class crawler {
       fast::string url = "";
       int attempts = 0;
       while (url == "" && attempts < 3 && !shutdown_flag) {
-        std::cout << "trying to get next url...\n";
         url = crawl_frontier.next(&shutdown_flag);
-        std::cout << "crawl_frontier.next returned\n";
         if (url == "") {
           usleep(100'000);
           ++attempts;

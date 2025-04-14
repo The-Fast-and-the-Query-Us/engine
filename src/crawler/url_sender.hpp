@@ -49,7 +49,6 @@ class url_sender {
 
         while (count--) {
           if (recv_all(client, buffer)) {
-            std::cout << "Receieved link: " << buffer.c_str() << '\n';
             me->callback(buffer);
           } else {
             perror("url_sender::handle_conn : Fail to recv link");
@@ -202,11 +201,9 @@ public:
 
   void add_links(const fast::vector<Link> &links) {
     mtx.lock();
-    std::cout << "Adding links...\n";
 
     for (const auto &link : links) {
       if (link.URL.size() == 0) continue;
-      std::cout << link.URL.c_str() << '\n';
 
       size_t ptr = 0;
       while (ptr < link.URL.size() && link.URL[ptr] != '/') ++ptr;
