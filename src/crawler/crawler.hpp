@@ -294,7 +294,9 @@ class crawler {
       fast::string url = "";
       int attempts = 0;
       while (url == "" && attempts < 3 && !shutdown_flag) {
+        std::cout << "trying to get next url...\n";
         url = crawl_frontier.next(&shutdown_flag);
+        std::cout << "crawl_frontier.next returned\n";
         if (url == "") {
           usleep(100'000);
           ++attempts;
