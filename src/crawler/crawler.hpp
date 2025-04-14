@@ -25,7 +25,7 @@
 
 namespace fast::crawler {
 
-static constexpr int THREAD_COUNT = 500;
+static constexpr int THREAD_COUNT = 200;
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 12'500'000;
@@ -388,7 +388,8 @@ class crawler {
       uint8_t domain_links = 0;
       uint32_t all_links = 0;
       for (auto& link : parser.links) {
-        if (all_links >= 20 || link.URL.size() == 0 || link.URL[0] == '#' || is_blacklisted(link.URL)) {
+        if (all_links >= 20 || link.URL.size() == 0 || link.URL[0] == '#' ||
+            is_blacklisted(link.URL)) {
           link.URL = "";
           continue;
         }
@@ -412,7 +413,8 @@ class crawler {
         }
 
         if (domain_links < 3) {
-          bool same_domain = fast::crawler::frontier::extract_hostname(link.URL) == url_parts.host;
+          bool same_domain = fast::crawler::frontier::extract_hostname(
+                                 link.URL) == url_parts.host;
           if (same_domain) {
             ++domain_links;
           } else {
