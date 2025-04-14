@@ -25,7 +25,7 @@
 
 namespace fast::crawler {
 
-static constexpr int THREAD_COUNT = 1;
+static constexpr int THREAD_COUNT = 200;
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 12'500'000;
@@ -426,7 +426,6 @@ class crawler {
 
   // call back function for recving urls to crawl
   void add_url(string& url) {
-    std::cout << "add_url(" << url.c_str() << ")\n";
     fast::string stripped = strip_url_protocol(url);
     if (visited_urls.try_insert(stripped)) {
       crawl_frontier.insert(url);
