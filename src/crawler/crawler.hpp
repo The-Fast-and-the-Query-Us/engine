@@ -430,6 +430,7 @@ class crawler {
   void add_url(string& url) {
     fast::string stripped = strip_url_protocol(url);
     if (visited_urls.try_insert(stripped)) {
+      std::cout << "Inserting " << url.c_str() << '\n';
       crawl_frontier.insert(url);
     }
   }
