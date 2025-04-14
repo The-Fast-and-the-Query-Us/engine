@@ -428,9 +428,9 @@ class crawler {
 
   // call back function for recving urls to crawl
   void add_url(string& url) {
+    std::cout << "add_url(" << url.c_str() << ")\n";
     fast::string stripped = strip_url_protocol(url);
     if (visited_urls.try_insert(stripped)) {
-      std::cout << "Inserting " << url.c_str() << '\n';
       crawl_frontier.insert(url);
     }
   }
