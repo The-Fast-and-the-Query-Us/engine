@@ -19,8 +19,9 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <pthread.h>
+#include "crawler.hpp"
 
-constexpr unsigned PORT = 80;
+constexpr unsigned PORT = 8082;
 constexpr unsigned QUERY_PORT = 8081;
 
 constexpr size_t THREAD_COUNT = 20;
@@ -180,6 +181,8 @@ void serve_client(const int fd, const fast::vector<int> &servers) {
     serve_file(fd, "frontend.html");
   } else if (path == "img") {
     serve_file(fd, "search_engine.png");
+  } else if (path == "logs") {
+    serve_file(fd, fast::crawler::crawler::get_log_path());
   } else {
     serve_not_found(fd);
   }

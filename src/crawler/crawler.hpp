@@ -21,7 +21,8 @@
 #include "html_parser.hpp"
 #include "url_parser.hpp"
 #include "url_sender.hpp"
-#include "vector.hpp"
+
+namespace fast::crawler {
 
 static constexpr int THREAD_COUNT = 200;
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
@@ -29,7 +30,6 @@ static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 12'500'000;
 static const char* IP_PATH = "./ips.txt";
 
-namespace fast::crawler {
 class crawler {
  public:
   crawler()
@@ -142,6 +142,12 @@ class crawler {
     crawl_frontier.cv.broadcast();
   }
 
+  static fast::string get_log_path() {
+    fast::string path = getenv("HOME");
+    path += "/.local/share/crawler/docs.log";
+    return path;
+  }
+
  private:
   volatile sig_atomic_t shutdown_flag = 0;
   fast::crawler::bloom_filter<fast::string> visited_urls;
@@ -201,12 +207,6 @@ class crawler {
   static fast::string get_bloomfilter_path() {
     fast::string path = getenv("HOME");
     path += "/.local/share/crawler/bloom_filter.bin";
-    return path;
-  }
-
-  static fast::string get_log_path() {
-    fast::string path = getenv("HOME");
-    path += "/.local/share/crawler/docs.log";
     return path;
   }
 
@@ -400,7 +400,7 @@ class crawler {
 
       for (auto& link : parser.links) {
 
-        if (link.URL.size() == 0 || link.URL[0] == '#') 
+        if (link.URL.size() == 0 || link.URL[0] == '#')
           continue;
 
         if (link.URL[0] == '/') {
@@ -411,7 +411,7 @@ class crawler {
           new_link += link.URL;
           link.URL = new_link;
         } else if (!(link.URL.starts_with("http://") ||
-                    link.URL.starts_with("https://"))) {
+                     link.URL.starts_with("https://"))) {
           fast::string new_link = url_parts.complete_url;
           while (new_link.back() != '/')
             new_link.pop_back();
@@ -513,7 +513,7 @@ class crawler {
     return false;
   }
 
-  static fast::string strip_url_protocol(fast::string &url) {
+  static fast::string strip_url_protocol(fast::string& url) {
     fast::string stripped{};
     if (url.starts_with("http://")) {
       stripped = url.substr(7, url.size() - 7);
