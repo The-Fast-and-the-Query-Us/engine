@@ -192,7 +192,7 @@ class crawler {
       "dmm",         "kakao",     "line",         "mixi",     "nicovideo",
       "pixiv",       "qzone",     "renren",       "wechat",   "weixin"};
 
-  url_sender link_sender;
+  url_sender<100> link_sender;
 
   // static constexpr const char* BLOOM_FILE_PATH = getenv("HOME");
   // static constexpr const char* FRONTIER_PATH = "frontier_dump.dat";
