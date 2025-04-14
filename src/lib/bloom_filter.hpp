@@ -49,7 +49,7 @@ class bloom_filter {
     auto [h1, h2] = hash(val);
     fast::scoped_lock lock_guard(&m);
     for (size_t i = 0; i < num_hash; ++i) {
-      if (!bit_set[double_hash(h1, h2, i)])
+      if (bit_set[double_hash(h1, h2, i)])
         return false;
     }
     for (size_t i = 0; i < num_hash; ++i) {
