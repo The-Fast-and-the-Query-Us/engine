@@ -4,12 +4,12 @@ Description=Visibility Server
 [Service]
 Type=simple
 PIDFile=/run/visibility.pid
-ExecStart=/home/cnrose/engine/src/build/client/visibility_server
+ExecStart=/home/<USERNAME>/engine/src/build/client/visibility_server
 KillSignal=SIGINT
 User=root
 Group=root
-WorkingDirectory=/home/cnrose/engine/frontend/build
-Environment=HOME=/home/cnrose
+WorkingDirectory=/home/<USERNAME>/engine/frontend/build
+Environment=HOME=/home/<USERNAME>
 # CPUSchedulingPolicy=rr
 # CPUSchedulingPriority=99
 # ? IOSchedulingClass=realtime
