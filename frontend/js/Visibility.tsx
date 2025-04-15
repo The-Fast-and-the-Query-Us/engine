@@ -44,7 +44,7 @@ const Visilibity = () => {
 
   useEffect(() => {
     const fetchLogs = (ip: string) =>
-      fetch(`http://${ip}/logs`)
+      fetch(`http://${ip}:8082/logs`)
         .then((res) =>
           res.ok ? res.text() : Promise.reject(`Failed to fetch from ${ip}`),
         )
