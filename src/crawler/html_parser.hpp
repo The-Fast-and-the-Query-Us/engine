@@ -247,14 +247,14 @@ public:
                 buffer = name_end;
                 while (buffer < end && *buffer != '>') {
                   int i;  // href="
-                  for (i = 0; i < 6; ++i) {
+                  for (i = 0; i < 6 && buffer + i < end; ++i) {
                     if (buffer[i] != "href=\""[i])
                       break;
                   }
 
                   if (i == 6) {
                     auto ep = buffer + 6;
-                    while (*ep != '\"')
+                    while (ep < end && *ep != '\"')
                       ++ep;
                     base = fast::string(buffer + 6, ep);
                     buffer = ep;
