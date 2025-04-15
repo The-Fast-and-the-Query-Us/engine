@@ -389,7 +389,7 @@ class crawler {
       uint32_t all_links = 0;
       for (auto& link : parser.links) {
         if (all_links >= 20 || link.URL.size() == 0 || link.URL[0] == '#' ||
-            is_blacklisted(link.URL)) {
+            is_blacklisted(link.URL) || link.URL.size() > 400) {
           link.URL = "";
           continue;
         }
