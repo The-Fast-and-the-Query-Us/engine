@@ -196,15 +196,23 @@ public:
       exit(1);
     }
 
+    sched_param param{};
+    param.sched_priority = 1;
+
     pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+    pthread_attr_setschedparam(&attr, &param);
+
     pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
 
     if (pthread_create(&accept_thread, &attr, handle_connections, (void*) this) != 0) {
-	perror("FAIL TO CREATE");
-	exit(1);
+      perror("FAIL TO CREATE");
+      exit(1);
     }
 
-    pthread_create(&send_thread, &attr, handle_send, (void*) this);
+    if (pthread_create(&send_thread, &attr, handle_send, (void*) this) != 0) {
+      perror("FAIL TO CREATE");
+      exit(1);
+    }
   }
 
   void add_links(const fast::vector<Link> &links) {
