@@ -190,16 +190,17 @@ public:
 
     send_buffers.resize(ips.size());
 
-    pthread_create(&accept_thread, NULL, handle_connections, (void*) this);
-#if defined(__linux__)
-    cpu_set_t cpuset;
-    // pin accept thread to CPU 0
-    CPU_ZERO(&cpuset);
-    CPU_SET(0, &cpuset);
-    pthread_setaffinity_np(accept_thread, sizeof(cpu_set_t), &cpuset);
-#endif
+    pthread_attr_t attr;
+    if (pthread_attr_init(&attr) == -1) {
+      std::cout << "attr init" << std::endl;
+      exit(1);
+    }
 
-    pthread_create(&send_thread, NULL, handle_send, (void*) this);
+    pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+    pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+
+    pthread_create(&accept_thread, &attr, handle_connections, (void*) this);
+    pthread_create(&send_thread, &attr, handle_send, (void*) this);
   }
 
   void add_links(const fast::vector<Link> &links) {
