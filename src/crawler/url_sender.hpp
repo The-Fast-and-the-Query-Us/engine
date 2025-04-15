@@ -101,6 +101,7 @@ class url_sender {
         perror("send_link::connect");
         close(peer_fd);
         me->mtx.lock();
+        me->send_buffers[peer_idx].clear();
         continue;
       }
 
