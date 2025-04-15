@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { Chart } from "react-google-charts";
 
 const ips = [
-  "34.48.157.78",
   "34.162.206.198",
   // "34.48.157.78",
   // "34.162.126.210",
@@ -44,7 +43,7 @@ const Visilibity = () => {
 
   useEffect(() => {
     const fetchLogs = (ip: string) =>
-      fetch(`http://${ip}:8082/logs`)
+      fetch(`http://${ip}/logs`)
         .then((res) =>
           res.ok ? res.text() : Promise.reject(`Failed to fetch from ${ip}`),
         )
