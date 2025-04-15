@@ -245,7 +245,7 @@ public:
             case DesiredAction::Base:
               if (!base_set) {
                 buffer = name_end;
-                while (*buffer != '>') {
+                while (buffer < end && *buffer != '>') {
                   int i;  // href="
                   for (i = 0; i < 6; ++i) {
                     if (buffer[i] != "href=\""[i])
@@ -262,6 +262,10 @@ public:
                     break;
                   }
                   ++buffer;
+                }
+
+                if (buffer >= end) {
+                  return;
                 }
               }
               buffer = TagEnd(buffer, end);
