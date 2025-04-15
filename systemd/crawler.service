@@ -4,12 +4,12 @@ Description=Crawler
 [Service]
 Type=simple
 PIDFile=/run/crawler.pid
-ExecStart=/home/cnrose/engine/src/build/crawler/crawler
+ExecStart=/home/<USERNAME>/engine/src/build/crawler/crawler
 KillSignal=SIGINT
 User=root
 Group=root
-WorkingDirectory=/home/cnrose/engine
-Environment=HOME=/home/cnrose
+WorkingDirectory=/home/<USERNAME>/engine
+Environment=HOME=/home/<USERNAME>
 # CPUSchedulingPolicy=rr
 # CPUSchedulingPriority=99
 # ? IOSchedulingClass=realtime
