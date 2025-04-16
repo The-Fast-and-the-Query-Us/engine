@@ -136,7 +136,7 @@ public:
       const auto trimmed = english::strip_url_prefix(link.URL);
       const auto hv = hash(trimmed) % ips.size();
 
-      if (bufs[hv].second + ips.size() + 1 < PACKET_SZ) {
+      if (bufs[hv].second + link.URL.size() + 1 < PACKET_SZ) {
         memcpy(bufs[hv].first + bufs[hv].second, link.URL.c_str(), link.URL.size() + 1);
         bufs[hv].second += link.URL.size() + 1;
       }
