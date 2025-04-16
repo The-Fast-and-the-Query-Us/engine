@@ -478,6 +478,12 @@ class crawler {
 
  public:
   static bool is_blacklisted(const fast::string& url) {
+    if (url.size() == 0) return true;
+
+    if (url.view().contains("/../") || url.ends_with("print.html") ||
+        url.view().trim_prefix(1).contains("http"))
+      return true;
+
     const char* word_start = nullptr;
     const char* url_end = url.begin() + url.size();
 
