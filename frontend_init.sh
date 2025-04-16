@@ -5,6 +5,7 @@ sudo apt install unzip -y
 curl -fsSL https://bun.sh/install | bash
 source ~/.bashrc
 bun install
+export PATH=~/.bun/bin:$PATH
 bun build --outdir frontend/build --target browser frontend/js/index.tsx
 cp frontend/html/* frontend/build/
 cp frontend/img/* frontend/build/
