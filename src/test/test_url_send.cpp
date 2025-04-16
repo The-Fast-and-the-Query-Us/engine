@@ -1,7 +1,5 @@
-#include <atomic>
 #include <string.hpp>
 #include <url_sender.hpp>
-#include <semaphore>
 #include <html_parser.hpp>
 
 using namespace fast::crawler;
