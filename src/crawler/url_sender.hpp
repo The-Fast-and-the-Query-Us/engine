@@ -19,15 +19,11 @@
 
 namespace fast::crawler {
 
-
-template<size_t MAX_BUFFER = 100>
 class url_sender {
 
   int connect_fd;
   vector<string> ips;
-
   pthread_t accept_thread;
-  volatile bool die = false;
 
   const std::function<void(string&)> callback;
 
@@ -47,7 +43,7 @@ class url_sender {
         return NULL;
       }
 
-      size_t i = 0;
+      ssize_t i = 0;
       while (i < len) {
         string link(buffer + i);
         i += link.size() + 1;
@@ -112,13 +108,15 @@ public:
       exit(1);
     }
 
-    sched_param param{};
-    param.sched_priority = 1;
+    if (geteuid() == 0) {
+      sched_param param{};
+      param.sched_priority = 1;
 
-    pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
-    pthread_attr_setschedparam(&attr, &param);
+      pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+      pthread_attr_setschedparam(&attr, &param);
 
-    pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+      pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+    }
 
     if (pthread_create(&accept_thread, &attr, handle_connections, (void*) this) != 0) {
       perror("FAIL TO CREATE");
