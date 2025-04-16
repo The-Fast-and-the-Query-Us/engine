@@ -1,23 +1,21 @@
-#include <atomic>
 #include <string.hpp>
 #include <url_sender.hpp>
-#include <semaphore>
 #include <html_parser.hpp>
 
 using namespace fast::crawler;
 
-std::counting_semaphore<10> cs(0);
+volatile int i = 0;
 
 void test(const fast::string &url) {
   assert(url == "https://james lu");
-  cs.release();
+  i = i + 1;
 }
 
 
 int main(int argc, char **argv) {
   assert(argc == 2);
 
-  url_sender<0> sender(argv[1], test);
+  url_sender sender(argv[1], test);
 
   fast::vector<Link> fl;
 
@@ -27,9 +25,7 @@ int main(int argc, char **argv) {
 
   sender.add_links(fl);
 
-  for (auto i = 0; i < 10; ++i) {
-    cs.acquire();
-  }
+  while (i != 10);
 
   std::cout << "Pass" << std::endl;
 }
