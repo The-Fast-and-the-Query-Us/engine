@@ -20,4 +20,8 @@ int main() {
   string_view other("other");
   assert(other > me);
   assert(other > "bobbyajksd");
+
+  assert(other.contains("ot"));
+  assert(other.contains("th"));
+  assert(!other.contains("z"));
 }
