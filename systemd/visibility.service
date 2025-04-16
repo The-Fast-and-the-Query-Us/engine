@@ -1,0 +1,19 @@
+[Unit]
+Description=Visibility Server
+
+[Service]
+Type=simple
+PIDFile=/run/visibility.pid
+ExecStart=/home/<USERNAME>/engine/src/build/client/visibility_server
+KillSignal=SIGINT
+User=root
+Group=root
+WorkingDirectory=/home/<USERNAME>/engine/frontend/build
+Environment=HOME=/home/<USERNAME>
+# CPUSchedulingPolicy=rr
+# CPUSchedulingPriority=99
+# ? IOSchedulingClass=realtime
+Nice=-20
+
+[Install]
+WantedBy=multi-user.target

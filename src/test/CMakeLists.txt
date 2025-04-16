@@ -32,3 +32,4 @@ endforeach()
 
 find_package(Threads REQUIRED) # for thread
 target_link_libraries(test_network Threads::Threads)
+target_link_libraries(test_url_send Threads::Threads)

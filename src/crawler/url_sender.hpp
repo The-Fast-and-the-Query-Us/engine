@@ -1,5 +1,9 @@
 #pragma once
 
+#include "condition_variable.hpp"
+#include "frontier.hpp"
+#include "hash.hpp"
+#include "html_parser.hpp"
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
@@ -10,53 +14,48 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <network.hpp>
+#include <mutex.hpp>
+#include <english.hpp>
 
 namespace fast::crawler {
 
-
 class url_sender {
+
   int connect_fd;
   vector<string> ips;
-  vector<vector<string>> send_buffers;
   pthread_t accept_thread;
 
   const std::function<void(string&)> callback;
 
   static constexpr unsigned PORT = 8090;
-  static constexpr size_t   MAX_BUFFER = 100;
 
   /*
    * Call this->callback whenever a string is recieved
    */
   static void *handle_connections(void *sender) {
+    char buffer[4096];
     const auto me = (const url_sender*) sender;
     while (1) {
-      const auto client = accept(me->connect_fd, NULL, NULL);
-      if (client < 0) return NULL;
+      const auto len = recvfrom(me->connect_fd, buffer, sizeof(buffer) - 1, 0, NULL, NULL);
 
-      uint32_t count;
-      if (recv_all(client, count)) {
-        string buffer;
-
-        while (count--) {
-          if (recv_all(client, buffer)) {
-            me->callback(buffer);
-          } else {
-            perror("url_sender::handle_conn : Fail to recv link");
-            break;
-          }
-        }
-      } else {
-        perror("url_sender::handle_conn : Fail to get count");
+      if (len < 0) {
+        perror("url_accept returning");
+        return NULL;
       }
-      
-      close(client);
+
+      ssize_t i = 0;
+      while (i < len) {
+        string link(buffer + i);
+        i += link.size() + 1;
+        me->callback(link);
+      }
     }
   }
 
+
 public:
   url_sender(const fast::string &ip_path, std::function<void(string&)> callback) : callback(callback) {
-    connect_fd = socket(AF_INET, SOCK_STREAM, 0);
+    connect_fd = socket(AF_INET, SOCK_DGRAM, 0);
 
     if (connect_fd < 0) {
       perror("url_sender::socket()");
@@ -78,12 +77,6 @@ public:
     if (bind(connect_fd, (sockaddr*) &addr, sizeof(addr)) < 0) {
       close(connect_fd);
       perror("url_sender::bind()");
-      exit(1);
-    }
-
-    if (listen(connect_fd, SOMAXCONN) < 0) {
-      close(connect_fd);
-      perror("url_serner::listen");
       exit(1);
     }
 
@@ -109,71 +102,75 @@ public:
       exit(1);
     }
 
-    send_buffers.resize(ips.size());
-
-    pthread_create(&accept_thread, NULL, handle_connections, (void*) this);
-#if defined(__linux__)
-    cpu_set_t cpuset;
-    // pin accept thread to CPU 0
-    CPU_ZERO(&cpuset);
-    CPU_SET(0, &cpuset);
-    pthread_setaffinity_np(accept_thread, sizeof(cpu_set_t), &cpuset);
-#endif
-  }
-
-  /*
-   * Send all links in buffer to peer, not thread safe
-   */
-  void flush(size_t peer_idx) {
-    const auto &peer = ips[peer_idx];
-    
-    const auto peer_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (peer_fd < 0) {
-      perror("send_link::socket()");
-      exit(1); // maybe dont exit?
-    }
-
-    struct sockaddr_in addr{};
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(PORT);
-
-    if (inet_pton(AF_INET, peer.c_str(), &addr.sin_addr) <= 0) {
-      perror("send_link::inet_pton");
-      close(peer_fd);
+    pthread_attr_t attr;
+    if (pthread_attr_init(&attr) == -1) {
+      std::cout << "attr init" << std::endl;
       exit(1);
     }
 
-    if (connect(peer_fd, (sockaddr *) &addr, sizeof(addr)) < 0) {
-      perror("send_link::connect");
-      close(peer_fd);
-      return;
+    if (geteuid() == 0) {
+      sched_param param{};
+      param.sched_priority = 1;
+
+      pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+      pthread_attr_setschedparam(&attr, &param);
+
+      pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
     }
 
-    uint32_t count = send_buffers[peer_idx].size();
-    if (send_all(peer_fd, count)) {
-      for (const auto &link : send_buffers[peer_idx]) {
-        if (!send_all(peer_fd, link)) {
-          perror("URL_SENDER:: Fail to send link");
-          break;
-        }
-      }
-    } else {
-      perror("URL_SENDER:: Fail to send count");
+    if (pthread_create(&accept_thread, &attr, handle_connections, (void*) this) != 0) {
+      perror("FAIL TO CREATE");
+      exit(1);
     }
 
-    send_buffers[peer_idx].clear();
-    close(peer_fd);
   }
 
-  /*
-  * Hash url and send to the appropiate peer
-  * Must be protected with lock
-  */
-  void send_link(const string &url) {
-    const auto peer_idx = hash(url) % ips.size();
-    send_buffers[peer_idx].push_back(url);
-    if (send_buffers[peer_idx].size() >= MAX_BUFFER) {
-      flush(peer_idx);
+  void add_links(const fast::vector<Link> &links) {
+    constexpr size_t PACKET_SZ = 1400;
+
+    fast::vector<fast::pair<char [PACKET_SZ], size_t>> bufs(ips.size());
+
+    for (const auto &link : links) {
+      if (link.URL.size() == 0) continue;
+      if (link.URL.size() > 400) continue;
+      
+      const auto trimmed = english::strip_url_prefix(link.URL);
+      const auto hv = hash(trimmed) % ips.size();
+
+      if (bufs[hv].second + link.URL.size() + 1 >= PACKET_SZ) {
+        const auto fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+        if (fd > 0) {
+          struct sockaddr_in dest{};
+          dest.sin_family = AF_INET;
+          dest.sin_port = htons(PORT);
+          inet_pton(AF_INET, ips[hv].c_str(), &dest.sin_addr);
+
+          sendto(fd, bufs[hv].first, bufs[hv].second, 0, (sockaddr *) &dest, sizeof(dest));
+          close(fd);
+        }
+
+        bufs[hv].second = 0;
+      }
+
+      memcpy(bufs[hv].first + bufs[hv].second, link.URL.c_str(), link.URL.size() + 1);
+      bufs[hv].second += link.URL.size() + 1;
+    }
+
+    for (size_t i = 0; i < bufs.size(); ++i) {
+      if (bufs[i].second == 0) continue;
+
+      const auto fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+      if (fd > 0) {
+        struct sockaddr_in dest{};
+        dest.sin_family = AF_INET;
+        dest.sin_port = htons(PORT);
+        inet_pton(AF_INET, ips[i].c_str(), &dest.sin_addr);
+
+        sendto(fd, bufs[i].first, bufs[i].second, 0, (sockaddr *) &dest, sizeof(dest));
+        close(fd);
+      }
     }
   }
 

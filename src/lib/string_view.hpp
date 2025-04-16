@@ -56,6 +56,16 @@ class string_view {
     return nullptr;  // no match found
   }
 
+  bool starts_with(const string_view &sv) const {
+    if (sv.size() > size()) return false;
+
+    for (size_t i = 0; i < sv.size(); ++i) {
+      if (start[i] != sv[i]) return false;
+    }
+
+    return true;
+  }
+
   string_view sub_view(size_t start, size_t length) {
     // this should get compiled out in release mode
     assert(start + length <= this->size() && 
@@ -69,6 +79,19 @@ class string_view {
 
   string_view trim_prefix(size_t count) {
     return sub_view(count, size() - count);
+  }
+
+  bool contains(const string_view &word) const {
+    for (size_t i = 0; i < len - word.len; ++i) {
+
+      size_t j;
+      for (j = 0; j < word.len && word[j] == start[i + j]; ++j);
+
+      if (j == word.len) return true;
+
+    }
+
+    return false;
   }
 
   bool operator==(const string_view &other) const {

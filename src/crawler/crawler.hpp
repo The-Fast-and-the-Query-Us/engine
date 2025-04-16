@@ -21,14 +21,15 @@
 #include "html_parser.hpp"
 #include "url_parser.hpp"
 #include "url_sender.hpp"
+#include "vector.hpp"
 
 namespace fast::crawler {
 
-static constexpr int THREAD_COUNT = 200;
+static constexpr int THREAD_COUNT = 10;
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 12'500'000;
-static const char* IP_PATH = "./ips.txt";
+static constexpr const char* IP_PATH = "./ips.txt";
 
 class crawler {
  public:
@@ -51,14 +52,19 @@ class crawler {
     if (fd != NULL) {
       std::cout << "Loading seedlist" << std::endl;
       char buffer[2000];
+      fast::vector<Link> links;
 
       while (fgets(buffer, 2000, fd) != NULL) {
         buffer[strcspn(buffer, "\n\r")] = 0;  // remove \r and \n
-        link_sender.send_link(buffer);
+        auto url = fast::string(buffer);
+        links.push_back(Link{url});
+        // link_sender.push_back(Link(buffer));
       }
 
+      link_sender.add_links(links);
+
       fclose(fd);
-      link_sender.flush(0);  // wont reach threshold for first sender
+      // link_sender.flush(0);  // wont reach threshold for first sender
 
       std::cout << "Loaded seedlist" << std::endl;
 
@@ -144,8 +150,6 @@ class crawler {
   fast::crawler::frontier crawl_frontier;
   fast::hashtable* word_bank;
   fast::mutex bank_mtx;
-  fast::mutex ssl_mtx;
-  fast::mutex sender_mutex;
   int log_fd;
   SSL_CTX* g_ssl_ctx{};
   uint64_t doc_count{
@@ -239,7 +243,7 @@ class crawler {
       int fd = open(chunk_count_path.begin(), O_RDWR | O_CREAT | O_TRUNC, 0777);
       assert(fd != 0);
       uint64_t chunk_count{0};
-      std::cout << "createing chunk_count file, setting to " << chunk_count
+      std::cout << "creating chunk_count file, setting to " << chunk_count
                 << '\n';
       assert(write(fd, &chunk_count, sizeof(uint64_t)) == sizeof(uint64_t));
       path += "0";
@@ -322,9 +326,7 @@ class crawler {
       }
       // std::cout << "OG: " << url.begin() << '\n';
 
-      ssl_mtx.lock();
       SSL_CTX* ctx_cpy = g_ssl_ctx;
-      ssl_mtx.unlock();  // maybe get rid of this
 
       if (!ctx_cpy)
         continue;
@@ -383,12 +385,16 @@ class crawler {
 
       bank_mtx.unlock();
 
-      sender_mutex.lock();
-
+      uint8_t domain_links = 0;
+      uint32_t all_links = 0;
       for (auto& link : parser.links) {
-
-        if (link.URL.size() == 0 || link.URL[0] == '#')
+        if (all_links >= 20 || link.URL.size() == 0 || link.URL[0] == '#' ||
+            is_blacklisted(link.URL) || link.URL.size() > 400) {
+          link.URL = "";
           continue;
+        }
+
+        ++all_links;
 
         if (link.URL[0] == '/') {
           fast::string new_link{};
@@ -406,14 +412,18 @@ class crawler {
           link.URL = new_link;
         }
 
-        if (is_blacklisted(link.URL))
-          continue;
-
-        // We add all links regardless of domain
-        link_sender.send_link(link.URL);
+        if (domain_links < 3) {
+          bool same_domain = fast::crawler::frontier::extract_hostname(
+                                 link.URL) == url_parts.host;
+          if (same_domain) {
+            ++domain_links;
+          } else {
+            link.URL = "";
+          }
+        }
       }
 
-      sender_mutex.unlock();
+      link_sender.add_links(parser.links);
 
       crawl_frontier.notify_crawled(url);
     }
@@ -424,9 +434,8 @@ class crawler {
 
   // call back function for recving urls to crawl
   void add_url(string& url) {
-    fast::string stripped = strip_url_protocol(url);
-    if (!visited_urls.contains(stripped)) {
-      visited_urls.insert(stripped);
+    fast::string stripped = fast::english::strip_url_prefix(url);
+    if (visited_urls.try_insert(stripped)) {
       crawl_frontier.insert(url);
     }
   }
@@ -469,6 +478,12 @@ class crawler {
 
  public:
   static bool is_blacklisted(const fast::string& url) {
+    if (url.size() == 0) return true;
+
+    if (url.view().contains("/../") || url.ends_with("print.html") ||
+        url.view().trim_prefix(1).contains("http") || url.view().contains("/./"))
+      return true;
+
     const char* word_start = nullptr;
     const char* url_end = url.begin() + url.size();
 
@@ -498,21 +513,6 @@ class crawler {
     }
 
     return false;
-  }
-
-  static fast::string strip_url_protocol(fast::string& url) {
-    fast::string stripped{};
-    if (url.starts_with("http://")) {
-      stripped = url.substr(7, url.size() - 7);
-    } else if (url.starts_with("https://")) {
-      stripped = url.substr(8, url.size() - 8);
-    }
-
-    if (stripped.starts_with("www.")) {
-      stripped = stripped.substr(4, stripped.size() - 4);
-    }
-
-    return stripped.size() ? stripped : url;
   }
 
   static bool is_alphabet(char c) { return isalnum(c); }

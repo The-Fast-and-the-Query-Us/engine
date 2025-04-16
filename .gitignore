@@ -42,3 +42,4 @@ compile_commands.json
 **/*.venv
 **/*.dat
 node_modules/
+# frontend/static/

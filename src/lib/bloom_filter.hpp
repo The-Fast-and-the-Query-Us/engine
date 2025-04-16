@@ -32,6 +32,12 @@ class bloom_filter {
     load(load_path);
   }
 
+  bloom_filter() = delete;
+  bloom_filter(const bloom_filter<T>& other) = delete;
+  bloom_filter(bloom_filter<T>&& other) = delete;
+  bloom_filter& operator=(const bloom_filter<T>& other) = delete;
+  bloom_filter& operator=(bloom_filter<T>&& other) = delete;
+
   ~bloom_filter() {
     if (save_path)
       free(save_path);
@@ -43,6 +49,19 @@ class bloom_filter {
     for (size_t i = 0; i < num_hash; ++i) {
       bit_set[double_hash(h1, h2, i)] = 1;
     }
+  }
+
+  bool try_insert(const T& val) {
+    auto [h1, h2] = hash(val);
+    fast::scoped_lock lock_guard(&m);
+    for (size_t i = 0; i < num_hash; ++i) {
+      if (bit_set[double_hash(h1, h2, i)])
+        return false;
+    }
+    for (size_t i = 0; i < num_hash; ++i) {
+      bit_set[double_hash(h1, h2, i)] = 1;
+    }
+    return true;
   }
 
   bool contains(const T& val) {

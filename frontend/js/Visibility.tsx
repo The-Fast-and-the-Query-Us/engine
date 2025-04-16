@@ -2,7 +2,13 @@ import React, { useEffect, useState } from "react";
 import { Chart } from "react-google-charts";
 
 const ips = [
+  "34.48.157.78",
+  "34.162.126.210",
+  "34.162.74.232",
+  "34.56.166.106",
   "34.162.206.198",
+  "34.135.72.123",
+  "34.48.10.178",
 ];
 
 const options = {
@@ -36,16 +42,16 @@ const Visilibity = () => {
 
   useEffect(() => {
     const fetchLogs = (ip: string) =>
-      fetch(`http://${ip}:8082/logs`)
+      fetch(`http://${ip}/logs`)
         .then((res) =>
-          res.ok ? res.text() : Promise.reject(`Failed to fetch from ${ip}`)
+          res.ok ? res.text() : Promise.reject(`Failed to fetch from ${ip}`),
         )
         .then((text) =>
           text
             .trim()
             .split("\n")
             .map((line) => parseInt(line))
-            .filter((t) => !isNaN(t))
+            .filter((t) => !isNaN(t)),
         );
 
     const loadData = async () => {
@@ -166,7 +172,10 @@ const Visilibity = () => {
               </p>
               <p>
                 <strong>Overall average speed:</strong>{" "}
-                {(chartData.length - 1) * 4096 / (chartData[chartData.length - 1][0] - chartData[1][0]) * 1000} docs/second
+                {(((chartData.length - 1) * 4096) /
+                  (chartData[chartData.length - 1][0] - chartData[1][0])) *
+                  1000}{" "}
+                docs/second
               </p>
             </div>
           )}

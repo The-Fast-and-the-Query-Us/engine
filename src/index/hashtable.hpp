@@ -40,7 +40,7 @@ class hashtable {
   friend class hashblob;
 
 public:
-  hashtable(size_t num_buckets = 2048) : num_buckets(num_buckets), next_offset(0), unique_words(0), doc_size(0) {
+  hashtable(size_t num_buckets = 0xffff) : num_buckets(num_buckets), next_offset(0), unique_words(0), doc_size(0) {
     buckets = new list<bucket>[num_buckets];
   }
 
