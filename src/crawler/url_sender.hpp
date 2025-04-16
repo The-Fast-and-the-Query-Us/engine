@@ -132,18 +132,34 @@ public:
 
     for (const auto &link : links) {
       if (link.URL.size() == 0) continue;
+      if (link.URL.size() > 400) continue;
       
       const auto trimmed = english::strip_url_prefix(link.URL);
       const auto hv = hash(trimmed) % ips.size();
 
-      if (bufs[hv].second + link.URL.size() + 1 < PACKET_SZ) {
-        memcpy(bufs[hv].first + bufs[hv].second, link.URL.c_str(), link.URL.size() + 1);
-        bufs[hv].second += link.URL.size() + 1;
+      if (bufs[hv].second + link.URL.size() + 1 >= PACKET_SZ) {
+        const auto fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+        if (fd > 0) {
+          struct sockaddr_in dest{};
+          dest.sin_family = AF_INET;
+          dest.sin_port = htons(PORT);
+          inet_pton(AF_INET, ips[hv].c_str(), &dest.sin_addr);
+
+          sendto(fd, bufs[hv].first, bufs[hv].second, 0, (sockaddr *) &dest, sizeof(dest));
+          close(fd);
+        }
+
+        bufs[hv].second = 0;
       }
 
+      memcpy(bufs[hv].first + bufs[hv].second, link.URL.c_str(), link.URL.size() + 1);
+      bufs[hv].second += link.URL.size() + 1;
     }
 
     for (size_t i = 0; i < bufs.size(); ++i) {
+      if (bufs[i].second == 0) continue;
+
       const auto fd = socket(AF_INET, SOCK_DGRAM, 0);
 
       if (fd > 0) {
