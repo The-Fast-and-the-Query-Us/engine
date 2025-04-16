@@ -8,5 +8,5 @@ target_link_libraries(crawler_interface INTERFACE lib index OpenSSL::SSL OpenSSL
 set(SAN "-fsanitize=address,leak")
 
 add_executable(crawler crawler.cpp)
-target_link_libraries(crawler PUBLIC crawler_interface Threads::Threads ${SAN})
-target_compile_options(crawler PUBLIC -Wall -Wextra -Werror -pedantic -g -O3 ${SAN})
+target_link_libraries(crawler PUBLIC crawler_interface Threads::Threads)
+target_compile_options(crawler PUBLIC -Wall -Wextra -Werror -pedantic -g -O3)
