@@ -2,13 +2,9 @@ import React, { useEffect, useState } from "react";
 import { Chart } from "react-google-charts";
 
 const ips = [
-  "34.48.157.78",
-  "34.162.126.210",
-  "34.162.74.232",
-  "34.56.166.106",
-  "34.162.206.198",
-  "34.135.72.123",
-  "34.48.10.178",
+  "34.172.33.202",
+  "34.133.156.150",
+  "34.60.247.227",
 ];
 
 const options = {
