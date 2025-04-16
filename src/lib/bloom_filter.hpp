@@ -32,6 +32,12 @@ class bloom_filter {
     load(load_path);
   }
 
+  bloom_filter() = delete;
+  bloom_filter(const bloom_filter<T>& other) = delete;
+  bloom_filter(bloom_filter<T>&& other) = delete;
+  bloom_filter& operator=(const bloom_filter<T>& other) = delete;
+  bloom_filter& operator=(bloom_filter<T>&& other) = delete;
+
   ~bloom_filter() {
     if (save_path)
       free(save_path);
