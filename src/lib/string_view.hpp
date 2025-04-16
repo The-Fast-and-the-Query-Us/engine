@@ -81,6 +81,19 @@ class string_view {
     return sub_view(count, size() - count);
   }
 
+  bool contains(const string_view &word) const {
+    for (size_t i = 0; i < len - word.len; ++i) {
+
+      size_t j;
+      for (j = 0; j < word.len && word[j] == start[i + j]; ++j);
+
+      if (j == word.len) return true;
+
+    }
+
+    return false;
+  }
+
   bool operator==(const string_view &other) const {
     return (len == other.len && memcmp(start, other.start, len) == 0);
   }
