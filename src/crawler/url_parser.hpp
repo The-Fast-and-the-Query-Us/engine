@@ -1,6 +1,7 @@
 #pragma once
 
 #include "string.hpp"
+#include "vector.hpp"
 #include <netdb.h>
 #include <cstring>
 #include <sys/types.h>
@@ -61,27 +62,27 @@ public:
   * Remove /../ and /./ from a link
   */
   static void resolve_relative(string &link) {
-    string res; 
+    string res;
     res.reserve(link.size());
 
     for (const auto c : link) {
       res += c;
 
-      if (res.ends_with("/../")) {
-
-        if (res.size() < 5) return;
+      if (res.ends_with("/../") && res.size() > 7) {
         res.pop_back(4);
-        while (res.size() > 0 && res.back() != '/') res.pop_back();
-
-      } else if (res.ends_with("/./")) {
-
-        if (res.size() < 5) return;
-        res.pop_back(2);
-
+        while (res.size() > 7 && res.back() != '/') res.pop_back();
+      } else if (res.ends_with("/./") && res.size() > 7) {
+        res.pop_back(3);
       }
     }
 
-    link = res;
+    if (res.ends_with("/..") && res.size() > 7) {
+      res.pop_back(3);
+      while (res.size() > 7 && res.back() != '/') res.pop_back();
+
+    } else if (res.ends_with("/.") && res.size() > 7) {
+      res.pop_back(2);
+    }
   }
 
   ~url_parser() {
