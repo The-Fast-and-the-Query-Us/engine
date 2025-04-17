@@ -1,5 +1,6 @@
 #pragma once
 
+#include "string.hpp"
 #include <netdb.h>
 #include <cstring>
 #include <sys/types.h>
@@ -54,6 +55,33 @@ public:
     } else {
       host = path = p;
     }
+  }
+
+  /*
+  * Remove /../ and /./ from a link
+  */
+  static void resolve_relative(string &link) {
+    string res; 
+    res.reserve(link.size());
+
+    for (const auto c : link) {
+      res += c;
+
+      if (res.ends_with("/../")) {
+
+        if (res.size() < 5) return;
+        res.pop_back(4);
+        while (res.size() > 0 && res.back() != '/') res.pop_back();
+
+      } else if (res.ends_with("/./")) {
+
+        if (res.size() < 5) return;
+        res.pop_back(2);
+
+      }
+    }
+
+    link = res;
   }
 
   ~url_parser() {
