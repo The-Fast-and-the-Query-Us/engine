@@ -5,15 +5,22 @@
 
 using namespace fast;
 
-fast::pair<string> tests[] = {
-  {"https://feministstudies.ucsc.edu/undergraduate/feminist-studies-major/../../graduate/../courses/../graduate/designated-emphasis/index.html", 
-  "https://feministstudies.ucsc.edu/graduate/designated-emphasis/index.html"}
+struct t {
+  string ans[3];
+};
+
+string tests[][3] = {
+  {"https://example.com/a/b/c", ".", "https://example.com/a/b/"},
+  {"https://example.com/a/b/c", "./d", "https://example.com/a/b/d"},
+  {"https://example.com/a/b/c", "../d", "https://example.com/a/d"},
+  {"https://example.com/a/b/c", "../../d", "https://example.com/d"},
+  {"https://example.com/a/b/c", "../../../d", "https://example.com/d"},
+  {"https://example.com/a/b/c", "../x/../y", "https://example.com/a/y"},
 };
 
 int main() {
   
   for (auto &p : tests) {
-    crawler::url_parser::resolve_relative(p.first);
-    assert(p.first == p.second);
+    assert(crawler::url_parser::url_join(p[0], p[1]) == p[2]);
   }
 }
