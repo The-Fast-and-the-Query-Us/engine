@@ -1,184 +1,63 @@
-import React, { useEffect, useState } from "react";
-import { Chart } from "react-google-charts";
+import { useEffect, useState } from "react";
+import CombinedChart from "./CombinedChart";
+import ServerChart from "./ServerChart";
 
 const ips = [
   "34.172.33.202",
   "34.133.156.150",
+  "35.226.211.111",
   "34.60.247.227",
+  "34.28.188.170",
+  "34.133.15.217",
+  "34.44.160.138",
+  "34.41.189.144",
+  "35.232.15.103",
+  "35.190.134.82",
+  "35.192.205.143",
+  "34.60.42.75",
+  "35.223.132.175",
+  "34.132.146.200",
+  "34.29.21.161",
+  "34.29.194.122",
+  "35.239.244.95",
+  "34.171.11.179",
 ];
 
-const options = {
-  title: "Crawler performance",
-  curveType: "line",
-  legend: { position: "bottom" },
-  hAxis: {
-    title: "Date",
-    format: "MMM dd, HH:mm",
-    gridlines: { count: 3 },
-    viewWindow: {
-      max: new Date(),
-    },
-  },
-};
-
-type DataPoint = [Date, number, number];
-
-type SpeedStats = {
-  current: number;
-  avg: number;
-};
-
 const Visilibity = () => {
-  const [chartData, setChartData] = useState<DataPoint[]>();
-  const [selectedIP, setSelectedIP] = useState("ALL");
-  const [allStats, setAllStats] = useState<{
-    overall: SpeedStats;
-    perIP: Record<string, SpeedStats>;
-  } | null>(null);
+  const [data, setData] = useState<Record<string, Date[]>>({});
 
   useEffect(() => {
-    const fetchLogs = (ip: string) =>
-      fetch(`http://${ip}/logs`)
-        .then((res) =>
-          res.ok ? res.text() : Promise.reject(`Failed to fetch from ${ip}`),
-        )
-        .then((text) =>
-          text
+    const promises = ips.map(async (ip) => {
+      return fetch(`http://${ip}/logs`)
+        .then((response) => response.text())
+        .then((text) => {
+          const timestamps = text
             .trim()
             .split("\n")
-            .map((line) => parseInt(line))
-            .filter((t) => !isNaN(t)),
-        );
+            .map(Number)
+            .filter((n) => !isNaN(n))
+            .map((timestamp: number) => new Date(timestamp));
 
-    const loadData = async () => {
-      try {
-        let allTimestamps: number[] = [];
-        let perIPStats: Record<string, SpeedStats> = {};
+          return [ip, timestamps] as [string, Date[]];
+        })
+        .catch((error) => {
+          console.error(`Failed to fetch from ${ip}:`, error);
+          return [ip, []] as [string, Date[]];
+        });
+    });
 
-        if (selectedIP === "ALL") {
-          const results = await Promise.allSettled(ips.map(fetchLogs));
-
-          for (let i = 0; i < results.length; i++) {
-            const ip = ips[i];
-            const result = results[i];
-
-            if (result.status === "fulfilled") {
-              const timestamps = result.value.sort((a, b) => a - b);
-              if (timestamps.length >= 2) {
-                const rawRates: number[] = [];
-                for (let j = 1; j < timestamps.length; j++) {
-                  const delta = timestamps[j] - timestamps[j - 1];
-                  const rate = (4095 / delta) * 1000;
-                  rawRates.push(rate);
-                }
-                const current = rawRates[rawRates.length - 1];
-                const avg =
-                  rawRates.reduce((sum, r) => sum + r, 0) / rawRates.length;
-                perIPStats[ip] = { current, avg };
-                allTimestamps.push(...timestamps);
-              }
-            } else {
-              console.warn(result.reason);
-            }
-          }
-        } else {
-          const timestamps = await fetchLogs(selectedIP);
-          allTimestamps = timestamps;
-        }
-
-        allTimestamps.sort((a, b) => a - b);
-        if (allTimestamps.length < 2) {
-          setChartData(undefined);
-          setAllStats(null);
-          return;
-        }
-
-        const rawRates: number[] = [];
-        const times: Date[] = [];
-
-        for (let i = 1; i < allTimestamps.length; i++) {
-          const delta = allTimestamps[i] - allTimestamps[i - 1];
-          const rate = (4095 / delta) * 1000;
-          rawRates.push(rate);
-          times.push(new Date(allTimestamps[i]));
-        }
-
-        const data: (string | Date | number)[][] = [
-          ["Date", "Rate", "Rolling Avg"],
-        ];
-
-        for (let i = 0; i < rawRates.length; i++) {
-          const windowStart = Math.max(0, i - 19);
-          const window = rawRates.slice(windowStart, i + 1);
-          const avg = window.reduce((sum, x) => sum + x, 0) / window.length;
-          data.push([times[i], rawRates[i], avg]);
-        }
-
-        setChartData(data as DataPoint[]);
-
-        if (selectedIP === "ALL") {
-          const current = rawRates[rawRates.length - 1];
-          const avg = rawRates.reduce((sum, r) => sum + r, 0) / rawRates.length;
-          setAllStats({ overall: { current, avg }, perIP: perIPStats });
-        } else {
-          setAllStats(null);
-        }
-      } catch (error) {
-        console.error("Data loading error:", error);
-        setChartData(undefined);
-        setAllStats(null);
-      }
-    };
-
-    loadData();
-  }, [selectedIP]);
+    Promise.all(promises).then((entries) => {
+      const result: Record<string, Date[]> = Object.fromEntries(entries);
+      setData(result);
+    });
+  }, []);
 
   return (
     <>
-      <label htmlFor="ip-select">Select server: </label>
-      <select
-        id="ip-select"
-        value={selectedIP}
-        onChange={(e) => setSelectedIP(e.target.value)}
-      >
-        <option value="ALL">All servers</option>
-        {ips.map((ip) => (
-          <option key={ip} value={ip}>
-            {ip}
-          </option>
-        ))}
-      </select>
-
-      {chartData !== undefined ? (
-        <>
-          <Chart
-            chartType="LineChart"
-            width="100%"
-            height="400px"
-            data={chartData}
-            options={options}
-          />
-
-          {selectedIP === "ALL" && allStats && (
-            <div>
-              <hr />
-              <p>
-                <strong>Overall current speed:</strong>{" "}
-                {allStats.overall.current.toFixed(2)} docs/second
-              </p>
-              <p>
-                <strong>Overall average speed:</strong>{" "}
-                {(((chartData.length - 1) * 4096) /
-                  (chartData[chartData.length - 1][0] - chartData[1][0])) *
-                  1000}{" "}
-                docs/second
-              </p>
-            </div>
-          )}
-        </>
-      ) : (
-        <p>Loading...</p>
-      )}
+      <CombinedChart data={data} />
+      {ips.map((ip) => (
+        <ServerChart data={data} ip={ip} key={ip} />
+      ))}
     </>
   );
 };

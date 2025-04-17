@@ -12,9 +12,11 @@
   "dependencies": {
     "@types/react": "^19.1.1",
     "@types/react-dom": "^19.1.2",
+    "@types/recharts": "^2.0.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-google-charts": "^5.2.1",
+    "recharts": "^2.15.2",
     "typescript-language-server": "^4.3.4"
   }
 }
