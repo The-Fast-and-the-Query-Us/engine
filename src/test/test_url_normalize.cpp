@@ -22,6 +22,7 @@ string tests[][3] = {
   {"https://example.com/dir/page.html", "subdir/", "https://example.com/dir/subdir/"},
   {"https://example.com/dir/", "../index.html", "https://example.com/index.html"},
   {"https://example.com/dir/page.html", "../index.html", "https://example.com/index.html"},
+  {"https://www.google.com", "https://github.com", "https://github.com"},
 };
 
 int main() {
