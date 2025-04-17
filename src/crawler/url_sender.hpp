@@ -130,6 +130,13 @@ public:
 
     fast::vector<fast::pair<char [PACKET_SZ], size_t>> bufs(ips.size());
 
+    const auto fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    if (fd < 0) {
+      perror("add_links");
+      return;
+    }
+
     for (const auto &link : links) {
       if (link.URL.size() == 0) continue;
       if (link.URL.size() > 400) continue;
@@ -138,17 +145,13 @@ public:
       const auto hv = hash(trimmed) % ips.size();
 
       if (bufs[hv].second + link.URL.size() + 1 >= PACKET_SZ) {
-        const auto fd = socket(AF_INET, SOCK_DGRAM, 0);
 
-        if (fd > 0) {
-          struct sockaddr_in dest{};
-          dest.sin_family = AF_INET;
-          dest.sin_port = htons(PORT);
-          inet_pton(AF_INET, ips[hv].c_str(), &dest.sin_addr);
+        struct sockaddr_in dest{};
+        dest.sin_family = AF_INET;
+        dest.sin_port = htons(PORT);
+        inet_pton(AF_INET, ips[hv].c_str(), &dest.sin_addr);
 
-          sendto(fd, bufs[hv].first, bufs[hv].second, 0, (sockaddr *) &dest, sizeof(dest));
-          close(fd);
-        }
+        sendto(fd, bufs[hv].first, bufs[hv].second, 0, (sockaddr *) &dest, sizeof(dest));
 
         bufs[hv].second = 0;
       }
@@ -160,18 +163,15 @@ public:
     for (size_t i = 0; i < bufs.size(); ++i) {
       if (bufs[i].second == 0) continue;
 
-      const auto fd = socket(AF_INET, SOCK_DGRAM, 0);
-
-      if (fd > 0) {
         struct sockaddr_in dest{};
         dest.sin_family = AF_INET;
         dest.sin_port = htons(PORT);
         inet_pton(AF_INET, ips[i].c_str(), &dest.sin_addr);
 
         sendto(fd, bufs[i].first, bufs[i].second, 0, (sockaddr *) &dest, sizeof(dest));
-        close(fd);
-      }
     }
+
+    close(fd);
   }
 
   ~url_sender() {
