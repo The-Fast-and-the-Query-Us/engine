@@ -69,6 +69,8 @@ public:
         res.pop_back(4);
         while (res.size() > 0 && res.back() != '/') res.pop_back();
 
+        if (res.size() == 0) res += '/';
+
       } else if (res.ends_with("/./")) {
         res.pop_back(2);
       }
