@@ -239,6 +239,7 @@ class crawler {
       uint64_t chunk_count{};
       assert(read(fd, &chunk_count, sizeof(uint64_t)) == sizeof(uint64_t));
       path += u64tos(chunk_count);
+      close(fd);
     } else {
       int fd = open(chunk_count_path.begin(), O_RDWR | O_CREAT | O_TRUNC, 0777);
       assert(fd != 0);
@@ -247,6 +248,7 @@ class crawler {
                 << '\n';
       assert(write(fd, &chunk_count, sizeof(uint64_t)) == sizeof(uint64_t));
       path += "0";
+      close(fd);
     }
     return path;
   }
@@ -264,6 +266,7 @@ class crawler {
       std::cout << "updating chunk_count from " << chunk_count - 1 << " to "
                 << chunk_count << '\n';
       assert(write(fd, &chunk_count, sizeof(uint64_t)) == sizeof(uint64_t));
+      close(fd);
     } else {
       int fd = open(chunk_count_path.begin(), O_RDWR | O_CREAT | O_TRUNC, 0777);
       assert(fd != 0);
@@ -271,6 +274,7 @@ class crawler {
       std::cout << "creating chunk_count file, setting to " << chunk_count
                 << '\n';
       assert(write(fd, &chunk_count, sizeof(uint64_t)) == sizeof(uint64_t));
+      close(fd);
     }
   }
 
