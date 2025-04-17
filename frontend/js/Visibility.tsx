@@ -55,9 +55,18 @@ const Visilibity = () => {
   return (
     <>
       <CombinedChart data={data} />
-      {ips.map((ip) => (
-        <ServerChart data={data} ip={ip} key={ip} />
-      ))}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: "1rem",
+          marginTop: "2rem",
+        }}
+      >
+        {ips.map((ip) => (
+          <ServerChart data={data} ip={ip} key={ip} />
+        ))}
+      </div>
     </>
   );
 };
