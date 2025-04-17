@@ -400,21 +400,7 @@ class crawler {
 
         ++all_links;
 
-        if (link.URL[0] == '/') {
-          fast::string new_link{};
-          new_link += url_parts.service;
-          new_link += "://";
-          new_link += url_parts.host;
-          new_link += link.URL;
-          link.URL = new_link;
-        } else if (!(link.URL.starts_with("http://") ||
-                     link.URL.starts_with("https://"))) {
-          fast::string new_link = url_parts.complete_url;
-          while (new_link.back() != '/')
-            new_link.pop_back();
-          new_link += link.URL;
-          link.URL = new_link;
-        }
+        link.URL = url_parser::url_join(url, link.URL);
 
         if (domain_links < 3) {
           bool same_domain = fast::crawler::frontier::extract_hostname(
