@@ -430,15 +430,18 @@ class crawler {
     const auto dom_no_prot = fast::english::strip_url_prefix(domain);
 
     fast::string stripped = fast::english::strip_url_prefix(url);
+
+    cnt_mtx.lock();
+
     if (frontier_cnt[dom_no_prot] < MAX_CNT && !visited_urls.contains(stripped)) {
       if (crawl_frontier.insert(url)) {
         visited_urls.insert(url);
 
-        cnt_mtx.lock();
         frontier_cnt[dom_no_prot]++;
-        cnt_mtx.unlock();
       }
     }
+
+    cnt_mtx.unlock();
   }
 
   void write_blob() {
