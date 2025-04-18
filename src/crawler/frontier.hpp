@@ -34,7 +34,7 @@ class frontier {
       load();
       return;
     }
-    priorities.resize(4);
+    priorities.resize(5);
     if (seed_list != nullptr) {
       load_seed_list(seed_list);
     }
@@ -393,6 +393,20 @@ class frontier {
         break;
       }
     }
+
+    size_t slash_cnt = 0;
+    for (const auto c : url) {
+      slash_cnt += c =='/';
+    }
+
+    // no protocol
+    if (slash_cnt < 2) return -1;
+
+    slash_cnt -= 2;
+
+    if (slash_cnt > 7) return -1;
+
+    if (slash_cnt < 2) ++score;
 
     return score;
   }

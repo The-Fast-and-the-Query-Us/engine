@@ -392,28 +392,14 @@ class crawler {
 
       bank_mtx.unlock();
 
-      uint8_t domain_links = 0;
-      uint32_t all_links = 0;
       for (auto& link : parser.links) {
-        if (all_links >= 20 || link.URL.size() == 0 || link.URL[0] == '#' ||
+        if (link.URL.size() == 0 || link.URL[0] == '#' ||
             is_blacklisted(link.URL) || link.URL.size() > 400) {
           link.URL = "";
           continue;
         }
 
-        ++all_links;
-
         link.URL = url_parser::url_join(url, link.URL);
-
-        if (domain_links < 3) {
-          bool same_domain = fast::crawler::frontier::extract_hostname(
-                                 link.URL) == url_parts.host;
-          if (same_domain) {
-            ++domain_links;
-          } else {
-            link.URL = "";
-          }
-        }
       }
 
       link_sender.add_links(parser.links);
@@ -427,7 +413,7 @@ class crawler {
 
   // call back function for recving urls to crawl
   void add_url(string& url) {
-    static constexpr uint8_t MAX_CNT = 10;
+    static constexpr uint8_t MAX_CNT = 7;
 
     const auto domain = url_parser::get_base_root(url);
     const auto dom_no_prot = fast::english::strip_url_prefix(domain);
