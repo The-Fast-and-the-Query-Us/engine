@@ -1,4 +1,7 @@
 https://umich.edu
+https://github.com/bobby-palmer
+https://news.ycombinator.com/
+https://en.wikipedia.org/wiki/Portal:Current_events
 https://www.nytimes.com
 https://www.food.com
 https://www.osu.edu
@@ -57,8 +60,6 @@ https://account.microsoft.com/account
 https://admin.shopify.com/
 https://alphahistory.com/what-is-history/
 https://academicinfluence.com/inflection/college-life/tips-for-getting-most-out-of-college-education
-https://accounts.google.com/AccountChooser?service=mail
-https://accounts.google.com/InteractiveLogin?hl=en&service=alerts
 https://alternativeto.net/software/microsoft-excel/?license=free&platform=mac
 https://247wallst.com/weather/2024/05/30/the-us-cities-with-the-absolute-best-weather-according-to-data/
 https://40aprons.com/40-best-paleo-recipes/
