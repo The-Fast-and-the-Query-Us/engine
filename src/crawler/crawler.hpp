@@ -338,6 +338,7 @@ class crawler {
       const auto domain = url_parser::get_base_root(url);
 
       cnt_mtx.lock();
+      // does remove work?
       frontier_cnt[fast::english::strip_url_prefix(domain)]--;
       cnt_mtx.unlock();
 
