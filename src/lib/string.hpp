@@ -211,7 +211,18 @@ class string {
   std::strong_ordering operator<=>(const char *cstr) const {
     return this->view() <=> cstr;
   }
+
+  // find first index of c in string >= from
+  // return -1 if not found
+  ssize_t find(char c, size_t from = 0) const {
+    for (size_t i = from; i < len_; ++i) {
+      if (start_[i] == c) return i;
+    }
+    return -1;
+  }
+
 };
+
 
 inline string to_string(uint64_t num) {
   string res;

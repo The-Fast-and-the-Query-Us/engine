@@ -25,7 +25,7 @@
 
 namespace fast::crawler {
 
-static constexpr int THREAD_COUNT = 10;
+static constexpr int THREAD_COUNT = 60;
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
 static constexpr size_t BLOB_THRESHOLD = 12'500'000;
@@ -239,6 +239,7 @@ class crawler {
       uint64_t chunk_count{};
       assert(read(fd, &chunk_count, sizeof(uint64_t)) == sizeof(uint64_t));
       path += u64tos(chunk_count);
+      close(fd);
     } else {
       int fd = open(chunk_count_path.begin(), O_RDWR | O_CREAT | O_TRUNC, 0777);
       assert(fd != 0);
@@ -247,6 +248,7 @@ class crawler {
                 << '\n';
       assert(write(fd, &chunk_count, sizeof(uint64_t)) == sizeof(uint64_t));
       path += "0";
+      close(fd);
     }
     return path;
   }
@@ -264,6 +266,7 @@ class crawler {
       std::cout << "updating chunk_count from " << chunk_count - 1 << " to "
                 << chunk_count << '\n';
       assert(write(fd, &chunk_count, sizeof(uint64_t)) == sizeof(uint64_t));
+      close(fd);
     } else {
       int fd = open(chunk_count_path.begin(), O_RDWR | O_CREAT | O_TRUNC, 0777);
       assert(fd != 0);
@@ -271,6 +274,7 @@ class crawler {
       std::cout << "creating chunk_count file, setting to " << chunk_count
                 << '\n';
       assert(write(fd, &chunk_count, sizeof(uint64_t)) == sizeof(uint64_t));
+      close(fd);
     }
   }
 
@@ -396,21 +400,7 @@ class crawler {
 
         ++all_links;
 
-        if (link.URL[0] == '/') {
-          fast::string new_link{};
-          new_link += url_parts.service;
-          new_link += "://";
-          new_link += url_parts.host;
-          new_link += link.URL;
-          link.URL = new_link;
-        } else if (!(link.URL.starts_with("http://") ||
-                     link.URL.starts_with("https://"))) {
-          fast::string new_link = url_parts.complete_url;
-          while (new_link.back() != '/')
-            new_link.pop_back();
-          new_link += link.URL;
-          link.URL = new_link;
-        }
+        link.URL = url_parser::url_join(url, link.URL);
 
         if (domain_links < 3) {
           bool same_domain = fast::crawler::frontier::extract_hostname(
@@ -480,8 +470,8 @@ class crawler {
   static bool is_blacklisted(const fast::string& url) {
     if (url.size() == 0) return true;
 
-    if (url.view().contains("/../") || url.ends_with("print.html") ||
-        url.view().trim_prefix(1).contains("http") || url.view().contains("/./"))
+    if (url.ends_with("print.html") ||
+        url.view().trim_prefix(1).contains("http"))
       return true;
 
     const char* word_start = nullptr;

@@ -289,7 +289,7 @@ class frontier {
     return tbr;
   }
 
-  static fast::string extract_hostname(fast::string& url) {
+  static fast::string extract_hostname(const fast::string& url) {
     fast::string hostname;
     size_t start_pos = 0;
     if (url.starts_with("http://")) {

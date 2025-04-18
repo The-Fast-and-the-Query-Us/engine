@@ -82,6 +82,8 @@ class string_view {
   }
 
   bool contains(const string_view &word) const {
+    if (len < word.size()) return false;
+
     for (size_t i = 0; i < len - word.len; ++i) {
 
       size_t j;

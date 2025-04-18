@@ -32,4 +32,7 @@ int main() {
 
   assert(string("multidimensional").ends_with("al"));
 
+  const string f = "https://scikit-image.org/docs/dev/user_guide/../development/../gitwash/../user_guide/../release_notes/../auto_examples/../about/index.html";
+
+  assert(f.view().contains("/../"));
 }
