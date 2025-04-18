@@ -6,12 +6,14 @@
 #include <cassert>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <stdexcept>
-#include "bitset.hpp"
+#include "bitset_opt.hpp"
 #include "murmur_hash3.hpp"
 #include "pair.hpp"
 #include "scoped_lock.hpp"
+#include "common.hpp"
 
 namespace fast::crawler {
 
@@ -24,7 +26,7 @@ class bloom_filter {
         save_path(_save_path == nullptr ? nullptr : strdup(_save_path)) {
     init();
 
-    bit_set = bitset(num_bits, save_path);
+    bit_set = bitset_opt(num_bits, save_path);
   }
 
   bloom_filter(const char* load_path) : bit_set(load_path) {
@@ -47,7 +49,7 @@ class bloom_filter {
     auto [h1, h2] = hash(val);
     fast::scoped_lock lock_guard(&m);
     for (size_t i = 0; i < num_hash; ++i) {
-      bit_set[double_hash(h1, h2, i)] = 1;
+      bit_set.set(double_hash(h1, h2, i));
     }
   }
 
@@ -55,11 +57,11 @@ class bloom_filter {
     auto [h1, h2] = hash(val);
     fast::scoped_lock lock_guard(&m);
     for (size_t i = 0; i < num_hash; ++i) {
-      if (bit_set[double_hash(h1, h2, i)])
+      if (bit_set.test(double_hash(h1, h2, i)))
         return false;
     }
     for (size_t i = 0; i < num_hash; ++i) {
-      bit_set[double_hash(h1, h2, i)] = 1;
+      bit_set.set(double_hash(h1, h2, i));
     }
     return true;
   }
@@ -68,7 +70,7 @@ class bloom_filter {
     auto [h1, h2] = hash(val);
     fast::scoped_lock lock_guard(&m);
     for (size_t i = 0; i < num_hash; ++i) {
-      if (!bit_set[double_hash(h1, h2, i)])
+      if (!bit_set.test(double_hash(h1, h2, i)))
         return false;
     }
     return true;
@@ -179,7 +181,7 @@ class bloom_filter {
 
   uint64_t num_hash;
 
-  fast::bitset bit_set;
+  fast::bitset_opt bit_set;
 
   fast::mutex m;
 
@@ -196,11 +198,10 @@ class bloom_filter {
     const double ln2 = std::log(2);
     const double ln_fpr = std::log(fpr);
     num_bits = (-1 * static_cast<double>(n) * ln_fpr) / (ln2 * ln2);
-
-    num_hash = static_cast<uint64_t>((static_cast<double>(num_bits) / n) * ln2);
+    num_hash = static_cast<uint64_t>(fast::round(static_cast<double>(num_bits) / n * ln2));
   }
 
-  size_t double_hash(uint64_t h1, uint64_t h2, uint32_t i) {
+  uint64_t double_hash(const uint64_t &h1, const uint64_t &h2, const uint32_t &i) {
     return (h1 + i * h2) % num_bits;
   }
 
@@ -208,7 +209,7 @@ class bloom_filter {
     uint64_t curr_hash[2]{};
     MurmurHash3_x86_128(datum.begin(), datum.size(), 0, curr_hash);
 
-    return pair(curr_hash[0], curr_hash[1]);
+    return {curr_hash[0], curr_hash[1]};
   }
 };
 

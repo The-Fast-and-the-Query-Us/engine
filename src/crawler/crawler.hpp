@@ -309,26 +309,12 @@ class crawler {
         continue;
       }
 
-      // We now set visited before adding to frontier!
-      //if (!visited_urls.contains(url)) {
-      //  visited_urls.insert(url);
-      //} else {
-      //  crawl_frontier.notify_crawled(url);
-      //  continue;
-      //}
-
-      //if (url == "https://whereis.mit.edu/") {
-      //crawl_frontier.notify_crawled(url);
-      //continue;
-      //}
-
       fast::crawler::url_parser url_parts(url.begin());
       if (!url_parts.host || !*url_parts.host || !url_parts.port ||
           !url_parts.path || !isalnum(*url_parts.host)) {
         crawl_frontier.notify_crawled(url);
         continue;
       }
-      // std::cout << "OG: " << url.begin() << '\n';
 
       SSL_CTX* ctx_cpy = g_ssl_ctx;
 

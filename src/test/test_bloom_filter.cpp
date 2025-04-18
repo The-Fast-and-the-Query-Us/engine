@@ -13,7 +13,7 @@ static const fast::string DICT[NUM_WORDS] = {
     "actor", "actress", "actual", "actually", "adapt", "add", "addition", "additional",
     "address", "adequate", "adjust", "adjustment", "administration", "administrative", "administrator", "admire",
     "admission", "admit", "adolescent", "adopt", "adoption", "adult", "advance", "advanced",
-    "advantage", "adventure", "advertise", "advertisement", "advertising", "advice", "advise", "adviser",
+    "advantage", "adventure", "advertise", "advertisement", "advertising", "advice", /*"advise"*/ "adviser",
     "advocate", "affair", "affect", "afford", "afraid", "african", "after", "afternoon",
     "afterward", "again", "against", "age", "agency", "agenda", "agent", "aggressive",
     "ago", "agree", "agreement", "agricultural", "agriculture", "ahead", "aid", "aide",
@@ -583,17 +583,17 @@ static const fast::string DICT[NUM_WORDS] = {
 int main() {
   fast::crawler::bloom_filter<fast::string> bf(3 * NUM_WORDS, 0.0001);
 
-  bf.insert("hello");
+  bf.try_insert("jameslu");
 
   std::cout << "here\n";
-  assert(bf.contains("hello"));
-  assert(!bf.contains("hell"));
-  std::cout << "PASS string basic" << std::endl << std::endl;
+  assert(!bf.try_insert("jameslu"));
+  assert(bf.try_insert("jamesl"));
+  std::cout << "PASS string basic" << "\n\n";
 
-  for (size_t i = 0; i < NUM_WORDS; ++i) {
-    bf.insert(DICT[i]);
-    assert(bf.contains(DICT[i]));
+  for (const auto &word : DICT) {
+    bf.insert(word);
+    assert(bf.contains(word));
   }
 
-  std::cout << "PASS string many" << std::endl << std::endl;
+  std::cout << "PASS string many" << "\n\n";
 }

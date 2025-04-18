@@ -110,4 +110,10 @@ T min(T lhs, T rhs) {
   return (lhs < rhs) ? lhs : rhs;
 }
 
+template <typename T>
+T round(T v) {
+  return (v >= 0) ? static_cast<T>(static_cast<long long>(v + 0.5)) 
+  : static_cast<T>(static_cast<long long>(v - 0.5));
+}
+
 }
