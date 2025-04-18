@@ -9,7 +9,6 @@
 namespace fast {
 
 class bitset_opt {
-public:
   using chunk_type = unsigned long long;
   static constexpr size_t BITS_PER_CHUNK = sizeof(unsigned long long) * CHAR_BIT;
 
@@ -26,6 +25,7 @@ public:
     return pos % BITS_PER_CHUNK;
   }
 
+public:
   bitset_opt() = default;
 
   bitset_opt(size_t _num_bits, const char* _save_path = nullptr)
