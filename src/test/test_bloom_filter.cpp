@@ -583,14 +583,8 @@ static const fast::string DICT[NUM_WORDS] = {
 int main() {
   fast::crawler::bloom_filter<fast::string> bf(3 * NUM_WORDS, 0.0001);
 
-  bf.insert("hello");
-
-  std::cout << "here\n";
-  assert(bf.contains("hello"));
-  assert(!bf.contains("hell"));
-  std::cout << "PASS string basic" << std::endl << std::endl;
-
   for (size_t i = 0; i < NUM_WORDS; ++i) {
+    assert(!bf.contains(DICT[i]));
     bf.insert(DICT[i]);
     assert(bf.contains(DICT[i]));
   }
