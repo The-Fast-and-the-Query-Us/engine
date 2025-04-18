@@ -338,11 +338,8 @@ class crawler {
       const auto domain = url_parser::get_base_root(url);
 
       cnt_mtx.lock();
-      // does remove work?
       frontier_cnt[fast::english::strip_url_prefix(domain)]--;
       cnt_mtx.unlock();
-
-      // std::cout << "OG: " << url.begin() << '\n';
 
       SSL_CTX* ctx_cpy = g_ssl_ctx;
 
@@ -504,7 +501,6 @@ class crawler {
           if (word_len > 1) {
             for (const auto& banned : blacklist) {
               if (banned == fast::string_view(word_start, word_len)) {
-                // std::cout << "Blacklist: " << banned.begin() << std::endl;
                 return true;
               }
             }

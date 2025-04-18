@@ -152,7 +152,7 @@ class frontier {
   void notify_crawled(fast::string& url) {
     fast::scoped_lock lock(&mtx);
     fast::string hostname = extract_hostname(url);
-    --crawl_cnt[hostname];
+    //--crawl_cnt[hostname];
   }
 
   int save() {
