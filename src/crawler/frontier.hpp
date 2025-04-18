@@ -46,21 +46,25 @@ class frontier {
     }
   }
 
-  void insert_no_mutex(fast::string& url) {
+  bool insert_no_mutex(fast::string& url) {
     int pri_level = calc_priority(url);
     if (pri_level < 0)
-      return;
+      return false;
 
     if (priorities[pri_level].size() < MAX_LINKS) {
       priorities[pri_level].push(url);
       ++num_links;
       cv.signal();
+
+      return true;
     }
+
+    return false;
   }
 
-  void insert(fast::string& url) {
+  bool insert(fast::string& url) {
     fast::scoped_lock lock(&mtx);
-    insert_no_mutex(url);
+    return insert_no_mutex(url);
   }
 
   fast::string next(volatile sig_atomic_t* shutdown_flag = nullptr) {
@@ -75,30 +79,33 @@ class frontier {
       return "";
     }
 
+
+    for (int64_t i = priorities.size() - 1; i >= 0; --i) {
+
+      const auto flip = rand() % 100;
+      if (flip >= 70) continue;
+
+      fast::queue<fast::string>& curr_pri = priorities[i];
+
+      if (!curr_pri.empty()) {
+        const auto url = curr_pri.front();
+        curr_pri.pop();
+
+        return url;
+      }
+    }
+
     for (int64_t i = priorities.size() - 1; i >= 0; --i) {
       fast::queue<fast::string>& curr_pri = priorities[i];
 
       if (!curr_pri.empty()) {
-        const size_t n = curr_pri.size();
-        for (size_t j = 0; j < n; ++j) {
-          if (shutdown_flag != nullptr && *shutdown_flag == 1) {
-            return "";
-          }
+        const auto url = curr_pri.front();
+        curr_pri.pop();
 
-          fast::string url = curr_pri.front();
-          fast::string curr_hostname = extract_hostname(url);
-          curr_pri.pop();
-
-          if (crawl_cnt[curr_hostname] <= CRAWL_LIM) {
-            ++crawl_cnt[curr_hostname];
-            --num_links;
-            return url;
-          }
-
-          curr_pri.push(url);
-        }
+        return url;
       }
     }
+
 
     return "";
   }

@@ -149,6 +149,7 @@ class crawler {
   fast::crawler::bloom_filter<fast::string> visited_urls;
   fast::crawler::frontier crawl_frontier;
   fast::hashtable* word_bank;
+  fast::flat_map<fast::string, uint8_t> frontier_cnt;
   fast::mutex bank_mtx;
   int log_fd;
   SSL_CTX* g_ssl_ctx{};
@@ -157,7 +158,7 @@ class crawler {
   /*std::unordered_map<fast::string, std::unordered_set<fast::string>>*/
   pthread_t thread_pool[THREAD_COUNT]{};
   // just for testing
-  static const inline fast::string blacklist[150] = {
+  static const inline fast::string blacklist[] = {
       "login",       "signin",    "signup",       "account",  "password",
       "admin",       "profile",   "cart",         "checkout", "buy",
       "purchase",    "register",  "payment",      "shop",     "order",
@@ -190,7 +191,9 @@ class crawler {
       "onet",        "interia",   "wp",           "sohu",     "sina",
       "alipay",      "tencent",   "bilibili",     "youku",    "tudou",
       "dmm",         "kakao",     "line",         "mixi",     "nicovideo",
-      "pixiv",       "qzone",     "renren",       "wechat",   "weixin"};
+      "pixiv",       "qzone",     "renren",       "wechat",   "weixin", 
+      "q",           "page",
+  };
 
   url_sender link_sender;
 
@@ -424,9 +427,17 @@ class crawler {
 
   // call back function for recving urls to crawl
   void add_url(string& url) {
+    static constexpr uint8_t MAX_CNT = 10;
+
+    const auto domain = url_parser::get_base_root(url);
+    const auto dom_no_prot = fast::english::strip_url_prefix(domain);
+
     fast::string stripped = fast::english::strip_url_prefix(url);
-    if (visited_urls.try_insert(stripped)) {
-      crawl_frontier.insert(url);
+    if (frontier_cnt[dom_no_prot] < MAX_CNT && !visited_urls.contains(stripped)) {
+      if (crawl_frontier.insert(url)) {
+        visited_urls.insert(url);
+        frontier_cnt[dom_no_prot]++;
+      }
     }
   }
 
