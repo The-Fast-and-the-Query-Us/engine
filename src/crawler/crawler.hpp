@@ -149,7 +149,10 @@ class crawler {
   fast::crawler::bloom_filter<fast::string> visited_urls;
   fast::crawler::frontier crawl_frontier;
   fast::hashtable* word_bank;
+
+  fast::mutex cnt_mtx;
   fast::flat_map<fast::string, uint8_t> frontier_cnt;
+
   fast::mutex bank_mtx;
   int log_fd;
   SSL_CTX* g_ssl_ctx{};
@@ -331,6 +334,13 @@ class crawler {
         crawl_frontier.notify_crawled(url);
         continue;
       }
+
+      const auto domain = url_parser::get_base_root(url);
+
+      cnt_mtx.lock();
+      frontier_cnt[fast::english::strip_url_prefix(domain)]--;
+      cnt_mtx.unlock();
+
       // std::cout << "OG: " << url.begin() << '\n';
 
       SSL_CTX* ctx_cpy = g_ssl_ctx;
@@ -422,7 +432,10 @@ class crawler {
     if (frontier_cnt[dom_no_prot] < MAX_CNT && !visited_urls.contains(stripped)) {
       if (crawl_frontier.insert(url)) {
         visited_urls.insert(url);
+
+        cnt_mtx.lock();
         frontier_cnt[dom_no_prot]++;
+        cnt_mtx.unlock();
       }
     }
   }
