@@ -21,7 +21,7 @@
 #include <pthread.h>
 #include "crawler.hpp"
 
-constexpr unsigned PORT = 8082;
+constexpr unsigned PORT = 80;
 constexpr unsigned QUERY_PORT = 8081;
 
 constexpr size_t THREAD_COUNT = 20;
