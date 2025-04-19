@@ -16,7 +16,7 @@
 #include <signal.h>
 
 constexpr unsigned PORT = 8081;
-constexpr size_t THREAD_COUNT = 20;
+constexpr size_t THREAD_COUNT = 5;
 
 volatile bool die = false;
 fast::queue<int> clients;
