@@ -51,8 +51,6 @@ void serve_file(const int fd, const fast::string &path) {
   char buffer[1 << 10]{};
 
   const int file = open(path.c_str(), O_RDONLY);
-  assert(file > -1);
-
   if (file < 0) {
 
     fast::string response = "HTTP/1.1 404 Not Found\r\n\r\nFile not found";
@@ -80,6 +78,9 @@ void serve_file(const int fd, const fast::string &path) {
   }
 }
 
+/*
+* TODO Parse '[' and ']'
+*/
 void serve_query(const int fd, const fast::string_view &query, const fast::vector<int> servers) {
   fast::string translated;
   translated.reserve(query.size());
