@@ -11,7 +11,7 @@ cd ../..
 sudo cp systemd/frontend.service /etc/systemd/system/
 
 username=$(whoami)
-sed -i "s/<USERNAME>/$username/g" /etc/systemd/system/frontend.service
+sudo sed -i "s/<USERNAME>/$username/g" /etc/systemd/system/frontend.service
 
 sudo systemctl daemon-reload
 sudo systemctl enable frontend.service
