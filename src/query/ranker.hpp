@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array.hpp>
+#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -556,12 +557,16 @@ void insertion_sort(array<Result, MAX_RESULTS> &results, const Result &r) {
 static url_location find_in_url(const string_view &url,
                                 const string_view &word) {
   bool slash = false;
+  const auto start = url.find("://");
 
-  for (size_t i = 9; i <= url.size() - word.size(); ++i) {
+  if (!start) return None;
+
+
+  for (size_t i = start + 3 - url.begin(); i <= url.size() - word.size(); ++i) {
     bool good = true;
     for (size_t j = 0; j < word.size() && good; ++j) {
       if (url[i + j] == '/') slash = true;
-      if (url[i + j] != word[j]) good = false;
+      if (tolower(url[i + j]) != word[j]) good = false;
     }
 
     if (good) {
@@ -590,11 +595,6 @@ static double url_rank(const string_view &url, const vector<string_view> &words,
   return score;
 }
 
-/*
-* Brain storm:
-*   Maybe square the width
-*   Calc proportion of document that is query words
-*/
 static double rank_isrs(const vector<isr*> words, Offset start, Offset end, size_t rare) {
   for (const auto isr : words) {
     isr->seek(start);
