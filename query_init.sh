@@ -11,7 +11,7 @@ cd ../..
 sudo cp systemd/query_server.service /etc/systemd/system/
 
 username=$(whoami)
-sed -i "s/<USERNAME>/$username/g" /etc/systemd/system/query_server.service
+sudo sed -i "s/<USERNAME>/$username/g" /etc/systemd/system/query_server.service
 
 sudo systemctl daemon-reload
 sudo systemctl enable query_server.service
