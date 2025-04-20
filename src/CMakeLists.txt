@@ -8,6 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # export lsp shit
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -flto")
+
 add_subdirectory(lib)
 add_subdirectory(index)
 add_subdirectory(crawler)
