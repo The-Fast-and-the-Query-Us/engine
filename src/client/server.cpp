@@ -78,18 +78,24 @@ void serve_file(const int fd, const fast::string &path) {
   }
 }
 
-/*
-* TODO Parse '[' and ']'
-*/
 void serve_query(const int fd, const fast::string_view &query, const fast::vector<int> servers) {
   fast::string translated;
   translated.reserve(query.size());
 
+  //handle URL encoding
   for (const auto c : query) {
     translated += c;
     if (translated.ends_with("%20")) {
       translated.pop_back(3);
       translated += ' ';
+    }
+    else if (translated.ends_with("%5B")) {
+      translated.pop_back(3);
+      translated += '[';
+    }
+    else if (translated.ends_with("%5D")) {
+      translated.pop_back(3);
+      translated += ']';
     }
   }
 
@@ -180,9 +186,9 @@ void serve_client(const int fd, const fast::vector<int> &servers) {
   if (path.starts_with("api?q=")) {
     serve_query(fd, path.view().trim_prefix(6), servers);
   } else if (path.size() == 0) {
-    serve_file(fd, "index.html");
+    serve_file(fd, "frontend/index.html");
   } else if (path == "img") {
-    serve_file(fd, "search_engine.png");
+    serve_file(fd, "frontend/search_engine.png");
   } else {
     serve_not_found(fd);
   }
