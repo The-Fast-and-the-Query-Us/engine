@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector.hpp>
+#include <english.hpp>
 #include <sys/mman.h>
 
 #include "constants.hpp"
@@ -557,11 +558,12 @@ static url_location find_in_url(const string_view &url,
                                 const string_view &word) {
   bool slash = false;
 
-  for (size_t i = 9; i <= url.size() - word.size(); ++i) {
+  auto url_no_protocol = fast::english::strip_url_prefix(url);
+  for (size_t i = 9; i <= url_no_protocol.size() - word.size(); ++i) {
     bool good = true;
     for (size_t j = 0; j < word.size() && good; ++j) {
-      if (url[i + j] == '/') slash = true;
-      if (url[i + j] != word[j]) good = false;
+      if (url_no_protocol[i + j] == '/') slash = true;
+      if (tolower(url_no_protocol[i + j]) != word[j]) good = false;
     }
 
     if (good) {
