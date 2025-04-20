@@ -31,51 +31,54 @@ fast::mutex mtx;
 fast::condition_variable cv;
 fast::queue<int> clients;
 
+fast::string html;
+fast::string img;
+
 fast::vector<fast::string> ips;
 
 bool logging = true;
 
-// not needed
-const char *get_type(const fast::string &file) {
-  if (file.ends_with(".html")) {
-    return "text/html";
-  } else if (file.ends_with(".png")) {
-    return "image/png";
-  } else {
-    return ""; // TODO
+/*
+* Read in files to serve as frontend
+*/
+void init_files() {
+  char buffer[1 << 10];
+
+  auto fd = open("frontend/html/index.html", O_RDONLY);
+  if (fd < 0) {
+    perror("Fail to open index.html");
+    exit(1);
   }
+
+  for (auto r = read(fd, buffer, sizeof(buffer)); r > 0; r = read(fd, buffer, sizeof(buffer))) {
+    html += fast::string(buffer, r);
+  }
+
+  close(fd);
+
+  fd = open("frontend/img/search_engine.png", O_RDONLY);
+  if (fd < 0) {
+    perror("Fail to open img");
+    exit(1);
+  }
+
+  for (auto r = read(fd, buffer, sizeof(buffer)); r > 0; r = read(fd, buffer, sizeof(buffer))) {
+    img += fast::string(buffer, r);
+  }
+
+  close(fd);
 }
 
-// make this more efficient by reading in file to start
-void serve_file(const int fd, const fast::string &path) {
-  char buffer[1 << 10]{};
+void serve_file(const int fd, const fast::string &file, const fast::string &type) {
 
-  const int file = open(path.c_str(), O_RDONLY);
-  if (file < 0) {
+  fast::string response = "HTTP/1.1 200 OK\r\n";
+  response = response + "Content-Type: " + type + "\r\n";
+  response = response + "Content-Length: " + fast::to_string(file.size()) + "\r\n";
+  response = response + "Access-Control-Allow-Origin: *\r\n";
+  response += "\r\n";
 
-    fast::string response = "HTTP/1.1 404 Not Found\r\n\r\nFile not found";
-    fast::send_all(fd, response.c_str(), response.size());
-
-  } else {
-
-    struct stat sb;
-    fstat(file, &sb);
-
-    fast::string response = "HTTP/1.1 200 OK\r\n";
-    response = response + "Content-Type: " + get_type(path) + "\r\n";
-    response = response + "Content-Length: " + fast::to_string(sb.st_size) + "\r\n";
-    response = response + "Access-Control-Allow-Origin: *\r\n";
-    response += "\r\n";
-
-    fast::send_all(fd, response.c_str(), response.size());
-    
-    int red;
-    while ((red = read(file, buffer, sizeof(buffer))) && red > 0) {
-      fast::send_all(fd, buffer, red);
-    }
-
-    close(file);
-  }
+  fast::send_all(fd, response.c_str(), response.size());
+  fast::send_all(fd, file.c_str(), file.size());
 }
 
 void serve_query(const int fd, const fast::string_view &query, const fast::vector<int> servers) {
@@ -186,9 +189,9 @@ void serve_client(const int fd, const fast::vector<int> &servers) {
   if (path.starts_with("api?q=")) {
     serve_query(fd, path.view().trim_prefix(6), servers);
   } else if (path.size() == 0) {
-    serve_file(fd, "frontend/build/index.html");
+    serve_file(fd, html, "text/html");
   } else if (path == "img") {
-    serve_file(fd, "frontend/build/search_engine.png");
+    serve_file(fd, img, "image/pngimage/png");
   } else {
     serve_not_found(fd);
   }
