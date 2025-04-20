@@ -1,6 +1,11 @@
 #!/bin/bash
 
-sudo systemctl stop query_server.service
+set -e
+
+echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
+echo always | sudo tee /sys/kernel/mm/transparent_hugepage/defrag
+
+sudo systemctl stop query_server.service || true
 
 cd src
 cmake -B build -DCMAKE_BUILD_TYPE=Release
