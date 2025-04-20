@@ -3,7 +3,7 @@
 sudo systemctl stop frontend.service
 
 cd src
-cmake -B build
+cmake -B build -DCMAKE_BUILD_TYPE=Release
 cd build
 make server
 cd ../..
