@@ -80,8 +80,11 @@ int main(int argc, char **argv) {
       fast::recv_all(s, url);
 
 
+
       float casted;
       memcpy(&casted, &rank, sizeof(casted));
+
+      std::cout << "Recv: " << url.c_str() << " with rank: " << casted << std::endl;
 
       if (casted > results[9].second) {
         results[9] = {url, casted};
