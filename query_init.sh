@@ -3,7 +3,7 @@
 sudo systemctl stop query_server.service
 
 cd src
-cmake -B build
+cmake -B build -DCMAKE_BUILD_TYPE=Release
 cd build
 make query_server
 cd ../..
