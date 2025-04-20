@@ -8,6 +8,7 @@ PIDFile=/run/query_server.pid
 ExecStart=/home/<USERNAME>/engine/src/build/query/query_server
 KillSignal=SIGINT
 Nice=-20
+LimitMEMLOCK=infinity
 
 [Install]
 WantedBy=multi-user.target
