@@ -43,4 +43,29 @@ void fast_sort(T* begin, T* end) {
   }
 }
 
+/*
+* Return ptr to array element that compares equal to cmp
+* or nullptr if none exists
+*/
+template<class T, class C>
+const T* binary_search(const T *begin, const T *end, const C &cmp) {
+  const size_t N = end - begin;
+
+  size_t l = 0, r = N;
+
+  while (l < r) {
+    const auto m = (l + r) / 2;
+
+    if (begin[m] < cmp) {
+      l = m + 1;
+    } else if (begin[m] > cmp) {
+      r = l;
+    } else {
+      return begin + m;
+    }
+  }
+
+  return nullptr;
+}
+
 }
