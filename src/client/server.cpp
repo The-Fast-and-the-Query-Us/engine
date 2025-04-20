@@ -186,9 +186,9 @@ void serve_client(const int fd, const fast::vector<int> &servers) {
   if (path.starts_with("api?q=")) {
     serve_query(fd, path.view().trim_prefix(6), servers);
   } else if (path.size() == 0) {
-    serve_file(fd, "frontend/index.html");
+    serve_file(fd, "frontend/build/index.html");
   } else if (path == "img") {
-    serve_file(fd, "frontend/search_engine.png");
+    serve_file(fd, "frontend/build/search_engine.png");
   } else {
     serve_not_found(fd);
   }
