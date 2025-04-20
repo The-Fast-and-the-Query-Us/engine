@@ -16,6 +16,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <sys/fcntl.h>
+#include <sys/mman.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <signal.h>
@@ -71,14 +72,18 @@ void init_blobs() {
     const auto map_ptr =
         mmap(nullptr, chunk_size, PROT_READ, MAP_PRIVATE, chunk_fd, 0);
 
+    close(chunk_fd);
+
     if (map_ptr == MAP_FAILED) [[unlikely]] {
-      close(chunk_fd);
       perror("Fail to mmap index chunk");
       exit(1);
     }
 
-    close(chunk_fd);
-    
+    if (mlock(map_ptr, chunk_size) != 0) {
+      perror("Fail to lock chunk");
+      exit(1); // exit fotr debuging (remove later)
+    }
+
     auto blob = reinterpret_cast<const fast::hashblob*>(map_ptr);
 
     if (!blob->is_good()) {
