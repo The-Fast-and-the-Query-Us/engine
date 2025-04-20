@@ -21,7 +21,7 @@
 #include <signal.h>
 
 constexpr unsigned PORT = 8081;
-constexpr size_t ACCPETOR_THREADS = 5;
+constexpr size_t ACCPETOR_THREADS = 10;
 
 volatile bool die = false;
 fast::queue<int> clients;
@@ -89,7 +89,7 @@ void init_blobs() {
   }
 }
 
-static constexpr size_t RANKER_THREADS = 5;
+static constexpr size_t RANKER_THREADS = 20;
 
 struct ranker_args {
   size_t start;
