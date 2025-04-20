@@ -13,7 +13,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector.hpp>
-#include <english.hpp>
 #include <sys/mman.h>
 
 #include "constants.hpp"
@@ -22,8 +21,6 @@
 #include "url_components.hpp"
 
 namespace fast::query {
-
-static constexpr bool logging = true;
 
 constexpr size_t SHORT_SPAN_LENGTH = 10;
 constexpr double BASE_PROXIMITY = 25.0;
@@ -560,12 +557,11 @@ static url_location find_in_url(const string_view &url,
                                 const string_view &word) {
   bool slash = false;
 
-  auto url_no_protocol = fast::english::strip_url_prefix(url);
-  for (size_t i = 0; i <= url_no_protocol.size() - word.size(); ++i) {
+  for (size_t i = 9; i <= url.size() - word.size(); ++i) {
     bool good = true;
     for (size_t j = 0; j < word.size() && good; ++j) {
-      if (url_no_protocol[i + j] == '/') slash = true;
-      if (tolower(url_no_protocol[i + j]) != word[j]) good = false;
+      if (url[i + j] == '/') slash = true;
+      if (url[i + j] != word[j]) good = false;
     }
 
     if (good) {
@@ -578,9 +574,7 @@ static url_location find_in_url(const string_view &url,
 }
 
 // maybe prioritize rare word?
-static double url_rank(const string_view &url, 
-                       const vector<string_view> &words,
-                       size_t rare) {
+static double url_rank(const string_view &url, const vector<string_view> &words, size_t rare) {
   double score = 0;
   score += Params::FACTORS[Params::ShortUrl] / url.size(); // maybe squre this?
   
@@ -725,13 +719,6 @@ void rank(const hashblob *blob, const vector<string_view> &flat,
     const auto url = matches->get_doc_url();
     auto score = body_score + title_score * Params::FACTORS[Params::Title] +
                  url_rank(url, flat, rare_idx);
-
-    if constexpr (logging) {
-      for (const auto c : url) {
-        std::cout << c;
-      }
-      std::cout << " with rank: " << score << std::endl;
-    }
 
     insertion_sort(results, {score, url});
 
