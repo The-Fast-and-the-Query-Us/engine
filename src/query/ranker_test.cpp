@@ -49,6 +49,7 @@ int main(int argc, char **argv) {
 
       if (connect(fd, (sockaddr*) &addr, sizeof(addr)) < 0) {
         perror("Server unreachable");
+        std::cout << buffer << std::endl;
         close(fd);
         continue;
       }
