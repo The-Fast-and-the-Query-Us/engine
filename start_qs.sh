@@ -1,6 +1,6 @@
 #!/bin/bash
 
-COMMAND="cd engine && git restore . && git checkout main && git pull && ./query_init"
+COMMAND="cd engine && git restore . && git checkout main && git pull && ./query_init.sh"
 
 for HOST in "$@"; do
   echo "Starting $HOST"
