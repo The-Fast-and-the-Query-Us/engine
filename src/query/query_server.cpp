@@ -21,7 +21,7 @@
 #include <signal.h>
 
 constexpr unsigned PORT = 8081;
-constexpr size_t ACCPETOR_THREADS = 10;
+constexpr size_t ACCPETOR_THREADS = 20; // this must be at least the same as the frontend
 
 volatile bool die = false;
 fast::queue<int> clients;
