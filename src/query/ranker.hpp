@@ -23,6 +23,8 @@
 
 namespace fast::query {
 
+static constexpr bool logging = true;
+
 constexpr size_t SHORT_SPAN_LENGTH = 10;
 constexpr double BASE_PROXIMITY = 25.0;
 constexpr double DECAY_RATE = 1.5;
@@ -721,6 +723,13 @@ void rank(const hashblob *blob, const vector<string_view> &flat,
     const auto url = matches->get_doc_url();
     auto score = body_score + title_score * Params::FACTORS[Params::Title] +
                  url_rank(url, flat, rare_idx);
+
+    if constexpr (logging) {
+      for (const auto c : url) {
+        std::cout << c;
+      }
+      std::cout << " with rank: " << score << std::endl;
+    }
 
     insertion_sort(results, {score, url});
 
