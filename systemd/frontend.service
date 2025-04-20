@@ -5,6 +5,7 @@ Description=Frontend Server
 Type=simple
 User=<USERNAME>
 PIDFile=/run/frontend_server.pid
+WorkingDirectory=/home/<USERNAME>/engine
 ExecStart=/home/<USERNAME>/engine/src/build/client/server
 KillSignal=SIGINT
 Nice=-20
