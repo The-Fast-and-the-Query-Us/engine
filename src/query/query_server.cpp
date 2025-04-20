@@ -109,6 +109,7 @@ void *ranker_thread(void *args) {
     if (constraints) {
       fast::query::rank(blobs[i], *ra->flattened, constraints, *ans);
     }
+    delete constraints;
   }
 
   return ans;
