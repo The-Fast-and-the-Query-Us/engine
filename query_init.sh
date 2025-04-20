@@ -2,9 +2,6 @@
 
 set -e
 
-echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
-echo always | sudo tee /sys/kernel/mm/transparent_hugepage/defrag
-
 sudo systemctl stop query_server.service || true
 
 cd src
