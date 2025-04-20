@@ -5,7 +5,7 @@ sudo systemctl stop query_server.service
 cd src
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cd build
-make query_server
+make query_server VERBOSE=1
 cd ../..
 
 sudo cp systemd/query_server.service /etc/systemd/system/
