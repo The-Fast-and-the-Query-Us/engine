@@ -514,11 +514,11 @@ Triple = 0.5,
 UrlDepth = -0.10,
 Decay = 1.05,
 SpanMult = 1.0,
-DomainHit = 50.0,
+DomainHit = 75.0,
 AnyHit = 30.0,
 UrlLength = -0.5,
-GoodLength = 30.0
-
+GoodLength = 30.0,
+GoodTLD = 75.0
 ;
 
 static bool is_good_doc_len(Offset len) {
@@ -580,6 +580,10 @@ static double url_rank(const string_view &url, const vector<string_view> &words,
   size_t slash_cnt = 0;
   for (const auto c : url) {
     slash_cnt += c == '/';
+  }
+
+  if (url.contains(".com") || url.contains(".edu") || url.contains(".gov")) {
+    score += Params::GoodTLD;
   }
 
   if (slash_cnt > 2) {
