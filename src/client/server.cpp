@@ -191,7 +191,7 @@ void serve_client(const int fd, const fast::vector<int> &servers) {
   } else if (path.size() == 0) {
     serve_file(fd, html, "text/html");
   } else if (path == "img") {
-    serve_file(fd, img, "image/pngimage/png");
+    serve_file(fd, img, "image/png");
   } else {
     serve_not_found(fd);
   }
