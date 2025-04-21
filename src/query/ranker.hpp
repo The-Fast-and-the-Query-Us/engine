@@ -582,7 +582,7 @@ static double url_rank(const string_view &url, const vector<string_view> &words,
     slash_cnt += c == '/';
   }
 
-  if (url.contains(".com") || url.contains(".edu") || url.contains(".gov")) {
+  if (url.contains(".com") || url.contains(".edu") || url.contains(".gov") || url.contains(".org")) {
     score += Params::GoodTLD;
   }
 
