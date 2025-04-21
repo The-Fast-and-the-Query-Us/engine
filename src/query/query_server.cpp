@@ -24,7 +24,7 @@
 constexpr unsigned PORT = 8081;
 constexpr size_t ACCPETOR_THREADS = 20; // this must be at least the same as the frontend
 
-constexpr bool LOCK_MEM = false; // false => fast start up and slow query
+constexpr bool LOCK_MEM = true; // false => fast start up and slow query
 
 volatile bool die = false;
 fast::queue<int> clients;
@@ -99,7 +99,7 @@ void init_blobs() {
   }
 }
 
-static constexpr size_t RANKER_THREADS = 20;
+static constexpr size_t RANKER_THREADS = 5;
 
 struct ranker_args {
   size_t start;
