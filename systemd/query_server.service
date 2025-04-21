@@ -9,6 +9,8 @@ ExecStart=/home/<USERNAME>/engine/src/build/query/query_server
 KillSignal=SIGINT
 Nice=-20
 LimitMEMLOCK=infinity
+MemoryMax=infinity
+OOMScoreAdjust=-1000
 
 [Install]
 WantedBy=multi-user.target
