@@ -255,6 +255,7 @@ int accept_fd;
 
 
 int main() {
+  init_files();
   const auto ip_file = fopen("ips.txt", "r");
 
   if (ip_file == NULL) {
