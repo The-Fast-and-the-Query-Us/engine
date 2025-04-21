@@ -24,6 +24,8 @@
 constexpr unsigned PORT = 8081;
 constexpr size_t ACCPETOR_THREADS = 20; // this must be at least the same as the frontend
 
+constexpr bool LOCK_MEM = true; // false => fast start up and slow query
+
 volatile bool die = false;
 fast::queue<int> clients;
 fast::mutex mtx;
@@ -79,9 +81,12 @@ void init_blobs() {
       exit(1);
     }
 
-    if (mlock(map_ptr, chunk_size) != 0) {
-      perror("Fail to lock chunk");
-      exit(1); // exit fotr debuging (remove later)
+    // this blocks until page faults are done
+    if constexpr (LOCK_MEM) {
+      if (mlock(map_ptr, chunk_size) != 0) {
+        perror("Fail to lock chunk");
+        exit(1); // exit fotr debuging (remove later)
+      }
     }
 
     auto blob = reinterpret_cast<const fast::hashblob*>(map_ptr);
