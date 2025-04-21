@@ -519,7 +519,7 @@ AnyHit = 30.0,
 UrlLength = -0.5,
 GoodLength = 30.0,
 GoodTLD = 75.0,
-WhiteList = 150.0
+WhiteList = 80.0
 ;
 
 static bool is_good_doc_len(Offset len) {
