@@ -515,7 +515,8 @@ UrlDepth = -0.10,
 Decay = 1.05,
 SpanMult = 1.0,
 DomainHit = 100.0,
-AnyHit = 30.0
+AnyHit = 30.0,
+UrlLength = -0.5
 
 ;
 
@@ -579,6 +580,8 @@ static double url_rank(const string_view &url, const vector<string_view> &words,
   if (slash_cnt > 2) {
     score += Params::UrlDepth * (slash_cnt - 2);
   }
+
+  score += Params::UrlLength * url.size();
 
   for (const auto word : words) {
     const auto hit = find_in_url(url, word);
