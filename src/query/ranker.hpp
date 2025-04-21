@@ -514,8 +514,8 @@ Triple = 0.5,
 UrlDepth = -0.10,
 Decay = 1.05,
 SpanMult = 1.0,
-DomainHit = 1.0,
-AnyHit = 1.0
+DomainHit = 5.0,
+AnyHit = 2.5
 
 ;
 
