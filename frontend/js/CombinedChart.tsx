@@ -8,9 +8,9 @@ const options = {
     title: "Date",
     format: "MMM dd, HH:mm",
     gridlines: { count: 3 },
-    viewWindow: {
-      max: new Date(),
-    },
+    // viewWindow: {
+    //   max: new Date(),
+    // },
   },
   vAxes: {
     0: { title: "Documents Written" },
