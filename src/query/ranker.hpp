@@ -516,9 +516,14 @@ Decay = 1.05,
 SpanMult = 1.0,
 DomainHit = 100.0,
 AnyHit = 30.0,
-UrlLength = -0.5
+UrlLength = -0.5,
+GoodLength = 30.0
 
 ;
+
+static bool is_good_doc_len(Offset len) {
+  return len >= 350 && len <= 2000;
+}
 
 };
 
@@ -719,6 +724,8 @@ void rank(const hashblob *blob, const vector<string_view> &flat,
     const auto url = matches->get_doc_url();
     auto score = body_score + title_score * Params::Mtitle +
                  url_rank(url, flat, rare_idx);
+
+    score += Params::is_good_doc_len(matches->get_doc_end() - matches->get_doc_start()) * Params::GoodLength;
 
     insertion_sort(results, {score, url});
 
