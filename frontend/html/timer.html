@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FAST & FURIOUS SEARCH</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Racing+Sans+One&display=swap');
+
+    :root {
+      --neon-blue: #00f3ff;
+      --engine-red: #ff1a1a;
+      --nitro-purple: #9d00ff;
+      --carbon: #111;
+      --chrome: #e0e0e0;
+      --dodge-orange: #ff8c00;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Racing Sans One', sans-serif;
+      background:
+        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23000"/><path d="M0 0 L100 100 M100 0 L0 100" stroke="%23111" stroke-width="1"/></svg>'),
+        linear-gradient(135deg, #000, #111);
+      color: var(--chrome);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ===== RACING STRIPES ===== */
+    .racing-stripe {
+      height: 4px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        var(--engine-red) 20%,
+        var(--dodge-orange) 30%,
+        var(--neon-blue) 50%,
+        var(--dodge-orange) 70%,
+        var(--engine-red) 80%,
+        transparent 100%
+      );
+      margin: 10px auto;
+      width: 80%;
+      box-shadow: 0 0 10px var(--neon-blue);
+    }
+
+    /* ===== HEADER WITH DOM'S CHARGER ===== */
+    .header {
+      text-align: center;
+      padding: 30px 0;
+      position: relative;
+      background: rgba(0,0,0,0.7);
+      border-bottom: 2px solid var(--nitro-purple);
+    }
+
+    h1 {
+      font-size: 4.5rem;
+      text-transform: uppercase;
+      background: linear-gradient(45deg, var(--dodge-orange), var(--neon-blue), var(--nitro-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 20px var(--neon-blue);
+      margin: 0;
+      letter-spacing: 5px;
+    }
+
+    .header::before {
+      content: ""I LIVE MY LIFE A QUARTER SEARCH AT A TIME"";
+      display: block;
+      color: var(--chrome);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+    }
+
+    .logo-container {
+      text-align: center;
+      margin: 20px auto 30px;
+      padding-top: 20px;
+    }
+
+    .logo-img {
+      height: 120px; /* Adjust based on your logo's aspect ratio */
+      width: auto;
+      filter: drop-shadow(0 0 10px var(--neon-blue));
+      transition: all 0.3s ease;
+    }
+
+    .logo-img:hover {
+      transform: scale(1.05);
+      filter: drop-shadow(0 0 15px var(--dodge-orange));
+    }
+
+    /* ===== SEARCH BAR (STREET RACING STYLE) ===== */
+    .search-container {
+      max-width: 800px;
+      margin: 40px auto;
+      position: relative;
+    }
+
+    #searchInput {
+      width: 78%;
+      padding: 20px 150px 20px 30px;
+      font-size: 1.5rem;
+      background: rgba(10, 10, 10, 0.9);
+      border: 3px solid var(--dodge-orange);
+      border-radius: 50px;
+      color: var(--neon-blue);
+      text-transform: uppercase;
+      box-shadow: 0 0 20px var(--dodge-orange);
+      font-family: 'Racing Sans One', sans-serif;
+    }
+
+    #searchInput::placeholder {
+      color: #555;
+      font-style: italic;
+    }
+
+    button {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 15px 30px;
+      font-size: 1.3rem;
+      background: linear-gradient(45deg, var(--engine-red), var(--nitro-purple));
+      color: white;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      text-transform: uppercase;
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 2px;
+      box-shadow: 0 0 20px var(--engine-red);
+      transition: all 0.3s ease;
+    }
+
+    button:hover {
+      background: linear-gradient(45deg, var(--nitro-purple), var(--engine-red));
+      box-shadow: 0 0 30px var(--nitro-purple);
+      letter-spacing: 3px;
+    }
+
+    .results {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .result {
+      background: rgba(10, 10, 10, 0.9);
+      border-left: 5px solid var(--dodge-orange);
+      margin-bottom: 25px;
+      padding: 25px;
+      position: relative;
+      transition: all 0.3s ease;
+      clip-path: polygon(0 0, 100% 0, 97% 100%, 3% 100%);
+    }
+
+    .result:hover {
+      transform: translateX(20px) skewY(-1deg);
+      box-shadow: 10px 0 30px var(--nitro-purple);
+    }
+
+    .result-title {
+      color: var(--neon-blue);
+      font-size: 1.8rem;
+      text-decoration: none;
+      display: block;
+      margin-bottom: 10px;
+      font-family: 'Bebas Neue', sans-serif;
+    }
+
+    .result-title::before {
+      content: "🏁 ";
+      filter: drop-shadow(0 0 5px var(--neon-blue));
+    }
+
+    .result-url {
+      color: var(--dodge-orange);
+      font-size: 1rem;
+      margin-bottom: 10px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .result-snippet {
+      color: #aaa;
+      font-size: 1.1rem;
+      line-height: 1.5;
+    }
+
+    /* ===== NITRO GAUGE (BOTTOM HUD) ===== */
+    .nitro-gauge {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      width: 200px;
+      height: 20px;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 2px solid var(--nitro-purple);
+    }
+
+    .nitro-fill {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--nitro-purple), var(--neon-blue));
+      transform-origin: left;
+      transform: scaleX(0.7);
+      transition: transform 0.3s ease;
+    }
+
+    @keyframes nosBlast {
+      0% { opacity: 0; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.5); }
+      100% { opacity: 0; transform: scale(2); }
+    }
+
+    .nos-effect {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: radial-gradient(circle, var(--nitro-purple) 0%, transparent 70%);
+      pointer-events: none;
+      animation: nosBlast 0.5s ease-out;
+      opacity: 0;
+      z-index: 1000;
+    }
+
+    /* ===== FAMILY QUOTE ===== */
+    .family-quote {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      color: var(--chrome);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.2rem;
+      text-align: right;
+    }
+
+    .family-quote::before {
+      content: """;
+      color: var(--dodge-orange);
+      font-size: 2rem;
+    }
+
+    .family-quote::after {
+      content: """;
+      color: var(--dodge-orange);
+      font-size: 2rem;
+    }
+
+    /* ===== TIMER DISPLAY ===== */
+    .query-timer {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid var(--neon-blue);
+      border-radius: 10px;
+      padding: 10px 15px;
+      color: var(--neon-blue);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.2rem;
+      animation: pulsate 2s infinite;
+      display: none;
+    }
+
+    @keyframes pulsate {
+      0% { box-shadow: 0 0 5px var(--neon-blue); }
+      50% { box-shadow: 0 0 15px var(--neon-blue); }
+      100% { box-shadow: 0 0 5px var(--neon-blue); }
+    }
+  </style>
+</head>
+<body>
+  <div class="logo-container">
+    <img src="img" alt="THE FAST & THE QUERY-US SEARCH" class="logo-img">
+    <div class="racing-stripe"></div>
+  </div>
+
+  <!-- HEADER WITH DOM'S QUOTE -->
+  <div class="header">
+    <h1>THE FAST & THE QUERY-US SEARCH</h1>
+    <div class="racing-stripe"></div>
+  </div>
+
+  <!--search bar-->
+  <div class="search-container">
+    <input type="text" id="searchInput" placeholder="ENTER YOUR QUERY... (10-SECOND RACE)" />
+    <button onclick="performSearch()">ENGAGE NOS!</button>
+  </div>
+
+  <div class="nitro-gauge">
+    <div class="nitro-fill" id="nitroFill"></div>
+  </div>
+
+  <div class="family-quote">
+    WE DON'T JUST SEARCH<br>WE FAMILY
+  </div>
+
+  <!-- New timer display -->
+  <div class="query-timer" id="queryTimer"></div>
+
+  <div class="results" id="results"></div>
+
+  <script>
+    // ******************************************
+    // **** CONFIGURATION - EDIT THIS PART! ****
+    // ******************************************
+    
+    // Set to true to use mock data, false to use real API
+    const USE_MOCK_MODE = true;
+    
+    // Configure mock timing (in milliseconds)
+    const MIN_MOCK_DELAY = 300;  // Minimum response time
+    const MAX_MOCK_DELAY = 1500; // Maximum response time
+    
+    // ******************************************
+    // **** END OF CONFIGURATION SECTION ****
+    // ******************************************
+
+    // on enter press
+    const input = document.getElementById("searchInput");
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        performSearch();
+      }
+    });
+
+    function createNosEffect() {
+      const nos = document.createElement('div');
+      nos.className = 'nos-effect';
+      document.body.appendChild(nos);
+      setTimeout(() => nos.remove(), 500);
+    }
+
+    // Mock data for testing
+    const mockResults = [
+      "https://fastfurious.com/dom-toretto-quotes",
+      "https://cartuning.com/10-second-car",
+      "https://racingfuel.com/nos-systems",
+      "https://movies.example.com/f9-physics-explained",
+      "https://automotive.blog/family-is-everything"
+    ];
+
+    // Generate a random time between min and max
+    function getRandomTime(min, max) {
+      return Math.floor(Math.random() * (max - min + 1) + min);
+    }
+
+    // Mock search function that returns results after a delay
+    function mockApiSearch(query) {
+      return new Promise((resolve) => {
+        // Simulate network delay between configured values
+        const mockDelay = getRandomTime(MIN_MOCK_DELAY, MAX_MOCK_DELAY);
+        
+        setTimeout(() => {
+          // Return 3-5 results
+          const numResults = getRandomTime(3, 5);
+          const results = mockResults.slice(0, numResults);
+          resolve(results);
+        }, mockDelay);
+      });
+    }
+
+    // search function
+    async function performSearch() {
+      createNosEffect();
+
+      const query = document.getElementById('searchInput').value.trim();
+      const resultsContainer = document.getElementById('results');
+      const timerDisplay = document.getElementById('queryTimer');
+      
+      // Reset results and timer
+      resultsContainer.innerHTML = '';
+      timerDisplay.style.display = 'none';
+
+      if (!query) return;
+
+      try {
+        const startTime = performance.now();
+        
+        let urls;
+        
+        // Use mock data or real API based on configuration
+        if (USE_MOCK_MODE) {
+          urls = await mockApiSearch(query);
+        } else {
+          const response = await fetch(`/api?q=${query}`);
+          if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+          urls = await response.json();
+        }
+
+        const endTime = performance.now();
+        const queryTime = endTime - startTime;
+        
+        // Display the query time (without showing if it's mock mode)
+        timerDisplay.textContent = `QUARTER MILE TIME: ${queryTime.toFixed(2)} MS`;
+        timerDisplay.style.display = 'block';
+
+        if (!Array.isArray(urls) || urls.length === 0) {
+          resultsContainer.innerHTML = `<div class="result"><div class="result-snippet">No results found.</div></div>`;
+          return;
+        }
+
+        // Add a summary of timing at the top of results
+        const summary = document.createElement('div');
+        summary.className = 'result';
+        summary.innerHTML = `<div class="result-snippet">Nitro Boost Complete! Found ${urls.length} results in ${queryTime.toFixed(2)} milliseconds.</div>`;
+        resultsContainer.appendChild(summary);
+
+        urls.forEach((url, index) => {
+          const result = document.createElement('div');
+          result.className = 'result';
+
+          const title = document.createElement('a');
+          title.className = 'result-title';
+          title.href = url;
+          title.target = '_blank';
+          title.textContent = `Result ${index + 1}`;
+
+          const urlDiv = document.createElement('div');
+          urlDiv.className = 'result-url';
+          urlDiv.textContent = url;
+
+          const snippet = document.createElement('div');
+          snippet.className = 'result-snippet';
+          snippet.textContent = `This is a high-octane link to ${url}. Buckle up.`;
+
+          result.appendChild(title);
+          result.appendChild(urlDiv);
+          result.appendChild(snippet);
+
+          resultsContainer.appendChild(result);
+        });
+
+      } catch (err) {
+        resultsContainer.innerHTML = `<div class="result"><div class="result-snippet">Error: ${err.message}</div></div>`;
+      }
+      document.getElementById('nitroFill').style.transform = `scaleX(${Math.random()})`;
+    }
+  </script>
+</body>
+</html>
