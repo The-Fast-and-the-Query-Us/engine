@@ -85,7 +85,7 @@ void init_blobs() {
     if constexpr (LOCK_MEM) {
       if (mlock(map_ptr, chunk_size) != 0) {
         perror("Fail to lock chunk");
-        exit(1); // exit fotr debuging (remove later)
+        exit(1); // exit for debuging (remove later)
       }
     }
 
@@ -97,6 +97,8 @@ void init_blobs() {
       blobs.push_back(blob);
     }
   }
+
+  std::cout << "CHUNK READ IN COMPLETE" << std::endl;
 }
 
 static constexpr size_t RANKER_THREADS = 5;
