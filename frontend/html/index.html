@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FAST & FURIOUS SEARCH</title>
+  <title>FAST & QUERY-US SEARCH</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Racing+Sans+One&display=swap');
 
@@ -27,7 +27,6 @@
       overflow-x: hidden;
     }
 
-    /* ===== RACING STRIPES ===== */
     .racing-stripe {
       height: 4px;
       background: linear-gradient(90deg,
@@ -44,7 +43,6 @@
       box-shadow: 0 0 10px var(--neon-blue);
     }
 
-    /* ===== HEADER WITH DOM'S CHARGER ===== */
     .header {
       text-align: center;
       padding: 30px 0;
@@ -81,7 +79,7 @@
     }
 
     .logo-img {
-      height: 120px; /* Adjust based on your logo's aspect ratio */
+      height: 120px;
       width: auto;
       filter: drop-shadow(0 0 10px var(--neon-blue));
       transition: all 0.3s ease;
@@ -92,7 +90,6 @@
       filter: drop-shadow(0 0 15px var(--dodge-orange));
     }
 
-    /* ===== SEARCH BAR (STREET RACING STYLE) ===== */
     .search-container {
       max-width: 800px;
       margin: 40px auto;
@@ -176,20 +173,7 @@
       filter: drop-shadow(0 0 5px var(--neon-blue));
     }
 
-    .result-url {
-      color: var(--dodge-orange);
-      font-size: 1rem;
-      margin-bottom: 10px;
-      font-family: 'Courier New', monospace;
-    }
 
-    .result-snippet {
-      color: #aaa;
-      font-size: 1.1rem;
-      line-height: 1.5;
-    }
-
-    /* ===== NITRO GAUGE (BOTTOM HUD) ===== */
     .nitro-gauge {
       position: fixed;
       bottom: 20px;
@@ -230,7 +214,6 @@
       z-index: 1000;
     }
 
-    /* ===== FAMILY QUOTE ===== */
     .family-quote {
       position: fixed;
       bottom: 20px;
@@ -260,13 +243,11 @@
     <div class="racing-stripe"></div>
   </div>
 
-  <!-- HEADER WITH DOM'S QUOTE -->
   <div class="header">
     <h1>THE FAST & THE QUERY-US SEARCH</h1>
     <div class="racing-stripe"></div>
   </div>
 
-  <!--search bar-->
   <div class="search-container">
     <input type="text" id="searchInput" placeholder="ENTER YOUR QUERY... (10-SECOND RACE)" />
     <button onclick="performSearch()">ENGAGE NOS!</button>
@@ -328,19 +309,9 @@
           title.className = 'result-title';
           title.href = url;
           title.target = '_blank';
-          title.textContent = `Result ${index + 1}`;
-
-          const urlDiv = document.createElement('div');
-          urlDiv.className = 'result-url';
           urlDiv.textContent = url;
 
-          const snippet = document.createElement('div');
-          snippet.className = 'result-snippet';
-          snippet.textContent = `This is a high-octane link to ${url}. Buckle up.`;
-
           result.appendChild(title);
-          result.appendChild(urlDiv);
-          result.appendChild(snippet);
 
           resultsContainer.appendChild(result);
         });
