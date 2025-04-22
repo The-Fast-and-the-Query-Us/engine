@@ -16,6 +16,6 @@ username=$(whoami)
 sudo sed -i "s/<USERNAME>/$username/g" /etc/systemd/system/query_server.service
 
 sudo systemctl daemon-reload
-sudo systemctl enable query_server.service
+sudo systemctl disable query_server.service
 sudo systemctl start query_server.service
 sudo systemctl status query_server.service
