@@ -118,6 +118,10 @@ static void serve_query(const int fd, const fast::string_view &query, const fast
       translated.pop_back(3);
       translated += ']';
     }
+    else if (translated.ends_with("%22")) {
+      translated.pop_back(3);
+      translated += '"';
+    }
   }
 
   for (auto &c : translated) {
