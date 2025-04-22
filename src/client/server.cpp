@@ -44,7 +44,7 @@ const bool logging = false;
 static void init_files() {
   char buffer[1 << 10];
 
-  auto fd = open("frontend/html/index.html", O_RDONLY);
+  auto fd = open("frontend/html/timer.html", O_RDONLY);
   if (fd < 0) {
     perror("Fail to open index.html");
     exit(1);
