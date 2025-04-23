@@ -422,17 +422,20 @@ class crawler {
   // call back function for recving urls to crawl
   void add_url(string& url) {
     static constexpr uint8_t MAX_CNT = 8;
+    static constexpr uint8_t WL_MAX_CNT = 20;
 
     const auto domain = url_parser::get_base_root(url);
     const auto dom_no_prot = fast::english::strip_url_prefix(domain);
 
     fast::string stripped = fast::english::strip_url_prefix(url);
+    bool whitelisted_dom = dom_no_prot == "nytimes.com"
+      || dom_no_prot == "en.wikipedia.org";
 
     cnt_mtx.lock();
 
-    if (frontier_cnt[dom_no_prot] < MAX_CNT && !visited_urls.contains(stripped)) {
+    if (frontier_cnt[dom_no_prot] < (whitelisted_dom ? WL_MAX_CNT : MAX_CNT) && !visited_urls.contains(stripped)) {
       if (crawl_frontier.insert(url)) {
-        visited_urls.insert(url);
+        visited_urls.insert(stripped);
 
         frontier_cnt[dom_no_prot]++;
       }
