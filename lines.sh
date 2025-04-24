@@ -1,12 +1,7 @@
 #!/bin/bash
 
-# Check if a folder was provided
-if [ $# -eq 0 ]; then
-  echo "Usage: $0 <folder_path>"
-  exit 1
-fi
-
-FOLDER="$1"
+# Set folder to current directory if none provided
+FOLDER="${1:-.}"
 
 # Check if folder exists
 if [ ! -d "$FOLDER" ]; then
@@ -26,7 +21,7 @@ fi
 # File extensions to include (C++ files)
 FILE_EXTENSIONS="\.cpp$|\.hpp$"
 
-echo "Calculating author statistics for C++ files (*.cpp, *.hpp)..."
+echo "Analyzing C++ files (*.cpp, *.hpp) in $(pwd)..."
 echo "-----------------------------------------------------------"
 
 # Calculate and store total lines first (filtered for C++ files)
@@ -45,5 +40,3 @@ done
 
 echo "-----------------------------------------------------------"
 exit 0
-
-
