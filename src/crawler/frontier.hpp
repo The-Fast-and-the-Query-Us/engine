@@ -7,14 +7,14 @@
 #include "string.hpp"
 #include "vector.hpp"
 
-#include <sys/fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <csignal>
 #include <cstdint>
 #include <cstdio>
 #include <iostream>
+#include <sys/fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <vector>
 
 namespace fast::crawler {
@@ -26,8 +26,8 @@ static constexpr size_t MAX_LINKS = 500'000;
 // TODO:
 // - Make next probabilistic to go around our possibly incorrect heuristics
 class frontier {
- public:
-  frontier(const char* _save_path, const char* seed_list = nullptr)
+public:
+  frontier(const char *_save_path, const char *seed_list = nullptr)
       : save_path(_save_path == nullptr ? nullptr : strdup(_save_path)) {
     assert(save_path != nullptr);
     if (access(save_path, F_OK) == 0) {
@@ -46,7 +46,7 @@ class frontier {
     }
   }
 
-  bool insert_no_mutex(fast::string& url) {
+  bool insert_no_mutex(fast::string &url) {
     int pri_level = calc_priority(url);
     if (pri_level < 0)
       return false;
@@ -62,12 +62,12 @@ class frontier {
     return false;
   }
 
-  bool insert(fast::string& url) {
+  bool insert(fast::string &url) {
     fast::scoped_lock lock(&mtx);
     return insert_no_mutex(url);
   }
 
-  fast::string next(volatile sig_atomic_t* shutdown_flag = nullptr) {
+  fast::string next(volatile sig_atomic_t *shutdown_flag = nullptr) {
     fast::scoped_lock lock(&mtx);
 
     while (num_links == 0 &&
@@ -79,13 +79,13 @@ class frontier {
       return "";
     }
 
-
     for (int64_t i = priorities.size() - 1; i >= 0; --i) {
 
       const auto flip = rand() % 100;
-      if (flip >= 70) continue;
+      if (flip >= 70)
+        continue;
 
-      fast::queue<fast::string>& curr_pri = priorities[i];
+      fast::queue<fast::string> &curr_pri = priorities[i];
 
       if (!curr_pri.empty()) {
         const auto url = curr_pri.front();
@@ -96,7 +96,7 @@ class frontier {
     }
 
     for (int64_t i = priorities.size() - 1; i >= 0; --i) {
-      fast::queue<fast::string>& curr_pri = priorities[i];
+      fast::queue<fast::string> &curr_pri = priorities[i];
 
       if (!curr_pri.empty()) {
         const auto url = curr_pri.front();
@@ -105,12 +105,11 @@ class frontier {
         return url;
       }
     }
-
 
     return "";
   }
 
-  void load_seed_list(const char* fp) {
+  void load_seed_list(const char *fp) {
     fast::scoped_lock lock(&mtx);
     int fd = open(fp, O_RDONLY);
     if (fd == -1) {
@@ -126,15 +125,15 @@ class frontier {
     }
     size_t length = sb.st_size;
 
-    char* file =
-        static_cast<char*>(mmap(NULL, length, PROT_READ, MAP_PRIVATE, fd, 0));
+    char *file =
+        static_cast<char *>(mmap(NULL, length, PROT_READ, MAP_PRIVATE, fd, 0));
     if (file == MAP_FAILED) {
       perror("mmap");
       return;
     }
     close(fd);
 
-    char* end = file + length;
+    char *end = file + length;
     while (file < end) {
       fast::string url{};
       while (file < end && *file != '\n') {
@@ -149,7 +148,7 @@ class frontier {
     std::cout << "Succesfully loaded seed_list from " << fp << '\n';
   }
 
-  void notify_crawled(fast::string& url) {
+  void notify_crawled(fast::string &url) {
     fast::scoped_lock lock(&mtx);
     fast::string hostname = extract_hostname(url);
     //--crawl_cnt[hostname];
@@ -183,7 +182,7 @@ class frontier {
     }
 
     int total_priority_bytes = 0;
-    for (auto& level : priorities) {
+    for (auto &level : priorities) {
 
       size_t pri_sz = level.size();
       ssize_t pri_sz_written = write(fd, &pri_sz, sizeof(size_t));
@@ -258,7 +257,7 @@ class frontier {
 
     priorities.resize(num_priorities);
 
-    for (auto& level : priorities) {
+    for (auto &level : priorities) {
       size_t pri_sz{};
       ssize_t num_pri_sz_read = read(fd, &pri_sz, sizeof(size_t));
       if (num_pri_sz_read == -1) {
@@ -296,7 +295,7 @@ class frontier {
     return tbr;
   }
 
-  static fast::string extract_hostname(const fast::string& url) {
+  static fast::string extract_hostname(const fast::string &url) {
     fast::string hostname;
     size_t start_pos = 0;
     if (url.starts_with("http://")) {
@@ -319,7 +318,7 @@ class frontier {
     return hostname;
   }
 
- private:
+private:
   friend class crawler;
 
   static constexpr uint8_t GOOD_LEN = 25;
@@ -334,18 +333,16 @@ class frontier {
 
   uint64_t num_links{0};
 
-  char* save_path;
+  char *save_path;
 
   fast::vector<fast::queue<fast::string>> priorities;
 
   fast::flat_map<fast::string, uint8_t> crawl_cnt;
 
-  // How to initialise this with fast::vector
-  // TODO: INIT LIST FOR FAST VECTOR
-  std::vector<fast::string> good_tld = {"com", "org", "gov", "net", "edu"};
-  std::vector<fast::string> blacklist = {"signup", "signin", "login"};
+  fast::vector<fast::string> good_tld = {"com", "org", "gov", "net", "edu"};
+  fast::vector<fast::string> blacklist = {"signup", "signin", "login"};
 
-  int8_t calc_priority(fast::string& url) {
+  int8_t calc_priority(fast::string &url) {
     fast::string hostname = extract_hostname(url);
 
     uint8_t score = 0;
@@ -395,20 +392,23 @@ class frontier {
 
     size_t slash_cnt = 0;
     for (const auto c : url) {
-      slash_cnt += c =='/';
+      slash_cnt += c == '/';
     }
 
     // no protocol
-    if (slash_cnt < 2) return -1;
+    if (slash_cnt < 2)
+      return -1;
 
     slash_cnt -= 2;
 
-    if (slash_cnt > 7) return -1;
+    if (slash_cnt > 7)
+      return -1;
 
-    if (slash_cnt < 2) ++score;
+    if (slash_cnt < 2)
+      ++score;
 
     return score;
   }
 };
 
-}  // namespace fast::crawler
+} // namespace fast::crawler
