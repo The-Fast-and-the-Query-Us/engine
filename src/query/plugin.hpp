@@ -1,5 +1,5 @@
 #pragma once
-
+// PROBABLY DON'T USE BUT DON'T DELETE SINCE COULD BREAK
 // Plugin interface for the LinuxTinyServer.
 
 #include <string.hpp>
