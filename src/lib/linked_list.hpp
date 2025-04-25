@@ -16,6 +16,8 @@ private:
   };
 
   node *head, *tail;
+
+public:
   size_t len;
   class iterator {
     node *current;
