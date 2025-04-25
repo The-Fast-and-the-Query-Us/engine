@@ -6,6 +6,7 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <stdexcept>
+#include <utility>
 
 namespace fast {
 
@@ -205,8 +206,10 @@ class robots_filter {
         if (col_idx < 0)
           continue;
         string prefix = line.substr(0, col_idx);
-        if (prefix != "Allow" && prefix != "Disallow")
-          continue;
+        if (prefix != "Allow" && prefix != "Disallow") {
+          if (prefix.substr(0, 10) == "User-agent")
+            action = WAIT_UNTIL_USER;
+        }
         string pattern = line.substr(col_idx + 2, line.size() - col_idx - 2);
         if (pattern.size() == 0)
           continue;
@@ -220,6 +223,10 @@ public:
   robots_filter(const string &domain) {
     rules = parse_robots(fetch_robots(domain));
   }
+
+  robots_filter(const robots_filter &other) { rules = other.rules; }
+
+  robots_filter(robots_filter &&other) { rules = std::move(other.rules); }
 
   bool allow(const string &url) {
 

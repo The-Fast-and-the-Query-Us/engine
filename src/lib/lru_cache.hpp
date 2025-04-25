@@ -18,7 +18,7 @@ template <typename K, typename V> class lru_cache {
     --sz;
   }
 
-  void insert(K key, V val) {
+  void insert(const K &key, const V &val) {
     lst.push_front({key, val});
     mp[key] = lst.begin();
     ++sz;
@@ -26,7 +26,7 @@ template <typename K, typename V> class lru_cache {
       del_lru();
   }
 
-  void touch(K key) {
+  void touch(const K &key) {
     pair<K, V> p = std::move(*mp[key]);
     lst.erase(mp[key]);
     lst.push_front(std::move(p));
@@ -65,6 +65,15 @@ public:
     if (sz > cap)
       del_lru();
     return iterator(lst.begin());
+  }
+
+  iterator insert(K &&key, V &&val) {
+    lst.emplace_front(std::move(key), std::move(val));
+    auto it = lst.begin();
+    mp.insert(it->first, it);
+    if (sz > cap)
+      del_lru();
+    return iterator(it);
   }
 
   iterator find(K key) {
