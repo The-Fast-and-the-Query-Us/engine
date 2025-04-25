@@ -1,14 +1,14 @@
 #pragma once
 #include "flat_map.hpp"
+#include "linked_list.hpp"
 #include "pair.hpp"
-#include <list>
 #include <utility>
 namespace fast {
 
 template <typename K, typename V> class lru_cache {
-  using list_iter = typename std::list<pair<K, V>>::iterator;
+  using list_iter = typename linked_list<pair<K, V>>::iterator;
   flat_map<K, list_iter> mp;
-  std::list<pair<K, V>> lst;
+  linked_list<pair<K, V>> lst;
   size_t cap, sz;
 
   void del_lru() {
