@@ -202,7 +202,7 @@ class robots_filter {
         }
         break;
       case USE_RULE:
-        size_t col_idx = line.find(':');
+        ssize_t col_idx = line.find(':');
         if (col_idx < 0)
           continue;
         string prefix = line.substr(0, col_idx);
@@ -223,6 +223,8 @@ public:
   robots_filter(const string &domain) {
     rules = parse_robots(fetch_robots(domain));
   }
+
+  robots_filter() : rules() {}
 
   robots_filter(const robots_filter &other) { rules = other.rules; }
 

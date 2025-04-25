@@ -13,20 +13,23 @@ private:
     template <typename... args>
     node(args &&..._args)
         : val(std::forward<args>(_args)...), prev(nullptr), next(nullptr) {}
+
+    node() : val(), prev(nullptr), next(nullptr) {}
   };
 
   node *head, *tail;
+  size_t len;
 
 public:
-  size_t len;
   class iterator {
+    friend class linked_list<T>;
     node *current;
 
   public:
     iterator(node *_curr = nullptr) : current(_curr) {}
 
-    T &operator*() const { return current->value; }
-    T *operator->() const { return &current->value; }
+    T &operator*() const { return current->val; }
+    T *operator->() const { return &current->val; }
 
     iterator &operator++() {
       current = current->next;
@@ -56,9 +59,8 @@ public:
     }
   };
 
-  linked_list()
-      : head(new node{T{}, nullptr, nullptr}),
-        tail(new node{T{}, tail, nullptr}), len(0) {
+  linked_list() : head(new node{}), tail(new node{}), len(0) {
+    tail->prev = head;
     head->next = tail;
   }
 
@@ -66,9 +68,15 @@ public:
 
   iterator end() { return iterator(tail); }
 
+  T &front() { return head->next->val; }
+
+  T &back() { return tail->prev->val; }
+
   void push_front(const T &ele) {
     node *first = head->next;
-    node *pushed = new node{ele, head, first};
+    node *pushed = new node(ele);
+    pushed->next = first;
+    pushed->prev = head;
     head->next = pushed;
     first->prev = pushed;
 
@@ -77,7 +85,9 @@ public:
 
   void push_back(const T &ele) {
     node *last = tail->prev;
-    node *pushed = new node{ele, last, tail};
+    node *pushed = new node(ele);
+    pushed->next = tail;
+    pushed->prev = last;
     tail->prev = pushed;
     last->next = pushed;
 
@@ -124,7 +134,7 @@ public:
 
     node *to_delete = victim.current;
 
-    iterator ret{to_delete};
+    iterator ret{to_delete->next};
 
     to_delete->next->prev = to_delete->prev;
     to_delete->prev->next = to_delete->next;

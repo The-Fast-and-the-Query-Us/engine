@@ -12,9 +12,14 @@ template <typename K, typename V> class lru_cache {
   size_t cap, sz;
 
   void del_lru() {
-    const auto &victim = lst.back();
-    mp.remove(*victim.first);
-    lst.erase(victim);
+    auto victim_it = --lst.end();
+
+    const K &k = victim_it->first;
+
+    mp.remove(k);
+
+    lst.erase(victim_it);
+
     --sz;
   }
 
@@ -95,7 +100,7 @@ public:
     if (!contains(key))
       insert({key, V()});
     touch(key);
-    return *mp[key];
+    return (*mp[key]).second;
   }
 };
 
