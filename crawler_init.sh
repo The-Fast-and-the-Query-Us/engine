@@ -4,6 +4,8 @@ set -e
 
 sudo systemctl stop query_server.service || true
 
+./reset_index.sh
+
 cd src
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cd build
