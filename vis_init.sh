@@ -7,7 +7,7 @@ sudo systemctl stop visibility.service || true
 cd src
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cd build
-make visibility VERBOSE=1
+make visibility_server VERBOSE=1
 cd ../..
 
 sudo cp systemd/visibility.service /etc/systemd/system/
