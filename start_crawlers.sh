@@ -2,8 +2,8 @@
 
 COMMAND="cd engine && git restore . && git fetch && git checkout html && git pull && ./crawler_init.sh"
 
+# start all crawlers except for engine1
 HOSTS=(
-  engine1
   engine2
   engine3
   sui1
