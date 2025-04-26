@@ -41,5 +41,5 @@ DesiredAction LookupPossibleTag(const char *name, const char *nameEnd) {
     else
       return TagsRecognized[m].Action;
   }
-  return DesiredAction::OrdinaryText;
+  return DesiredAction::Discard;
 }
