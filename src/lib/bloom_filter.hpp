@@ -205,6 +205,10 @@ class bloom_filter {
   }
 
   pair<uint64_t, uint64_t> hash(const T& datum) {
+    auto lower = datum;
+
+    for (auto &c : lower) c = tolower(c);
+    
     uint64_t curr_hash[2]{};
     MurmurHash3_x86_128(datum.begin(), datum.size(), 0, curr_hash);
 
