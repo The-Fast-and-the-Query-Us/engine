@@ -488,6 +488,10 @@ class crawler {
         url.view().trim_prefix(1).contains("http"))
       return true;
 
+    if (url.view().contains("wikipedia") &&
+        !url.starts_with("https://en.wikipedia"))
+      return true;
+
     const char* word_start = nullptr;
     const char* url_end = url.begin() + url.size();
 
