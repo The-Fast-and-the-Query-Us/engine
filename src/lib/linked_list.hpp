@@ -64,6 +64,10 @@ public:
     head->next = tail;
   }
 
+  ~linked_list() {
+    while (len) { pop_front(); }
+  }
+
   iterator begin() { return iterator(head->next); }
 
   iterator end() { return iterator(tail); }
