@@ -423,7 +423,7 @@ class crawler {
 
   // call back function for recving urls to crawl
   void add_url(string& url) {
-    static constexpr uint8_t MAX_CNT = 8;
+    static constexpr uint8_t MAX_CNT = 5;
     static constexpr uint8_t WL_MAX_CNT = 40;
 
     const auto domain = url_parser::get_base_root(url);
@@ -431,7 +431,11 @@ class crawler {
 
     fast::string stripped = fast::english::strip_url_prefix(url);
     bool whitelisted_dom = dom_no_prot == "nytimes.com"
-      || dom_no_prot == "en.wikipedia.org";
+      || dom_no_prot == "en.wikipedia.org" 
+      || dom_no_prot == "stackoverflow.com"
+      || dom_no_prot == "bbc.com"
+      || dom_no_prot == "britannica.com"
+    ;
 
     cnt_mtx.lock();
 
