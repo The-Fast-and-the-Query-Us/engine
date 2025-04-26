@@ -138,8 +138,9 @@ public:
     }
 
     for (const auto &link : links) {
-      if (link.URL.size() == 0) continue;
-      if (link.URL.size() > 400) continue;
+      if (link.URL.size() == 0 || link.URL.size() > 400) continue;
+      if (link.URL.starts_with("http://")) continue;
+
       
       const auto trimmed = english::strip_url_prefix(link.URL);
       fast::string lower(trimmed);
