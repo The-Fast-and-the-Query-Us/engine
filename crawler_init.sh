@@ -2,7 +2,7 @@
 
 set -e
 
-sudo systemctl stop query_server.service || true
+sudo systemctl stop crawler.service || true
 
 ./reset_index.sh
 
