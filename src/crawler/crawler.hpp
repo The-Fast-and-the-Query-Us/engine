@@ -422,7 +422,7 @@ class crawler {
   // call back function for recving urls to crawl
   void add_url(string& url) {
     static constexpr uint8_t MAX_CNT = 8;
-    static constexpr uint8_t WL_MAX_CNT = 20;
+    static constexpr uint8_t WL_MAX_CNT = 40;
 
     const auto domain = url_parser::get_base_root(url);
     const auto dom_no_prot = fast::english::strip_url_prefix(domain);

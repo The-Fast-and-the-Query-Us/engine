@@ -2,6 +2,7 @@
 
 #include "string.hpp"
 #include "vector.hpp"
+#include <complex>
 #include <netdb.h>
 #include <cstring>
 #include <sys/types.h>
@@ -135,7 +136,12 @@ public:
     while (bp.size() > 0 && bp.back() != '/') bp.pop_back();
     auto comp = bp + link;
 
-    return get_base_root(base) + normalize_path(comp);
+    auto joined = get_base_root(base) + normalize_path(comp);
+
+    if (joined.back() == '/') 
+      joined.pop_back();
+
+    return joined;
   }
 
   ~url_parser() {
