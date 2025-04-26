@@ -24,7 +24,7 @@
 constexpr unsigned PORT = 80;
 constexpr unsigned QUERY_PORT = 8081;
 
-constexpr size_t THREAD_COUNT = 20;
+constexpr size_t THREAD_COUNT = 2;
 
 volatile bool quit = false;
 fast::mutex mtx;
