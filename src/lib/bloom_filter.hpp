@@ -12,6 +12,7 @@
 #include "murmur_hash3.hpp"
 #include "pair.hpp"
 #include "scoped_lock.hpp"
+#include <string.hpp>
 
 namespace fast::crawler {
 
@@ -205,12 +206,11 @@ class bloom_filter {
   }
 
   pair<uint64_t, uint64_t> hash(const T& datum) {
-    auto lower = datum;
-
+    fast::string lower = datum;
     for (auto &c : lower) c = tolower(c);
     
     uint64_t curr_hash[2]{};
-    MurmurHash3_x86_128(datum.begin(), datum.size(), 0, curr_hash);
+    MurmurHash3_x86_128(lower.begin(), lower.size(), 0, curr_hash);
 
     return pair(curr_hash[0], curr_hash[1]);
   }
