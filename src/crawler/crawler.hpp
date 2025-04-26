@@ -408,6 +408,8 @@ class crawler {
         }
 
         link.URL = url_parser::url_join(url, link.URL);
+
+        if (link.URL.size() > 0 && link.URL.back() == '/') link.URL.pop_back();
       }
 
       link_sender.add_links(parser.links);

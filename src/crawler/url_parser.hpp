@@ -138,9 +138,6 @@ public:
 
     auto joined = get_base_root(base) + normalize_path(comp);
 
-    if (joined.back() == '/') 
-      joined.pop_back();
-
     return joined;
   }
 
