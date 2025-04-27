@@ -517,7 +517,7 @@ SpanMult = 1.0,
 DomainHit = 45.0,
 AnyHit = 30.0,
 UrlLength = -0.5,
-GoodLength = 30.0,
+GoodLength = 0.0,
 GoodTLD = 75.0,
 WhiteList = 80.0
 ;
@@ -576,6 +576,18 @@ static url_location find_in_url(const string_view &url,
 }
 
 static double url_rank(const string_view &url, const vector<string_view> &words, size_t rare) {
+  if (url.contains("updatestar")) {
+    return -1e10;
+  }
+
+  size_t i = url.size() - 1;
+
+  while (i > 8 && url[i] != '/' && url[i] != '.') --i;
+
+  if (url[i] == '.' && !(url.ends_with("html") || url.ends_with("htm"))) {
+    return -1e10;
+  }
+
   double score = 0;
 
   size_t slash_cnt = 0;
@@ -586,6 +598,7 @@ static double url_rank(const string_view &url, const vector<string_view> &words,
   if (url.contains("en.wikipedia.org") || url.contains("nytimes.com")) {
     score += Params::WhiteList;
   }
+
 
   if (url.contains(".com") || url.contains(".edu") || url.contains(".gov") || url.contains(".org")) {
     score += Params::GoodTLD;
