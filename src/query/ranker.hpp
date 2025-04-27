@@ -511,15 +511,16 @@ ODouble = 1.0,
 Double = 0.5,
 OTriple = 1.0,
 Triple = 0.5,
-UrlDepth = -0.10,
+UrlDepth = -1,
 Decay = 1.05,
 SpanMult = 1.0,
 DomainHit = 45.0,
 AnyHit = 30.0,
-UrlLength = -0.5,
+UrlLength = -1,
 GoodLength = 0.0,
 GoodTLD = 75.0,
-WhiteList = 80.0
+WhiteList = 80.0,
+Ordered = 7.5
 ;
 
 static bool is_good_doc_len(Offset len) {
@@ -527,13 +528,6 @@ static bool is_good_doc_len(Offset len) {
 }
 
 };
-
-enum url_location {
-  None,
-  Domain,
-  Any,
-};
-
 /*
  * Insert result in decreasing order of score
  */
@@ -551,33 +545,14 @@ void insertion_sort(array<Result, MAX_RESULTS> &results, const Result &r) {
   }
 }
 
-static url_location find_in_url(const string_view &url,
-                                const string_view &word) {
-  bool slash = false;
-  const auto start = url.find("://");
-
-  if (!start) return None;
-
-
-  for (size_t i = start + 3 - url.begin(); i <= url.size() - word.size(); ++i) {
-    bool good = true;
-    for (size_t j = 0; j < word.size() && good; ++j) {
-      if (url[i + j] == '/') slash = true;
-      if (tolower(url[i + j]) != word[j]) good = false;
-    }
-
-    if (good) {
-      if (slash) return Any;
-      else       return Domain;
-    }
-  }
-
-  return None;
-}
-
 static double url_rank(const string_view &url, const vector<string_view> &words, size_t rare) {
-  if (url.contains("updatestar") || url.ends_with(".jpg") ||
-      url.ends_with(".png") || url.ends_with(".svg") || url.ends_with("jpeg")) {
+  fast::string url_(url);
+
+  for (auto &c : url_) c = tolower(c);
+
+  if (url_.contains("updatestar") || url_.ends_with(".jpg") ||
+      url_.ends_with(".png") || url_.ends_with(".svg") ||
+      url_.ends_with("jpeg")) {
 
     return -1e20;
   }
@@ -585,16 +560,17 @@ static double url_rank(const string_view &url, const vector<string_view> &words,
   double score = 0;
 
   size_t slash_cnt = 0;
-  for (const auto c : url) {
+  for (const auto c : url_) {
     slash_cnt += c == '/';
   }
 
-  if (url.contains("en.wikipedia.org") || url.contains("nytimes.com")) {
+  if (url_.contains("en.wikipedia.org") || url_.contains("nytimes.com") ||
+      url_.contains("cnn.com") || url_.contains("bbc.com")) {
     score += Params::WhiteList;
   }
 
-
-  if (url.contains(".com") || url.contains(".edu") || url.contains(".gov") || url.contains(".org")) {
+  if (url_.contains(".com") || url_.contains(".edu") || url_.contains(".gov") 
+    || url_.contains(".org")) {
     score += Params::GoodTLD;
   }
 
@@ -602,17 +578,33 @@ static double url_rank(const string_view &url, const vector<string_view> &words,
     score += Params::UrlDepth * (slash_cnt - 2);
   }
 
-  score += Params::UrlLength * url.size();
+  score += Params::UrlLength * url_.size();
 
-  for (const auto word : words) {
-    const auto hit = find_in_url(url, word);
+  size_t cnt = 0;
+  size_t ordered_ness = 0;
+  fast::vector<size_t> pos(words.size());
 
-    if (hit == Domain) {
-      score += Params::DomainHit;
-    } else if (hit == Any) {
-      score += Params::AnyHit;
+  for (size_t i = 0; i < words.size(); ++i) {
+    const auto m = url_.find(words[i]);
+
+    if (m >= 0) {
+      ++cnt;
+      pos[i] = m;
+
+      size_t order = 1;
+      for (size_t j = 0; j < i; ++j) {
+        order += (pos[j] < m);
+      }
+
+      ordered_ness = fast::max(ordered_ness, order);
+
+    } else {
+      pos[i] = SIZE_T_MAX;
     }
   }
+
+  score += ordered_ness * Params::Ordered + cnt * Params::AnyHit;
+
   return score;
 }
 
