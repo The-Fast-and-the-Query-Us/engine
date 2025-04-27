@@ -67,7 +67,10 @@ class query_stream {
  public:
   query_stream(const string &query) : query(query), pos(0) {};
 
-  bool is_end() const { return pos == query.size(); }
+  bool is_end() { 
+    skip_ws();
+    return pos == query.size(); 
+  }
 
   bool peek(char c) {
     skip_ws();
@@ -106,6 +109,8 @@ class contraint_parser {
         exclude = false;
       } else if (query.match('-')) {
         exclude = true;
+      } else if (!query.is_end()) {
+        exclude = false;
       } else {
         ans->seek(0);  // init
         return ans;
@@ -210,6 +215,8 @@ class rank_parser {
         parse_base_query(query, words);
       } else if (query.match('-')) {
         parse_base_query(query, nullptr);
+      } else if (!query.is_end()) {
+        parse_base_query(query, words);
       } else {
         return;
       }
