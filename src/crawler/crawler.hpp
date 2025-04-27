@@ -1,10 +1,15 @@
 #pragma once
 
-#include <pthread.h>
-#include <sys/fcntl.h>
-#include <sys/mman.h>
-#include <time.h>
-#include <unistd.h>
+#include "bloom_filter.hpp"
+#include "communicator.hpp"
+#include "frontier.hpp"
+#include "html_parser.hpp"
+#include "lru_cache.hpp"
+#include "robots.hpp"
+#include "url_parser.hpp"
+#include "url_sender.hpp"
+#include "vector.hpp"
+#include <algorithm>
 #include <cctype>
 #include <csignal>
 #include <cstdint>
@@ -14,25 +19,26 @@
 #include <english.hpp>
 #include <hashblob.hpp>
 #include <hashtable.hpp>
+#include <pthread.h>
 #include <stdexcept>
-#include "bloom_filter.hpp"
-#include "communicator.hpp"
-#include "frontier.hpp"
-#include "html_parser.hpp"
-#include "url_parser.hpp"
-#include "url_sender.hpp"
-#include "vector.hpp"
+#include <sys/fcntl.h>
+#include <sys/mman.h>
+#include <time.h>
+#include <unistd.h>
+#include <utility>
 
 namespace fast::crawler {
 
 static constexpr int THREAD_COUNT = 100;
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
+
+static constexpr size_t ROBOTS_CACHE_ENTRIES = 4096;
 static constexpr size_t BLOB_THRESHOLD = 30'000'000;
 static constexpr const char* IP_PATH = "./ips.txt";
 
 class crawler {
- public:
+public:
   crawler()
       : visited_urls(
             access(get_bloomfilter_path().begin(), F_OK) == 0
@@ -40,6 +46,7 @@ class crawler {
                 : bloom_filter<fast::string>(BLOOM_FILTER_SIZE,
                                              BLOOM_FILTER_FPR,
                                              get_bloomfilter_path().begin())),
+        robots_cache(ROBOTS_CACHE_ENTRIES),
         crawl_frontier(get_frontier_path().begin(), nullptr),
         word_bank(new fast::hashtable),
         log_fd(open(get_log_path().begin(), O_RDWR | O_CREAT | O_APPEND, 0777)),
@@ -55,7 +62,7 @@ class crawler {
       fast::vector<Link> links;
 
       while (fgets(buffer, 2000, fd) != NULL) {
-        buffer[strcspn(buffer, "\n\r")] = 0;  // remove \r and \n
+        buffer[strcspn(buffer, "\n\r")] = 0; // remove \r and \n
         auto url = fast::string(buffer);
         links.push_back(Link{url});
         // link_sender.push_back(Link(buffer));
@@ -74,15 +81,15 @@ class crawler {
   }
 
   void run() {
-    OPENSSL_init_ssl(
-        OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS,
-        nullptr);
+    OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS |
+                         OPENSSL_INIT_LOAD_CRYPTO_STRINGS,
+                     nullptr);
     g_ssl_ctx = SSL_CTX_new(TLS_client_method());
     if (!g_ssl_ctx) {
       throw std::runtime_error("Failed to create SSL context");
     }
     // Set appropriate security level (if using OpenSSL 1.1.0+)
-    SSL_CTX_set_security_level(g_ssl_ctx, 2);  // Reasonable security level
+    SSL_CTX_set_security_level(g_ssl_ctx, 2); // Reasonable security level
 
     // Set a broad cipher list that includes secure ciphers
     if (SSL_CTX_set_cipher_list(g_ssl_ctx,
@@ -103,12 +110,12 @@ class crawler {
                              "SHA256:TLS_AES_128_GCM_SHA256");
 #endif
 
-    for (auto& t : thread_pool) {
+    for (auto &t : thread_pool) {
       // Lambda used as worker is not static
       if (pthread_create(
               &t, nullptr,
-              [](void* arg) -> void* {
-                auto self = static_cast<crawler*>(arg);
+              [](void *arg) -> void * {
+                auto self = static_cast<crawler *>(arg);
                 self->worker();
                 return nullptr;
               },
@@ -117,7 +124,7 @@ class crawler {
       }
     }
 
-    for (auto& t : thread_pool) {
+    for (auto &t : thread_pool) {
       pthread_join(t, nullptr);
     }
 
@@ -144,20 +151,21 @@ class crawler {
     return path;
   }
 
- private:
+private:
   volatile sig_atomic_t shutdown_flag = 0;
   fast::crawler::bloom_filter<fast::string> visited_urls;
+  fast::lru_cache<fast::string, fast::robots_filter> robots_cache;
   fast::crawler::frontier crawl_frontier;
-  fast::hashtable* word_bank;
+  fast::hashtable *word_bank;
 
   fast::mutex cnt_mtx;
   fast::flat_map<fast::string, uint8_t> frontier_cnt;
 
   fast::mutex bank_mtx;
   int log_fd;
-  SSL_CTX* g_ssl_ctx{};
+  SSL_CTX *g_ssl_ctx{};
   uint64_t doc_count{
-      0};  // TODO: search dir for next chunk count to continue crawling
+      0}; // TODO: search dir for next chunk count to continue crawling
   /*std::unordered_map<fast::string, std::unordered_set<fast::string>>*/
   pthread_t thread_pool[THREAD_COUNT]{};
   // just for testing
@@ -194,7 +202,7 @@ class crawler {
       "onet",        "interia",   "wp",           "sohu",     "sina",
       "alipay",      "tencent",   "bilibili",     "youku",    "tudou",
       "dmm",         "kakao",     "line",         "mixi",     "nicovideo",
-      "pixiv",       "qzone",     "renren",       "wechat",   "weixin", 
+      "pixiv",       "qzone",     "renren",       "wechat",   "weixin",
       "q",           "page",
   };
 
@@ -284,7 +292,7 @@ class crawler {
     }
   }
 
-  void* worker() {
+  void *worker() {
     // Get url from frontier
     // parse url
     // Setup connection for this url
@@ -316,17 +324,17 @@ class crawler {
       }
 
       // We now set visited before adding to frontier!
-      //if (!visited_urls.contains(url)) {
+      // if (!visited_urls.contains(url)) {
       //  visited_urls.insert(url);
       //} else {
       //  crawl_frontier.notify_crawled(url);
       //  continue;
       //}
 
-      //if (url == "https://whereis.mit.edu/") {
-      //crawl_frontier.notify_crawled(url);
-      //continue;
-      //}
+      // if (url == "https://whereis.mit.edu/") {
+      // crawl_frontier.notify_crawled(url);
+      // continue;
+      // }
 
       fast::crawler::url_parser url_parts(url.begin());
       if (!url_parts.host || !*url_parts.host || !url_parts.port ||
@@ -341,7 +349,7 @@ class crawler {
       frontier_cnt[fast::english::strip_url_prefix(domain)]--;
       cnt_mtx.unlock();
 
-      SSL_CTX* ctx_cpy = g_ssl_ctx;
+      SSL_CTX *ctx_cpy = g_ssl_ctx;
 
       if (!ctx_cpy)
         continue;
@@ -362,7 +370,7 @@ class crawler {
 
       bank_mtx.lock();
 
-      for (fast::string& word : parser.words) {
+      for (fast::string &word : parser.words) {
         english::normalize_text(word);
 
         if (word.size() > 0) {
@@ -370,7 +378,7 @@ class crawler {
         }
       }
 
-      for (fast::string& word : parser.titleWords) {
+      for (fast::string &word : parser.titleWords) {
         english::normalize_text(word);
 
         if (word.size() > 0) {
@@ -400,7 +408,7 @@ class crawler {
 
       bank_mtx.unlock();
 
-      for (auto& link : parser.links) {
+      for (auto &link : parser.links) {
         if (link.URL.size() == 0 || link.URL[0] == '#' ||
             is_blacklisted(link.URL) || link.URL.size() > 400) {
           link.URL = "";
@@ -422,6 +430,7 @@ class crawler {
   }
 
   // call back function for recving urls to crawl
+
   void add_url(string& url) {
     static constexpr uint8_t MAX_CNT = 5;
     static constexpr uint8_t WL_MAX_CNT = 40;
@@ -430,6 +439,7 @@ class crawler {
     const auto dom_no_prot = fast::english::strip_url_prefix(domain);
 
     fast::string stripped = fast::english::strip_url_prefix(url);
+
     bool whitelisted_dom = dom_no_prot == "nytimes.com"
       || dom_no_prot == "en.wikipedia.org" 
       || dom_no_prot == "stackoverflow.com"
@@ -439,7 +449,21 @@ class crawler {
 
     cnt_mtx.lock();
 
-    if (frontier_cnt[dom_no_prot] < (whitelisted_dom ? WL_MAX_CNT : MAX_CNT) && !visited_urls.contains(stripped)) {
+    bool in_robots_cache = robots_cache.contains(stripped);
+
+    if (!in_robots_cache) {
+      // unlock mtx before fetching new robots.txt because it could take a while
+      cnt_mtx.unlock();
+      robots_filter rbts(stripped);
+      auto cpy = stripped;
+      cnt_mtx.lock();
+      robots_cache.insert(std::move(cpy), std::move(rbts));
+    }
+
+    auto &rbts_fltr = robots_cache[stripped];
+
+    if (frontier_cnt[dom_no_prot] < (whitelisted_dom ? WL_MAX_CNT : MAX_CNT) &&
+        !visited_urls.contains(stripped) && rbts_fltr.allow(stripped)) {
       if (crawl_frontier.insert(url)) {
         visited_urls.insert(stripped);
 
@@ -474,7 +498,7 @@ class crawler {
       return;
     }
 
-    auto blob = static_cast<fast::hashblob*>(mptr);
+    auto blob = static_cast<fast::hashblob *>(mptr);
     fast::hashblob::write(*word_bank, blob);
 
     delete word_bank;
@@ -486,9 +510,10 @@ class crawler {
     increment_chunk_count();
   }
 
- public:
-  static bool is_blacklisted(const fast::string& url) {
-    if (url.size() == 0) return true;
+public:
+  static bool is_blacklisted(const fast::string &url) {
+    if (url.size() == 0)
+      return true;
 
     if (url.ends_with("print.html") ||
         url.view().trim_prefix(1).contains("http"))
@@ -501,7 +526,7 @@ class crawler {
     const char* word_start = nullptr;
     const char* url_end = url.begin() + url.size();
 
-    for (const char* p = url.begin(); p <= url_end; ++p) {
+    for (const char *p = url.begin(); p <= url_end; ++p) {
       bool is_delimiter = (p == url_end) || (*p == '/') || (*p == '.') ||
                           (*p == '#') || (*p == '?') || (*p == '&') ||
                           (*p == '=') || (*p == '-') || (*p == '_') ||
@@ -512,7 +537,7 @@ class crawler {
           size_t word_len = p - word_start;
 
           if (word_len > 1) {
-            for (const auto& banned : blacklist) {
+            for (const auto &banned : blacklist) {
               if (banned == fast::string_view(word_start, word_len)) {
                 return true;
               }
@@ -530,10 +555,10 @@ class crawler {
 
   static bool is_alphabet(char c) { return isalnum(c); }
 
-  static void lower(fast::string& word) {
-    for (char& c : word) {
+  static void lower(fast::string &word) {
+    for (char &c : word) {
       c = tolower(c);
     }
   }
 };
-}  // namespace fast::crawler
+} // namespace fast::crawler

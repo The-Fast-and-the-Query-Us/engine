@@ -17,8 +17,7 @@ namespace fast {
  *  Add SVO by using pointer to store string?
  */
 
-template <typename K, typename V>
-class flat_map;
+template <typename K, typename V> class flat_map;
 
 class string {
   friend class flat_map<string, int>;
@@ -31,7 +30,7 @@ class string {
     cap = need;
   }
 
- public:
+public:
   string() {
     grow(8);
     len_ = 0;
@@ -41,13 +40,14 @@ class string {
   string(const string &other) {
     grow(other.cap);
     len_ = other.len_;
-    memcpy(start_, other.start_, len_ + 1);  // +1 for null
+    memcpy(start_, other.start_, len_ + 1); // +1 for null
   }
 
-  string(const char *cstr) {  // maybe mark explicit to avoid accidentaly heap
-                              // allocation?
+  string(const char *cstr) { // maybe mark explicit to avoid accidentaly heap
+                             // allocation?
     size_t str_len{0};
-    for (auto ptr = cstr; *ptr; ++ptr, ++str_len);
+    for (auto ptr = cstr; *ptr; ++ptr, ++str_len)
+      ;
 
     grow(str_len);
     len_ = str_len;
@@ -79,7 +79,8 @@ class string {
   const char *c_str() const { return start_; }
 
   void reserve(size_t need) {
-    if (need > cap) grow(need);
+    if (need > cap)
+      grow(need);
   }
 
   void resize(size_t size, char fill = 'a') {
@@ -117,10 +118,12 @@ class string {
   }
 
   bool operator==(const string &s) const {
-    if (s.size() != this->size()) return false;
+    if (s.size() != this->size())
+      return false;
 
     for (size_t i = 0; i < s.size(); i++) {
-      if (s[i] != (*this)[i]) return false;
+      if (s[i] != (*this)[i])
+        return false;
     }
 
     return true;
@@ -129,22 +132,42 @@ class string {
   bool operator!=(string &s) { return !(*this == s); }
 
   void operator+=(char c) {
-    if (len_ == cap) grow(len_ << 1);
+    if (len_ == cap)
+      grow(len_ << 1);
     start_[len_++] = c;
     start_[len_] = 0;
   }
 
+  void append(const char *other, size_t other_sz) {
+    if (len_ + other_sz > cap)
+      grow(len_ + other_sz);
+    memcpy(start_ + len_, other, other_sz);
+    len_ += other_sz;
+    start_[len_] = 0;
+  }
+
   void operator+=(const string &other) {
-    if (len_ + other.len_ > cap) grow(len_ + other.len_);
+    if (len_ + other.len_ > cap)
+      grow(len_ + other.len_);
     memcpy(start_ + len_, other.start_, other.len_);
     len_ += other.len_;
     start_[len_] = 0;
   }
 
-  string operator+(const string &rhs) {
+  string operator+(const string &rhs) const {
     string ans(*this);
     ans += rhs;
     return ans;
+  }
+
+  string operator+(const char *other) const {
+    string ans(*this), adtnl(other);
+    ans += adtnl;
+    return ans;
+  }
+
+  friend string operator+(const char *lhs, const string &rhs) {
+    return string(lhs) + rhs;
   }
 
   // requires that count <= len_
@@ -153,34 +176,45 @@ class string {
     start_[len_] = 0;
   }
 
-  string substr(size_t i, size_t len) const { return string{start_ + i, len}; }
+  // get substr of start until end of string
+  string substr(size_t i) { return string{start_ + i, len_ - i}; }
+
+  string substr(size_t i, size_t len) const {
+    if (i >= len_)
+      return string();
+    if (len + i > len_)
+      return string(*this);
+    return string{start_ + i, len};
+  }
 
   bool starts_with(const string_view &sv) const {
-    if (sv.size() > len_) return false;
+    if (sv.size() > len_)
+      return false;
 
     for (size_t i = 0; i < sv.size(); ++i) {
-      if (start_[i] != sv[i]) return false;
+      if (start_[i] != sv[i])
+        return false;
     }
 
     return true;
   }
 
   bool ends_with(const string_view &sv) const {
-    if (sv.size() > len_) return false;
+    if (sv.size() > len_)
+      return false;
 
     auto offset = len_ - sv.size();
 
     for (size_t i = 0; i < sv.size(); ++i) {
-      if (start_[offset + i] != sv[i]) return false;
+      if (start_[offset + i] != sv[i])
+        return false;
     }
 
     return true;
   }
 
   // requires len_ > 0
-  char back() const {
-    return start_[len_ - 1];
-  }
+  char back() const { return start_[len_ - 1]; }
 
   char &operator[](size_t idx) const { return start_[idx]; }
 
@@ -196,13 +230,11 @@ class string {
 
   string_view view() const { return this->operator string_view(); }
 
-  template <class T>
-  bool operator==(const T &other) const {
+  template <class T> bool operator==(const T &other) const {
     return this->view() == static_cast<string_view>(other);
   }
 
-  template <class T>
-  std::strong_ordering operator<=>(const T &other) const {
+  template <class T> std::strong_ordering operator<=>(const T &other) const {
     return this->view() <=> static_cast<string_view>(other);
   }
 
@@ -216,18 +248,18 @@ class string {
   // return -1 if not found
   ssize_t find(char c, size_t from = 0) const {
     for (size_t i = from; i < len_; ++i) {
-      if (start_[i] == c) return i;
+      if (start_[i] == c)
+        return i;
     }
     return -1;
   }
-
 };
-
 
 inline string to_string(uint64_t num) {
   string res;
 
-  if (num == 0) return "0";
+  if (num == 0)
+    return "0";
 
   while (num) {
     res += '0' + (num % 10);
@@ -241,4 +273,4 @@ inline string to_string(uint64_t num) {
   return res;
 }
 
-}  // namespace fast
+} // namespace fast
