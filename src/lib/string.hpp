@@ -268,6 +268,19 @@ public:
 
     return false;
   }
+
+  ssize_t find(const string_view &word) const {
+    if (word.size() > len_)
+      return -1;
+
+    for (size_t i = 0; i < len_ - word.size(); ++i) {
+      size_t j ;
+      for (j = 0; j < word.size() && start_[i + j] == word[j]; ++j);
+      if (j == word.size()) return i;
+    }
+
+    return -1;
+  }
 };
 
 inline string to_string(uint64_t num) {
