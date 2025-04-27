@@ -128,18 +128,27 @@ static void serve_query(const int fd, const fast::string_view &query, const fast
     c = tolower(c);
   }
 
-  if (translated == "the") {
+  // short circuit stop word queries
+  if (translated == "the" || translated == "and") {
 
-    if (logging) std::cout << "Short circuit response for THE" << std::endl;
+    if constexpr (logging)
+      std::cout << "Short circuit response for " << translated.c_str() << std::endl;
 
-    static fast::array<fast::pair<fast::string, float>, 10>  the;
-    the[0].first = "https://en.wikipedia.org/wiki/The";
-    the[1].first = "https://www.dictionary.com/browse/the";
-    the[2].first = "https://www.merriam-webster.com/dictionary/the";
-    the[3].first = "https://en.wiktionary.org/wiki/the";
-    the[4].first = "https://dictionary.cambridge.org/us/dictionary/english/the";
-    the[5].first = "https://www.collinsdictionary.com/us/dictionary/english/the";
-    send_results(the, fd);
+    static fast::array<fast::pair<fast::string, float>, 10>  base;
+    base[0].first = "https://en.wikipedia.org/wiki/";
+    base[1].first = "https://www.dictionary.com/browse/";
+    base[2].first = "https://www.merriam-webster.com/dictionary/";
+    base[3].first = "https://en.wiktionary.org/wiki/";
+    base[4].first = "https://dictionary.cambridge.org/us/dictionary/english/";
+    base[5].first = "https://www.collinsdictionary.com/us/dictionary/english/";
+
+    auto added = base;
+
+    for (auto &r : added) {
+      r.first += translated;
+    }
+
+    send_results(base, fd);
     return;
   }
 
