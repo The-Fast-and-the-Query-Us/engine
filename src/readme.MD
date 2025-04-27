@@ -1,0 +1,1 @@
+- client: frontend server to deliver html to client browser and forward queries to query_server
