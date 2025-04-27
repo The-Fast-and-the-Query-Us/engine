@@ -23,6 +23,8 @@ HOSTS=(
   lander3
 )
 
+ssh engine1 "sudo systemctl stop frontend.service"
+
 for HOST in "${HOSTS[@]}"; do
   echo "Starting $HOST"
   ssh -o ConnectTimeout=5 "$HOST" "$COMMAND" &
@@ -30,4 +32,10 @@ done
 
 wait
 
-echo "DONE"
+echo "qs started"
+
+ssh engine1 "cd engine && ./frontend_init"
+
+echo "DONE!"
+
+
