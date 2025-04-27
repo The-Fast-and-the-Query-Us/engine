@@ -16,6 +16,12 @@ tmpfile=$(mktemp)
 get_line_count() {
   local host=$1
   line_count=$(ssh "$host" "wc -l ~/.local/share/crawler/docs.log | awk '{print \$1}'" 2>/dev/null || echo 0)
+
+  if [ "$line_count" -gt 2850 ]; then
+    ssh "$host" "sudo systemctl stop crawler.service"
+    echo "STOPPED: $host"
+  fi
+
   echo "$line_count $host" >> "$tmpfile"
 }
 
