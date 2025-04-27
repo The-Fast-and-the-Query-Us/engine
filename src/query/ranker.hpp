@@ -518,7 +518,7 @@ DomainHit = 45.0,
 AnyHit = 30.0,
 UrlLength = -1,
 GoodLength = 0.0,
-GoodTLD = 75.0,
+GoodTLD = 30.0,
 WhiteList = 80.0,
 Ordered = 7.5
 ;
