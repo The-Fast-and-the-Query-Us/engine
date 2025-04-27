@@ -36,15 +36,15 @@ fast::string img;
 
 fast::vector<fast::string> ips;
 
-bool logging = true;
+const bool logging = false;
 
 /*
 * Read in files to serve as frontend
 */
-void init_files() {
+static void init_files() {
   char buffer[1 << 10];
 
-  auto fd = open("frontend/html/index.html", O_RDONLY);
+  auto fd = open("frontend/html/timer.html", O_RDONLY);
   if (fd < 0) {
     perror("Fail to open index.html");
     exit(1);
@@ -69,7 +69,7 @@ void init_files() {
   close(fd);
 }
 
-void serve_file(const int fd, const fast::string &file, const fast::string &type) {
+static void serve_file(const int fd, const fast::string &file, const fast::string &type) {
 
   fast::string response = "HTTP/1.1 200 OK\r\n";
   response = response + "Content-Type: " + type + "\r\n";
@@ -81,7 +81,25 @@ void serve_file(const int fd, const fast::string &file, const fast::string &type
   fast::send_all(fd, file.c_str(), file.size());
 }
 
-void serve_query(const int fd, const fast::string_view &query, const fast::vector<int> servers) {
+static void send_results(const fast::array<fast::pair<fast::string, float>, 10> &results, const int fd) {
+  fast::string arr = "[";
+
+  for (const auto &p : results) {
+    if (p.first.size() == 0) continue;
+    arr = arr + ((arr.size() == 1) ? "" : ", ") + "\"" + p.first + "\"";
+  }
+  arr += "]";
+
+  fast::string response = "HTTP/1.1 200 OK\r\n"
+                           "Content-Type: application/json\r\n";
+
+  response = response + "Content-Length: " + fast::to_string(arr.size()) + "\r\n\r\n";
+
+  fast::send_all(fd, response.c_str(), response.size());
+  fast::send_all(fd, arr.c_str(), arr.size());
+}
+
+static void serve_query(const int fd, const fast::string_view &query, const fast::vector<int> servers) {
   fast::string translated;
   translated.reserve(query.size());
 
@@ -100,10 +118,29 @@ void serve_query(const int fd, const fast::string_view &query, const fast::vecto
       translated.pop_back(3);
       translated += ']';
     }
+    else if (translated.ends_with("%22")) {
+      translated.pop_back(3);
+      translated += '"';
+    }
   }
 
   for (auto &c : translated) {
     c = tolower(c);
+  }
+
+  if (translated == "the") {
+
+    if (logging) std::cout << "Short circuit response for THE" << std::endl;
+
+    static fast::array<fast::pair<fast::string, float>, 10>  the;
+    the[0].first = "https://en.wikipedia.org/wiki/The";
+    the[1].first = "https://www.dictionary.com/browse/the";
+    the[2].first = "https://www.merriam-webster.com/dictionary/the";
+    the[3].first = "https://en.wiktionary.org/wiki/the";
+    the[4].first = "https://dictionary.cambridge.org/us/dictionary/english/the";
+    the[5].first = "https://www.collinsdictionary.com/us/dictionary/english/the";
+    send_results(the, fd);
+    return;
   }
 
   if (logging) {
@@ -152,34 +189,20 @@ void serve_query(const int fd, const fast::string_view &query, const fast::vecto
     }
   }
 
-  fast::string arr = "[";
-
-  for (const auto &p : results) {
-    if (p.first.size() == 0) continue;
-    arr = arr + ((arr.size() == 1) ? "" : ", ") + "\"" + p.first + "\"";
-  }
-  arr += "]";
-
-  fast::string response = "HTTP/1.1 200 OK\r\n"
-                           "Content-Type: application/json\r\n";
-
-  response = response + "Content-Length: " + fast::to_string(arr.size()) + "\r\n\r\n";
-
-  fast::send_all(fd, response.c_str(), response.size());
-  fast::send_all(fd, arr.c_str(), arr.size());
+  send_results(results, fd);
 }
 
-void serve_not_found(const int fd) {
+static void serve_not_found(const int fd) {
   fast::string response = "HTTP/1.1 404 Not Found\r\n\r\nFile not found";
   fast::send_all(fd, response.c_str(), response.size());
 }
 
-void serve_client(const int fd, const fast::vector<int> &servers) {
+static void serve_client(const int fd, const fast::vector<int> &servers) {
   char buffer[1 << 10]{}; // 4KB
   const auto header = recv(fd, buffer, sizeof(buffer), 0);
 
   size_t start = 0;
-  while (start < header && buffer[start++] != '/'); // maybe check for GET?
+  while (start < header && buffer[start++] != '/');
 
   size_t end = start;
   while (end < header && buffer[end] != ' ') ++end;
@@ -191,7 +214,7 @@ void serve_client(const int fd, const fast::vector<int> &servers) {
   } else if (path.size() == 0) {
     serve_file(fd, html, "text/html");
   } else if (path == "img") {
-    serve_file(fd, img, "image/pngimage/png");
+    serve_file(fd, img, "image/png");
   } else {
     serve_not_found(fd);
   }
@@ -255,6 +278,7 @@ int accept_fd;
 
 
 int main() {
+  init_files();
   const auto ip_file = fopen("ips.txt", "r");
 
   if (ip_file == NULL) {

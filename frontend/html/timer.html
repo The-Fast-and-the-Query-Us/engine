@@ -63,7 +63,7 @@
     }
 
     .header::before {
-      content: "“I LIVE MY LIFE A QUARTER SEARCH AT A TIME”";
+      content: ""I LIVE MY LIFE A QUARTER SEARCH AT A TIME"";
       display: block;
       color: var(--chrome);
       font-family: 'Bebas Neue', sans-serif;
@@ -104,7 +104,6 @@
       border: 3px solid var(--dodge-orange);
       border-radius: 50px;
       color: var(--neon-blue);
-      text-transform: uppercase;
       box-shadow: 0 0 20px var(--dodge-orange);
       font-family: 'Racing Sans One', sans-serif;
     }
@@ -165,14 +164,14 @@
       text-decoration: none;
       display: block;
       margin-bottom: 10px;
-      font-family: 'Bebas Neue', sans-serif;
+      font-family: 'Racing Sans One', sans-serif;
+      text-transform: lowercase;
     }
 
     .result-title::before {
       content: "🏁 ";
       filter: drop-shadow(0 0 5px var(--neon-blue));
     }
-
 
     .nitro-gauge {
       position: fixed;
@@ -225,15 +224,36 @@
     }
 
     .family-quote::before {
-      content: "“";
+      content: """;
       color: var(--dodge-orange);
       font-size: 2rem;
     }
 
     .family-quote::after {
-      content: "”";
+      content: """;
       color: var(--dodge-orange);
       font-size: 2rem;
+    }
+
+    .query-timer {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid var(--neon-blue);
+      border-radius: 10px;
+      padding: 10px 15px;
+      color: var(--neon-blue);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.2rem;
+      animation: pulsate 2s infinite;
+      display: none;
+    }
+
+    @keyframes pulsate {
+      0% { box-shadow: 0 0 5px var(--neon-blue); }
+      50% { box-shadow: 0 0 15px var(--neon-blue); }
+      100% { box-shadow: 0 0 5px var(--neon-blue); }
     }
   </style>
 </head>
@@ -261,9 +281,26 @@
     WE DON'T JUST SEARCH<br>WE FAMILY
   </div>
 
+  <div class="query-timer" id="queryTimer"></div>
+
   <div class="results" id="results"></div>
 
   <script>
+    // ******************************************
+    // **** CONFIGURATION - EDIT THIS PART! ****
+    // ******************************************
+    
+    // Set to true to use mock data, false to use real API
+    const USE_MOCK_MODE = false;
+    
+    // Configure mock timing (in milliseconds)
+    const MIN_MOCK_DELAY = 300;  // Minimum response time
+    const MAX_MOCK_DELAY = 1500; // Maximum response time
+    
+    // ******************************************
+    // **** END OF CONFIGURATION SECTION ****
+    // ******************************************
+
     // on enter press
     const input = document.getElementById("searchInput");
     input.addEventListener("keypress", (e) => {
@@ -280,26 +317,80 @@
       setTimeout(() => nos.remove(), 500);
     }
 
+    // Mock data for testing
+    const mockResults = [
+      "https://fastfurious.com/dom-toretto-quotes",
+      "https://cartuning.com/10-second-car",
+      "https://racingfuel.com/nos-systems",
+      "https://movies.example.com/f9-physics-explained",
+      "https://automotive.blog/family-is-everything"
+    ];
+
+    // Generate a random time between min and max
+    function getRandomTime(min, max) {
+      return Math.floor(Math.random() * (max - min + 1) + min);
+    }
+
+    // Mock search function that returns results after a delay
+    function mockApiSearch(query) {
+      return new Promise((resolve) => {
+        // Simulate network delay between configured values
+        const mockDelay = getRandomTime(MIN_MOCK_DELAY, MAX_MOCK_DELAY);
+        
+        setTimeout(() => {
+          // Return 3-5 results
+          const numResults = getRandomTime(3, 5);
+          const results = mockResults.slice(0, numResults);
+          resolve(results);
+        }, mockDelay);
+      });
+    }
+
     // search function
     async function performSearch() {
       createNosEffect();
 
       const query = document.getElementById('searchInput').value.trim();
       const resultsContainer = document.getElementById('results');
+      const timerDisplay = document.getElementById('queryTimer');
+      
+      // Reset results and timer
       resultsContainer.innerHTML = '';
+      timerDisplay.style.display = 'none';
 
       if (!query) return;
 
       try {
-        const response = await fetch(`/api?q=${query}`);
-        if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+        const startTime = performance.now();
+        
+        let urls;
+        
+        // Use mock data or real API based on configuration
+        if (USE_MOCK_MODE) {
+          urls = await mockApiSearch(query);
+        } else {
+          const response = await fetch(`/api?q=${query}`);
+          if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+          urls = await response.json();
+        }
 
-        const urls = await response.json();
+        const endTime = performance.now();
+        const queryTime = endTime - startTime;
+        
+        // Display the query time (without showing if it's mock mode)
+        timerDisplay.textContent = `QUARTER MILE TIME: ${queryTime.toFixed(2)} MS`;
+        timerDisplay.style.display = 'block';
 
         if (!Array.isArray(urls) || urls.length === 0) {
           resultsContainer.innerHTML = `<div class="result"><div class="result-snippet">No results found.</div></div>`;
           return;
         }
+
+        // Add a summary of timing at the top of results
+        const summary = document.createElement('div');
+        summary.className = 'result';
+        summary.innerHTML = `<div class="result-snippet">Nitro Boost Complete! Found ${urls.length} results in ${queryTime.toFixed(2)} milliseconds.</div>`;
+        resultsContainer.appendChild(summary);
 
         urls.forEach((url, index) => {
           const result = document.createElement('div');
@@ -309,7 +400,7 @@
           title.className = 'result-title';
           title.href = url;
           title.target = '_blank';
-          urlDiv.textContent = url;
+          title.textContent = url;
 
           result.appendChild(title);
 
@@ -321,9 +412,6 @@
       }
       document.getElementById('nitroFill').style.transform = `scaleX(${Math.random()})`;
     }
-
   </script>
-
-
 </body>
 </html>

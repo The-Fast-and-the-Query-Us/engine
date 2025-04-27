@@ -1,6 +1,8 @@
 #!/bin/bash
 
-sudo systemctl stop frontend.service
+set -e
+
+sudo systemctl stop frontend.service || true
 
 cd src
 cmake -B build -DCMAKE_BUILD_TYPE=Release

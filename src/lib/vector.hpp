@@ -6,15 +6,15 @@
 
 #include <cassert>
 #include <common.hpp>
-#include <cstddef>  // for size_t
+#include <cstddef> // for size_t
 #include <cstdlib>
+#include <initializer_list>
 #include <new>
 
 namespace fast {
 
-template <typename T>
-class vector {
- public:
+template <typename T> class vector {
+public:
   // Default Constructor
   // REQUIRES: Nothing
   // MODIFIES: *this
@@ -28,23 +28,36 @@ class vector {
 
   vector(size_t num_elements) : size_{num_elements} {
     grow(num_elements);
-    for (auto i = 0u; i < num_elements; ++i) new (elts + i) T();
+    for (auto i = 0u; i < num_elements; ++i)
+      new (elts + i) T();
   }
 
   vector(size_t num_elements, const T &val) : size_{num_elements} {
     grow(num_elements);
-    for (auto i = 0u; i < num_elements; ++i) new (elts + i) T(val);
+    for (auto i = 0u; i < num_elements; ++i)
+      new (elts + i) T(val);
   }
 
   vector(const vector<T> &other) : size_{other.size_} {
     grow(other.size_);
-    for (auto i = 0u; i < size_; ++i) new (elts + i) T(other.elts[i]);
+    for (auto i = 0u; i < size_; ++i)
+      new (elts + i) T(other.elts[i]);
+  }
+
+  vector(std::initializer_list<T> l) {
+    grow(l.size());
+    size_t i = 0;
+    for (const T &e : l) {
+      new (elts + i) T(e);
+      ++i;
+    }
   }
 
   vector operator=(const vector<T> &other) {
     if (this != &other) {
       clear();
-      if (other.size_ > cap_) grow(other.size_);
+      if (other.size_ > cap_)
+        grow(other.size_);
       for (auto i = 0u; i < other.size_; ++i) {
         new (elts + i) T(other.elts[i]);
       }
@@ -73,7 +86,8 @@ class vector {
   }
 
   void reserve(size_t newCapacity) {
-    if (newCapacity > cap_) grow(newCapacity);
+    if (newCapacity > cap_)
+      grow(newCapacity);
   }
 
   void resize(size_t newSize) {
@@ -106,14 +120,15 @@ class vector {
     new (elts + size_++) T(x);
   }
 
-  template <typename... Args>
-  void emplace_back(Args &&...args) {
-    if (size_ == cap_) grow(max(size_t(8), cap_ << 1));
+  template <typename... Args> void emplace_back(Args &&...args) {
+    if (size_ == cap_)
+      grow(max(size_t(8), cap_ << 1));
     new (elts + size_++) T(args...);
   }
 
   void pop_back(size_t count = 1) {
-    for (auto i = 1u; i <= count; ++i) elts[size_ - i].~T();
+    for (auto i = 1u; i <= count; ++i)
+      elts[size_ - i].~T();
     size_ -= count;
   }
 
@@ -121,20 +136,17 @@ class vector {
 
   T *end() { return elts + size_; }
 
-  const T *begin() const {
-    return elts;
-  }
+  const T *begin() const { return elts; }
 
-  const T *end() const {
-    return elts + size_;
-  }
+  const T *end() const { return elts + size_; }
 
   void clear() {
-    for (auto i = 0u; i < size_; ++i) elts[i].~T();
+    for (auto i = 0u; i < size_; ++i)
+      elts[i].~T();
     size_ = 0;
   }
 
- private:
+private:
   T *elts = nullptr;
   size_t size_ = 0;
   size_t cap_ = 0;
@@ -145,4 +157,4 @@ class vector {
     cap_ = new_cap;
   }
 };
-}  // namespace fast
+} // namespace fast

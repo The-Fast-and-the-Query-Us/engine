@@ -25,10 +25,10 @@
 
 namespace fast::crawler {
 
-static constexpr int THREAD_COUNT = 60;
+static constexpr int THREAD_COUNT = 100;
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
-static constexpr size_t BLOB_THRESHOLD = 12'500'000;
+static constexpr size_t BLOB_THRESHOLD = 30'000'000;
 static constexpr const char* IP_PATH = "./ips.txt";
 
 class crawler {
@@ -408,6 +408,8 @@ class crawler {
         }
 
         link.URL = url_parser::url_join(url, link.URL);
+
+        if (link.URL.size() > 0 && link.URL.back() == '/') link.URL.pop_back();
       }
 
       link_sender.add_links(parser.links);
@@ -421,18 +423,25 @@ class crawler {
 
   // call back function for recving urls to crawl
   void add_url(string& url) {
-    static constexpr uint8_t MAX_CNT = 8;
+    static constexpr uint8_t MAX_CNT = 5;
+    static constexpr uint8_t WL_MAX_CNT = 40;
 
     const auto domain = url_parser::get_base_root(url);
     const auto dom_no_prot = fast::english::strip_url_prefix(domain);
 
     fast::string stripped = fast::english::strip_url_prefix(url);
+    bool whitelisted_dom = dom_no_prot == "nytimes.com"
+      || dom_no_prot == "en.wikipedia.org" 
+      || dom_no_prot == "stackoverflow.com"
+      || dom_no_prot == "bbc.com"
+      || dom_no_prot == "britannica.com"
+    ;
 
     cnt_mtx.lock();
 
-    if (frontier_cnt[dom_no_prot] < MAX_CNT && !visited_urls.contains(stripped)) {
+    if (frontier_cnt[dom_no_prot] < (whitelisted_dom ? WL_MAX_CNT : MAX_CNT) && !visited_urls.contains(stripped)) {
       if (crawl_frontier.insert(url)) {
-        visited_urls.insert(url);
+        visited_urls.insert(stripped);
 
         frontier_cnt[dom_no_prot]++;
       }
@@ -483,6 +492,10 @@ class crawler {
 
     if (url.ends_with("print.html") ||
         url.view().trim_prefix(1).contains("http"))
+      return true;
+
+    if (url.view().contains("wikipedia") &&
+        !url.starts_with("https://en.wikipedia"))
       return true;
 
     const char* word_start = nullptr;

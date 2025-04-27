@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 int main() {
-  int result = system("./test_ssl_getter https://www.nytimes.com > nyt.html");
+  int result = system("./test_ssl_getter https://www.reddit.com > nyt.html");
   if (result == -1) return 1;
   int fd = open("nyt.html", O_RDONLY);
   if (fd == -1) return 1;

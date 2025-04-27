@@ -1,6 +1,8 @@
 #!/bin/bash
 
-sudo systemctl stop query_server.service
+set -e
+
+sudo systemctl stop query_server.service || true
 
 cd src
 cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -14,6 +16,6 @@ username=$(whoami)
 sudo sed -i "s/<USERNAME>/$username/g" /etc/systemd/system/query_server.service
 
 sudo systemctl daemon-reload
-sudo systemctl enable query_server.service
+sudo systemctl disable query_server.service
 sudo systemctl start query_server.service
 sudo systemctl status query_server.service

@@ -85,7 +85,7 @@ class communicator {
     }
 
     struct timeval timeout{};
-    timeout.tv_sec = 3;
+    timeout.tv_sec = 1;
     timeout.tv_usec = 0;
 
     // Get timeout

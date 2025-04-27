@@ -16,12 +16,15 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <sys/fcntl.h>
+#include <sys/mman.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <signal.h>
 
 constexpr unsigned PORT = 8081;
 constexpr size_t ACCPETOR_THREADS = 20; // this must be at least the same as the frontend
+
+constexpr bool LOCK_MEM = true; // false => fast start up and slow query
 
 volatile bool die = false;
 fast::queue<int> clients;
@@ -71,14 +74,21 @@ void init_blobs() {
     const auto map_ptr =
         mmap(nullptr, chunk_size, PROT_READ, MAP_PRIVATE, chunk_fd, 0);
 
+    close(chunk_fd);
+
     if (map_ptr == MAP_FAILED) [[unlikely]] {
-      close(chunk_fd);
       perror("Fail to mmap index chunk");
       exit(1);
     }
 
-    close(chunk_fd);
-    
+    // this blocks until page faults are done
+    if constexpr (LOCK_MEM) {
+      if (mlock(map_ptr, chunk_size) != 0) {
+        perror("Fail to lock chunk");
+        exit(1); // exit for debuging (remove later)
+      }
+    }
+
     auto blob = reinterpret_cast<const fast::hashblob*>(map_ptr);
 
     if (!blob->is_good()) {
@@ -87,9 +97,11 @@ void init_blobs() {
       blobs.push_back(blob);
     }
   }
+
+  std::cout << "CHUNK READ IN COMPLETE" << std::endl;
 }
 
-static constexpr size_t RANKER_THREADS = 20;
+static constexpr size_t RANKER_THREADS = 5;
 
 struct ranker_args {
   size_t start;
