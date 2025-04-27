@@ -576,16 +576,10 @@ static url_location find_in_url(const string_view &url,
 }
 
 static double url_rank(const string_view &url, const vector<string_view> &words, size_t rare) {
-  if (url.contains("updatestar")) {
-    return -1e10;
-  }
+  if (url.contains("updatestar") || url.ends_with(".jpg") ||
+      url.ends_with(".png") || url.ends_with(".svg") || url.ends_with("jpeg")) {
 
-  size_t i = url.size() - 1;
-
-  while (i > 8 && url[i] != '/' && url[i] != '.') --i;
-
-  if (url[i] == '.' && !(url.ends_with("html") || url.ends_with("htm"))) {
-    return -1e10;
+    return -1e20;
   }
 
   double score = 0;
