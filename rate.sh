@@ -40,10 +40,11 @@ while read -r start end host; do
 
     if [ "$DELTA" -gt 60 ]; then
       echo "WARNING: $host no recent updates"
+    else
+      echo "$RATE docs per second on $host"
+      TOTAL_RATE=$((TOTAL_RATE + RATE))
     fi
 
-    echo "$RATE docs per second on $host"
-    TOTAL_RATE=$((TOTAL_RATE + RATE))
   else
     echo "Invalid time difference on $host (start=$start, end=$end)"
   fi
