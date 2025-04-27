@@ -599,7 +599,7 @@ static double url_rank(const string_view &url, const vector<string_view> &words,
       ordered_ness = fast::max(ordered_ness, order);
 
     } else {
-      pos[i] = SIZE_T_MAX;
+      pos[i] = SIZE_MAX;
     }
   }
 
