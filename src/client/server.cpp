@@ -148,7 +148,7 @@ static void serve_query(const int fd, const fast::string_view &query, const fast
       r.first += translated;
     }
 
-    send_results(base, fd);
+    send_results(added, fd);
     return;
   }
 
