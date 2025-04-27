@@ -253,6 +253,21 @@ public:
     }
     return -1;
   }
+
+  bool contains(const string_view &word) const {
+    if (len_ < word.size()) return false;
+
+    for (size_t i = 0; i < len_ - word.size(); ++i) {
+
+      size_t j;
+      for (j = 0; j < word.size() && word[j] == start_[i + j]; ++j);
+
+      if (j == word.size()) return true;
+
+    }
+
+    return false;
+  }
 };
 
 inline string to_string(uint64_t num) {
