@@ -29,12 +29,13 @@
 
 namespace fast::crawler {
 
-static constexpr int THREAD_COUNT = 60;
+static constexpr int THREAD_COUNT = 100;
 static constexpr size_t BLOOM_FILTER_SIZE = 1e8;
 static constexpr double BLOOM_FILTER_FPR = 1e-4;
-static constexpr size_t BLOB_THRESHOLD = 12'500'000;
-static constexpr const char *IP_PATH = "./ips.txt";
+
 static constexpr size_t ROBOTS_CACHE_ENTRIES = 4096;
+static constexpr size_t BLOB_THRESHOLD = 30'000'000;
+static constexpr const char* IP_PATH = "./ips.txt";
 
 class crawler {
 public:
@@ -415,6 +416,8 @@ private:
         }
 
         link.URL = url_parser::url_join(url, link.URL);
+
+        if (link.URL.size() > 0 && link.URL.back() == '/') link.URL.pop_back();
       }
 
       link_sender.add_links(parser.links);
@@ -427,16 +430,22 @@ private:
   }
 
   // call back function for recving urls to crawl
-  void add_url(string &url) {
-    static constexpr uint8_t MAX_CNT = 8;
-    static constexpr uint8_t WL_MAX_CNT = 20;
+
+  void add_url(string& url) {
+    static constexpr uint8_t MAX_CNT = 5;
+    static constexpr uint8_t WL_MAX_CNT = 40;
 
     const auto domain = url_parser::get_base_root(url);
     const auto dom_no_prot = fast::english::strip_url_prefix(domain);
 
     fast::string stripped = fast::english::strip_url_prefix(url);
-    bool whitelisted_dom =
-        dom_no_prot == "nytimes.com" || dom_no_prot == "en.wikipedia.org";
+
+    bool whitelisted_dom = dom_no_prot == "nytimes.com"
+      || dom_no_prot == "en.wikipedia.org" 
+      || dom_no_prot == "stackoverflow.com"
+      || dom_no_prot == "bbc.com"
+      || dom_no_prot == "britannica.com"
+    ;
 
     cnt_mtx.lock();
 
@@ -510,8 +519,12 @@ public:
         url.view().trim_prefix(1).contains("http"))
       return true;
 
-    const char *word_start = nullptr;
-    const char *url_end = url.begin() + url.size();
+    if (url.view().contains("wikipedia") &&
+        !url.starts_with("https://en.wikipedia"))
+      return true;
+
+    const char* word_start = nullptr;
+    const char* url_end = url.begin() + url.size();
 
     for (const char *p = url.begin(); p <= url_end; ++p) {
       bool is_delimiter = (p == url_end) || (*p == '/') || (*p == '.') ||

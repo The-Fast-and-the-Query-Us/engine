@@ -82,7 +82,7 @@ public:
     for (int64_t i = priorities.size() - 1; i >= 0; --i) {
 
       const auto flip = rand() % 100;
-      if (flip >= 70)
+      if (flip >= 60)
         continue;
 
       fast::queue<fast::string> &curr_pri = priorities[i];
@@ -404,7 +404,7 @@ private:
     if (slash_cnt > 7)
       return -1;
 
-    if (slash_cnt < 2)
+    if (slash_cnt <= 2)
       ++score;
 
     return score;

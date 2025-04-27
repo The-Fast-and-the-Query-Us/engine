@@ -105,7 +105,10 @@ private:
     while (buff < end) {
       if (*buff == '>') {
         return buff + 1 < end ? buff + 1 : end;
+      } else if (*buff == '&') {
+        ++buff;
       }
+
       ++buff;
     }
     return buff;

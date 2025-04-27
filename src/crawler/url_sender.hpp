@@ -138,11 +138,16 @@ public:
     }
 
     for (const auto &link : links) {
-      if (link.URL.size() == 0) continue;
-      if (link.URL.size() > 400) continue;
+      if (link.URL.size() == 0 || link.URL.size() > 400) continue;
+      if (link.URL.starts_with("http://")) continue;
+
       
       const auto trimmed = english::strip_url_prefix(link.URL);
-      const auto hv = hash(trimmed) % ips.size();
+      fast::string lower(trimmed);
+
+      for (auto &c : lower) c = tolower(c);
+
+      const auto hv = hash(lower) % ips.size();
 
       if (bufs[hv].second + link.URL.size() + 1 >= PACKET_SZ) {
 
