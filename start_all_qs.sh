@@ -34,7 +34,7 @@ wait
 
 echo "qs started"
 
-ssh engine1 "cd engine && ./frontend_init"
+ssh engine1 "cd engine && ./frontend_init.sh"
 
 echo "DONE!"
 
