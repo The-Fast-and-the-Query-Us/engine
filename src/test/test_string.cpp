@@ -35,4 +35,9 @@ int main() {
   const string f = "https://scikit-image.org/docs/dev/user_guide/../development/../gitwash/../user_guide/../release_notes/../auto_examples/../about/index.html";
 
   assert(f.view().contains("/../"));
+
+  const string cnrose = "https://www.github.com/connerrose";
+
+  assert(cnrose.find("conner") > -1);
+  assert(cnrose.find("rose") > -1);
 }
