@@ -99,6 +99,10 @@ void init_blobs() {
   }
 
   std::cout << "CHUNK READ IN COMPLETE" << std::endl;
+
+  if constexpr (LOCK_MEM) {
+    std::cout << "BLOBS LOCKED" << std::endl;
+  }
 }
 
 static constexpr size_t RANKER_THREADS = 5;
