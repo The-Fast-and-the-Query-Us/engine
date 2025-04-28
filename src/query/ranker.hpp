@@ -522,8 +522,8 @@ UrlLength = -3,
 GoodLength = 0.0,
 GoodTLD = 75.0,
 WhiteList = 30.0,
-Ordered = 7.5,
-Query = -40.0
+Ordered = 20,
+Query = -55.0
 ;
 
 static bool is_good_doc_len(Offset len) {
