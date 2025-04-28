@@ -521,7 +521,7 @@ AnyHit = 40.0,
 UrlLength = -3,
 GoodLength = 0.0,
 GoodTLD = 75.0,
-WhiteList = 30.0,
+WhiteList = 65.0,
 Ordered = 20,
 Query = -55.0
 ;
