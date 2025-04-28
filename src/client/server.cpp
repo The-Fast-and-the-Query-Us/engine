@@ -129,7 +129,7 @@ static void serve_query(const int fd, const fast::string_view &query, const fast
   }
 
   // short circuit stop word queries
-  if (translated == "the" || translated == "and") {
+  if (translated == "the" || translated == "and" || translated == "is") {
 
     if constexpr (logging)
       std::cout << "Short circuit response for " << translated.c_str() << std::endl;
@@ -284,7 +284,6 @@ void *worker(void*) {
 }
 
 int accept_fd;
-
 
 int main() {
   init_files();
