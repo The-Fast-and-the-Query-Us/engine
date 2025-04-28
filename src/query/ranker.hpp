@@ -589,7 +589,7 @@ static double url_rank(const string_view &url, const vector<string_view> &words,
 
   size_t cnt = 0;
   size_t ordered_ness = 0;
-  fast::vector<ssize_t> pos(words.size());
+  fast::vector<size_t> pos(words.size());
 
   for (size_t i = 0; i < words.size(); ++i) {
     const auto m = url_.find(words[i]);
@@ -606,7 +606,7 @@ static double url_rank(const string_view &url, const vector<string_view> &words,
       ordered_ness = fast::max(ordered_ness, order);
 
     } else {
-      pos[i] = SSIZE_MAX;
+      pos[i] = INT_MAX;
     }
   }
 
