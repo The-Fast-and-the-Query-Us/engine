@@ -21,6 +21,7 @@
 #include "isr.hpp"
 #include "language.hpp"
 #include "url_components.hpp"
+#include <climits>
 
 namespace fast::query {
 
