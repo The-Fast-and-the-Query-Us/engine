@@ -210,6 +210,13 @@ int main() {
     exit(1);
   }
 
+  int yes = 1;
+  if (setsockopt(accept_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes))<0) {
+    perror("setsockopt()");
+    close(accept_fd);
+    exit(1);
+  }
+
   struct sockaddr_in addr{};
 
   addr.sin_port = htons(PORT);
