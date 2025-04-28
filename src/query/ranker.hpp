@@ -16,6 +16,7 @@
 #include <vector.hpp>
 #include <sys/mman.h>
 
+#include "common.hpp"
 #include "constants.hpp"
 #include "isr.hpp"
 #include "language.hpp"
@@ -515,12 +516,13 @@ UrlDepth = -1,
 Decay = 1.05,
 SpanMult = 1.0,
 DomainHit = 45.0,
-AnyHit = 30.0,
-UrlLength = -1,
+AnyHit = 40.0,
+UrlLength = -3,
 GoodLength = 0.0,
 GoodTLD = 75.0,
 WhiteList = 30.0,
-Ordered = 7.5
+Ordered = 7.5,
+Query = -40.0
 ;
 
 static bool is_good_doc_len(Offset len) {
@@ -565,7 +567,8 @@ static double url_rank(const string_view &url, const vector<string_view> &words,
   }
 
   if (url_.contains("en.wikipedia.org") || url_.contains("nytimes.com") ||
-      url_.contains("cnn.com") || url_.contains("bbc.com")) {
+      url_.contains("cnn.com") || url_.contains("bbc.com") ||
+      url_.contains("github.com")) {
     score += Params::WhiteList;
   }
 
@@ -574,11 +577,15 @@ static double url_rank(const string_view &url, const vector<string_view> &words,
     score += Params::GoodTLD;
   }
 
+  if (url_.contains("?")) {
+    score += Params::Query;
+  }
+
   if (slash_cnt > 2) {
     score += Params::UrlDepth * (slash_cnt - 2);
   }
 
-  score += Params::UrlLength * url_.size();
+  score += Params::UrlLength * fast::fast_sqrt(url_.size());
 
   size_t cnt = 0;
   size_t ordered_ness = 0;
