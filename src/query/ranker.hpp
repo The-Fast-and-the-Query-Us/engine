@@ -521,7 +521,7 @@ AnyHit = 40.0,
 UrlLength = -3,
 GoodLength = 0.0,
 GoodTLD = 75.0,
-WhiteList = 65.0,
+WhiteList = 78.0,
 Ordered = 20,
 Query = -55.0
 ;
@@ -555,7 +555,8 @@ static double url_rank(const string_view &url, const vector<string_view> &words,
 
   if (url_.contains("updatestar") || url_.ends_with(".jpg") ||
       url_.ends_with(".png") || url_.ends_with(".svg") ||
-      url_.ends_with("jpeg")) {
+      url_.ends_with(".jpeg") || url_.contains("whatlinkshere") ||
+      url_.contains("sitemap") || url_.contains("download")) {
 
     return -1e20;
   }
