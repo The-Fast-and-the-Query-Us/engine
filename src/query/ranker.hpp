@@ -611,7 +611,7 @@ static double url_rank(const string_view &url, const vector<string_view> &words,
     }
   }
 
-  score += ordered_ness * Params::Ordered + cnt * Params::AnyHit;
+  score += ordered_ness * Params::Ordered * cnt * Params::AnyHit;
 
   return score;
 }
